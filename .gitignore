@@ -21,12 +21,28 @@ __pycache__/
 *.pyc
 *.egg-info/
 .venv/
+venv/
+env/
 .env
+.env.local
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 .coverage
 htmlcov/
+
+# Sentence-transformers model cache
+.cache/
+
+# Generisani indeks (pokreni: python scripts/embed_products.py)
+data/products.index.npz
+data/products.meta.json
+
+# Logs
+*.log
 
 # Node (for future development)
 node_modules/
 dist/
 .next/
+build/
