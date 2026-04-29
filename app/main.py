@@ -1,11 +1,9 @@
 """
 FastAPI aplikacija — entry point.
-
-Sesija 1: skelet sa schemama i placeholder endpointima (vraćaju 501).
-Sesija 2: implementacija /api/chat preko agenta + alata.
-Sesija 3: /api/email i /api/tts.
 """
 from __future__ import annotations
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +14,18 @@ from pydantic import BaseModel, Field
 from .config import PROJECT_ROOT, settings
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Preload RAG indeks i embedding model pri startu da bi prvi upit bio brz
+    if settings.products_index.exists() and settings.products_meta.exists():
+        from .rag import get_index
+        idx = get_index()
+        idx.preload_model()
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="BitLab AI Asistent",
     description=(
         "Chat widget + Voice + Email auto-reply za webshop.bitlab.rs.\n\n"
@@ -115,7 +124,19 @@ async def healthz():
 @app.post("/api/chat", response_model=ChatResponse)
 async def api_chat(req: ChatRequest) -> ChatResponse:
     """Glavni endpoint — koristi se i iz widget-a i iz voice mode-a."""
-    raise HTTPException(status_code=501, detail="Implementacija u Sesiji 2.")
+    from .agent import run_agent
+
+    messages = [{"role": m.role, "content": m.content} for m in req.history]
+    messages.append({"role": "user", "content": req.message})
+
+    result = run_agent(messages, channel=req.channel)
+    return ChatResponse(
+        reply=result["reply"],
+        channel=req.channel,
+        tools_used=result["tools_used"],
+        escalated=result["escalated"],
+        iterations=result["iterations"],
+    )
 
 
 @app.post("/api/email", response_model=EmailResponse)

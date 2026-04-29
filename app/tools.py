@@ -1,10 +1,9 @@
 """
-Definicije alata (Anthropic tool use schema).
-
-Sesija 1: SAMO definicije (JSON schema). Implementacije i dispatcher dolaze u Sesiji 2.
+Anthropic tool use schema + handler implementacije.
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 
@@ -132,3 +131,88 @@ ALL_TOOLS: list[dict[str, Any]] = [
 
 
 TOOL_NAMES: list[str] = [t["name"] for t in ALL_TOOLS]
+
+
+# ── Lazy loaders ─────────────────────────────────────────────
+
+def _get_index():
+    from .rag import get_index
+    return get_index()
+
+
+_faq_sections = None
+
+def _get_faq():
+    global _faq_sections
+    if _faq_sections is None:
+        from .faq import load_faq
+        from .config import settings
+        _faq_sections = load_faq(settings.faq_path)
+    return _faq_sections
+
+
+# ── Handleri ─────────────────────────────────────────────────
+
+def handle_search_products(
+    query: str,
+    top_k: int = 5,
+    max_price_km: float | None = None,
+) -> str:
+    results = _get_index().search(query, top_k=top_k, max_price_km=max_price_km)
+    if not results:
+        return "Nema proizvoda koji odgovaraju upitu."
+    return json.dumps(results, ensure_ascii=False)
+
+
+def handle_get_faq(topic: str) -> str:
+    from .faq import search_faq
+    sections = search_faq(_get_faq(), topic, top_k=3)
+    if not sections:
+        return "Nije pronađena relevantna FAQ sekcija za temu."
+    parts = []
+    for s in sections:
+        parts.append(f"## {s.title}\n{s.content}")
+    return "\n\n---\n\n".join(parts)
+
+
+def handle_check_availability(sifra: str) -> str:
+    meta = _get_index().sifra_map.get(sifra.strip())
+    if not meta:
+        return f"Proizvod sa šifrom '{sifra}' nije pronađen u katalogu."
+    return (
+        f"Naziv: {meta['name']}\n"
+        f"Šifra: {meta['sifra']}\n"
+        f"Cijena: {meta['price_km']} KM\n"
+        f"Dostupnost: {meta['availability_label']}\n"
+        f"URL: {meta.get('url', 'N/A')}"
+    )
+
+
+def handle_escalate_to_human(reason: str, summary: str) -> str:
+    return (
+        f"Eskalacija inicirana — razlog: {reason}\n"
+        f"Sažetak: {summary}\n\n"
+        "Kontakti za korisnika:\n"
+        "• Viber / Tel: 066 516 174\n"
+        "• Email: prodaja@bitlab.rs\n"
+        "• Radno vrijeme: Pon–Pet 09:00–17:00\n"
+        "Prodajni tim je obaviješten i javit će se u toku radnog vremena."
+    )
+
+
+_HANDLERS = {
+    "search_products": lambda inp: handle_search_products(**inp),
+    "get_faq": lambda inp: handle_get_faq(**inp),
+    "check_availability": lambda inp: handle_check_availability(**inp),
+    "escalate_to_human": lambda inp: handle_escalate_to_human(**inp),
+}
+
+
+def dispatch(name: str, tool_input: dict[str, Any]) -> str:
+    handler = _HANDLERS.get(name)
+    if not handler:
+        return f"Nepoznat alat: {name}"
+    try:
+        return handler(tool_input)
+    except Exception as exc:
+        return f"Greška pri izvršavanju alata '{name}': {exc}"
