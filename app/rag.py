@@ -104,6 +104,11 @@ class ProductIndex:
                 url = f"https://webshop.bitlab.rs/{slug}.html"
             else:
                 url = url_raw or None
+            cover = meta.get("cover") or ""
+            image_url = (
+                f"https://webshop.bitlab.rs/files/products/img/{cover}"
+                if cover else None
+            )
             results.append({
                 "sifra": meta.get("sifra", ""),
                 "name": meta.get("name", ""),
@@ -111,6 +116,7 @@ class ProductIndex:
                 "availability": meta.get("availability_label", "Provjeri dostupnost"),
                 "kolicina": meta.get("kolicina", 0),
                 "url": url,
+                "image_url": image_url,
             })
 
         return results

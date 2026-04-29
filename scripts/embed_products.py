@@ -110,6 +110,7 @@ def build_product_meta(p: dict[str, Any]) -> dict[str, Any]:
         "categories_id": (p.get("categories_id") or "").strip() or None,
         "id_brend": (p.get("id_brend") or "").strip() or None,
         "ean": (p.get("ean") or "").strip() or None,
+        "cover": (p.get("cover") or "").strip() or None,
         "url": url,
         "search_text": build_search_text(p),  # za BM25 + debug
     }

@@ -49,8 +49,9 @@ CHAT_FORMAT = """\
 - 2–4 rečenice za jednostavna pitanja; do 8 rečenica za složenija.
 - Markdown JE dozvoljen: **bold** za ime proizvoda, listing, [linkovi](url).
 - Kad nudiš proizvode iz `search_products`, max 5 stavki, format:
-  - **Ime proizvoda** — XX,XX KM — dostupnost — [Pogledaj](url)
+  - ![](image_url) **Ime proizvoda** — XX,XX KM — dostupnost — [Pogledaj](url)
     Jedan red opisa ili napomene.
+  Ako je `image_url` null ili prazan, izostavi `![]()` dio.
 - Artikle sa `kolicina > 0` ("Na lageru") uvijek navedi PRIJE onih koji su
   "Dobavljivo po narudžbi" — pretraga ih već rangira tako, ti samo zadrži redosljed.
 - Ako korisnik traži konkretan proizvod koji je **isključivo** "Dobavljivo po narudžbi"

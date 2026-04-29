@@ -62,6 +62,13 @@
   color: #1F2937; border-bottom-left-radius: 4px;
 }
 .bl-msg.bot a { color: #FB923C; }
+.bl-msg.bot img {
+  width: 64px; height: 64px; object-fit: contain;
+  border-radius: 6px; border: 1px solid #E5E7EB;
+  background: #F9FAFB; vertical-align: middle;
+  margin-right: 8px; flex-shrink: 0;
+}
+.bl-product-line { display: flex; align-items: center; margin-bottom: 6px; }
 .bl-typing { display: flex; gap: 4px; align-items: center; padding: 8px 0; }
 .bl-typing span {
   width: 7px; height: 7px; border-radius: 50%; background: #CBD5E1;
@@ -126,7 +133,12 @@
     return text
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      // Slike: ![alt](url) — inline thumbnail
+      .replace(/!\[([^\]]*)\]\((https?:\/\/[^\)]+)\)/g,
+        '<img src="$2" alt="$1" loading="lazy" onerror="this.style.display=\'none\'">')
+      // Linkovi: [tekst](url)
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener">$1</a>')
       .replace(/\n/g, '<br>');
   }
 
