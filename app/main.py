@@ -5,9 +5,10 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -142,10 +143,56 @@ async def api_chat(req: ChatRequest) -> ChatResponse:
 @app.post("/api/email", response_model=EmailResponse)
 async def api_email(req: EmailRequest) -> EmailResponse:
     """Endpoint koji n8n zove kad stigne novi email; vraća draft replyja."""
-    raise HTTPException(status_code=501, detail="Implementacija u Sesiji 3.")
+    from .agent import run_agent
+
+    # Sklopi poruku sa kontekstom emaila
+    message = (
+        f"Email od: {req.sender}\n"
+        f"Predmet: {req.subject}\n\n"
+        f"{req.body.strip()}"
+    )
+    result = run_agent(
+        [{"role": "user", "content": message}],
+        channel="email",
+    )
+    return EmailResponse(
+        reply=result["reply"],
+        escalated=result["escalated"],
+        tools_used=result["tools_used"],
+    )
 
 
 @app.post("/api/tts")
 async def api_tts(req: TtsRequest):
-    """Proxy ka ElevenLabs — primarna namjena: voice mod u browseru."""
-    raise HTTPException(status_code=501, detail="Implementacija u Sesiji 3.")
+    """Proxy ka ElevenLabs TTS API-ju — API ključ ostaje na serveru."""
+    if not settings.elevenlabs_api_key or settings.elevenlabs_api_key == "sk_...":
+        raise HTTPException(status_code=503, detail="ElevenLabs nije konfigurisan (ELEVENLABS_API_KEY).")
+
+    voice_id = req.voice_id or settings.elevenlabs_voice_id
+    if not voice_id:
+        raise HTTPException(status_code=503, detail="Voice ID nije postavljen (ELEVENLABS_VOICE_ID).")
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+            headers={
+                "xi-api-key": settings.elevenlabs_api_key,
+                "Content-Type": "application/json",
+                "Accept": "audio/mpeg",
+            },
+            json={
+                "text": req.text,
+                "model_id": settings.elevenlabs_model,
+                "voice_settings": {
+                    "stability": 0.5,
+                    "similarity_boost": 0.75,
+                    "style": 0.3,
+                    "use_speaker_boost": True,
+                },
+            },
+        )
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"ElevenLabs greška: {resp.status_code}")
+
+    return Response(content=resp.content, media_type="audio/mpeg")

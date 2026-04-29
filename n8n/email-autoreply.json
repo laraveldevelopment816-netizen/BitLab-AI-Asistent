@@ -1,0 +1,167 @@
+{
+  "name": "BitLab Email Auto-Reply",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "downloadAttachments": false
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "IMAP Email Trigger",
+      "type": "n8n-nodes-base.emailTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "imap": {
+          "id": "imap-creds",
+          "name": "BitLab IMAP"
+        }
+      },
+      "notes": "Konfiguriši IMAP credentials u n8n Settings > Credentials.\nIME: BitLab IMAP\nHost: imap.gmail.com (ili tvoj IMAP)\nPort: 993, SSL: true\nUser: email@bitlab.rs\nPassword: app-password"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.subject.toLowerCase() }}",
+              "operation": "contains",
+              "value2": "upit"
+            }
+          ]
+        },
+        "combineOperation": "any"
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "IF: Relevantna tema",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "notes": "Propušta emailove čiji subject sadrži bilo koji od ključnih pojmova.\nDodaj nove pojmove po potrebi (||  u expression-u).\n\nKompletan filter:\n={{ ['upit','ponuda','cijena','dostava','garancija','kako','imate li','trebam','kupiti','narudžba'].some(k => $json.subject.toLowerCase().includes(k)) }}"
+    },
+    {
+      "parameters": {
+        "url": "=https://ZAMIJENI-SA-NGROK-URL.ngrok-free.app/api/email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"sender\": \"{{ $json.from }}\",\n  \"subject\": \"{{ $json.subject }}\",\n  \"body\": \"{{ $json.text }}\"\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "HTTP: Pitaj AI Asistenta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 200],
+      "notes": "OBAVEZNO: Zamijeni URL sa tvojim ngrok URL-om!\nNgrok URL dobiješ pokretanjem: ngrok http 8000\nKopiraj HTTPS URL i zamijeni ZAMIJENI-SA-NGROK-URL dio."
+    },
+    {
+      "parameters": {
+        "fromEmail": "=prodaja@bitlab.rs",
+        "toEmail": "={{ $('IMAP Email Trigger').item.json.from }}",
+        "subject": "=Re: {{ $('IMAP Email Trigger').item.json.subject }}",
+        "text": "={{ $json.reply }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Send Email: AI Reply",
+      "type": "n8n-nodes-base.sendEmail",
+      "typeVersion": 2,
+      "position": [900, 200],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-creds",
+          "name": "BitLab SMTP"
+        }
+      },
+      "notes": "Konfiguriši SMTP credentials:\nHost: smtp.gmail.com, Port: 587\nUser/Password: kao IMAP (app-password)"
+    },
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Preskoči (nerelevantno)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 400]
+    }
+  ],
+  "connections": {
+    "IMAP Email Trigger": {
+      "main": [
+        [
+          {
+            "node": "IF: Relevantna tema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Relevantna tema": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Pitaj AI Asistenta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preskoči (nerelevantno)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Pitaj AI Asistenta": {
+      "main": [
+        [
+          {
+            "node": "Send Email: AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-04-29T00:00:00.000Z",
+  "versionId": "1",
+  "meta": {
+    "instanceId": "bitlab-ai-demo"
+  },
+  "_setup_instructions": {
+    "koraci": [
+      "1. n8n cloud: app.n8n.cloud → New Workflow → Import from JSON → ovaj fajl",
+      "2. Credentials > New > IMAP: host/port/user/password za tvoj email",
+      "3. Credentials > New > SMTP: isti host/user, port 587",
+      "4. Pokrenuti ngrok: ngrok http 8000 → kopiraj HTTPS URL",
+      "5. U node 'HTTP: Pitaj AI Asistenta' zamijeni ZAMIJENI-SA-NGROK-URL sa ngrok subdomain-om",
+      "6. Activate workflow (toggle gornji desni ugao)",
+      "7. Test: pošalji email na IMAP adresu sa subject 'Upit za SSD' — za 60s stize AI reply"
+    ],
+    "napomena": "IF filter propušta samo emailove sa relevantnim subject-om. Uredi listu ključnih pojmova po potrebi."
+  }
+}

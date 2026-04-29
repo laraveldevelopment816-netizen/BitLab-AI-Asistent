@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BitLab Voice Asistent</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(135deg, #0F2A47 0%, #1a3d6e 100%);
+  min-height: 100vh; color: #1E293B; padding: 20px;
+}
+.container {
+  max-width: 580px; margin: 0 auto;
+  background: white; border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3); overflow: hidden;
+}
+header {
+  background: linear-gradient(135deg, #FB923C 0%, #C2410C 100%);
+  color: white; padding: 22px; text-align: center;
+}
+header h1 { font-size: 22px; margin-bottom: 4px; }
+header p { font-size: 13px; opacity: .9; }
+.badge {
+  display: inline-block; background: rgba(255,255,255,.2);
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 11px; margin-top: 8px; font-weight: bold;
+}
+
+.mic-area { padding: 36px 24px; text-align: center; }
+.mic-btn {
+  width: 110px; height: 110px; border-radius: 50%;
+  background: linear-gradient(135deg, #FB923C 0%, #C2410C 100%);
+  border: none; color: white; font-size: 44px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(251,146,60,.45);
+  transition: all .2s; margin-bottom: 16px; display: block; margin: 0 auto 16px;
+}
+.mic-btn:hover { transform: scale(1.05); }
+.mic-btn:active { transform: scale(.95); }
+.mic-btn.listening {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  animation: pulse 1.2s infinite;
+}
+.mic-btn:disabled { opacity: .4; cursor: default; transform: none; }
+@keyframes pulse {
+  0%,100% { box-shadow: 0 8px 24px rgba(220,38,38,.4); }
+  50% { box-shadow: 0 8px 32px rgba(220,38,38,.8), 0 0 0 14px rgba(220,38,38,.15); }
+}
+.status { color: #475569; font-size: 14px; font-style: italic; min-height: 22px; margin-top: 12px; }
+
+.conversation {
+  padding: 14px 20px; max-height: 380px; overflow-y: auto;
+  background: #F8FAFC; border-top: 1px solid #E2E8F0;
+}
+.message {
+  margin-bottom: 10px; padding: 10px 14px;
+  border-radius: 12px; font-size: 14px; line-height: 1.5;
+}
+.message.user { background: #DBEAFE; border-left: 4px solid #3B82F6; }
+.message.ai { background: #FEF3C7; border-left: 4px solid #FB923C; }
+.message .label {
+  font-weight: bold; font-size: 11px; text-transform: uppercase;
+  margin-bottom: 4px; color: #475569;
+}
+
+.error {
+  background: #FEE2E2; border-left: 4px solid #DC2626;
+  color: #7F1D1D; padding: 10px 16px; margin: 8px 20px;
+  border-radius: 8px; font-size: 13px; display: none;
+}
+.error.show { display: block; }
+
+footer {
+  background: #F1F5F9; padding: 14px 20px;
+  font-size: 11px; color: #64748B; text-align: center;
+  line-height: 1.5; border-top: 1px solid #E2E8F0;
+}
+footer strong { color: #FB923C; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>&#127908; BitLab Voice Asistent</h1>
+    <p>Govori &rarr; AI razumije &rarr; BCS glas odgovara</p>
+    <div class="badge">Web Speech STT &middot; ElevenLabs TTS</div>
+  </header>
+
+  <div class="error" id="error"></div>
+
+  <div class="mic-area">
+    <button class="mic-btn" id="micBtn">&#127908;</button>
+    <div class="status" id="status">Klikni mikrofon i govori...</div>
+  </div>
+
+  <div class="conversation" id="conversation"></div>
+
+  <footer>
+    <strong>STT:</strong> Web Speech API (Chrome/Edge) &middot;
+    <strong>LLM:</strong> Claude Haiku &middot;
+    <strong>TTS:</strong> ElevenLabs Multilingual v2
+    <br>Mikrofon dozvola obavezna.
+  </footer>
+</div>
+
+<script>
+const API_BASE = window.BITLAB_API || '';
+const CHAT_URL = API_BASE + '/api/chat';
+const TTS_URL  = API_BASE + '/api/tts';
+
+const els = {
+  micBtn:       document.getElementById('micBtn'),
+  status:       document.getElementById('status'),
+  conversation: document.getElementById('conversation'),
+  error:        document.getElementById('error'),
+};
+
+const state = { recognition: null, isListening: false, history: [] };
+
+function showError(msg) {
+  els.error.textContent = '⚠ ' + msg;
+  els.error.classList.add('show');
+  setTimeout(() => els.error.classList.remove('show'), 6000);
+}
+
+function setStatus(msg) { els.status.textContent = msg; }
+
+function addMessage(role, text) {
+  const div = document.createElement('div');
+  div.className = 'message ' + role;
+  const lbl = document.createElement('div');
+  lbl.className = 'label';
+  lbl.textContent = role === 'user' ? 'Vi' : 'BitLab AI';
+  const content = document.createElement('div');
+  content.textContent = text;
+  div.appendChild(lbl);
+  div.appendChild(content);
+  els.conversation.appendChild(div);
+  els.conversation.scrollTop = els.conversation.scrollHeight;
+}
+
+// ── STT ────────────────────────────────────────────────────────
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) {
+  els.micBtn.disabled = true;
+  setStatus('Vaš browser ne podržava Web Speech API. Koristi Chrome ili Edge.');
+} else {
+  state.recognition = new SR();
+  state.recognition.lang = 'hr-HR';
+  state.recognition.continuous = false;
+  state.recognition.interimResults = false;
+
+  state.recognition.onresult = async (event) => {
+    const transcript = event.results[0][0].transcript.trim();
+    if (!transcript) return;
+
+    addMessage('user', transcript);
+    state.history.push({ role: 'user', content: transcript });
+    setStatus('🤔 Razmišljam...');
+    els.micBtn.disabled = true;
+
+    try {
+      const aiText = await fetchChat(transcript);
+      addMessage('ai', aiText);
+      state.history.push({ role: 'assistant', content: aiText });
+      setStatus('🔊 Govorim...');
+      await playTts(aiText);
+      setStatus('Klikni mikrofon i govori...');
+    } catch (err) {
+      showError(err.message);
+      setStatus('Klikni mikrofon i govori...');
+    } finally {
+      els.micBtn.disabled = false;
+    }
+  };
+
+  state.recognition.onerror = (e) => {
+    setStatus('Klikni mikrofon i govori...');
+    els.micBtn.classList.remove('listening');
+    state.isListening = false;
+    if (e.error !== 'no-speech') showError('STT greška: ' + e.error);
+    els.micBtn.disabled = false;
+  };
+
+  state.recognition.onend = () => {
+    els.micBtn.classList.remove('listening');
+    state.isListening = false;
+  };
+}
+
+els.micBtn.addEventListener('click', () => {
+  if (!state.recognition || els.micBtn.disabled) return;
+  if (state.isListening) {
+    state.recognition.stop();
+    return;
+  }
+  state.recognition.start();
+  els.micBtn.classList.add('listening');
+  state.isListening = true;
+  setStatus('🎤 Slušam...');
+});
+
+// ── API calls ──────────────────────────────────────────────────
+async function fetchChat(message) {
+  const resp = await fetch(CHAT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      history: state.history.slice(0, -1),
+      channel: 'voice',
+    }),
+  });
+  if (!resp.ok) throw new Error('Chat API greška ' + resp.status);
+  const data = await resp.json();
+  return data.reply || '(bez odgovora)';
+}
+
+async function playTts(text) {
+  const resp = await fetch(TTS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  if (!resp.ok) {
+    // TTS greška nije fatalna — samo ispiši u status
+    setStatus('TTS nije dostupan. Konfiguriši ELEVENLABS_API_KEY.');
+    return;
+  }
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  return new Promise((resolve, reject) => {
+    audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+    audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Audio playback error')); };
+    audio.play().catch(reject);
+  });
+}
+</script>
+</body>
+</html>

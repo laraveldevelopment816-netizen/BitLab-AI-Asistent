@@ -1,33 +1,34 @@
 # BitLab AI Asistent
 
-Kompletan AI sistem za **webshop.bitlab.rs** — tri kanala, jedna baza znanja, produkcijski spreman.
+AI sistem za **webshop.bitlab.rs** — tri kanala, jedna baza znanja.
 
 ```
-┌─────────────────────────────────────┐
-│   Backend (Node.js, Express)        │
-│   - /api/chat   (widget + voice)    │
-│   - /api/email  (n8n webhook)       │
-│   - /api/tts    (ElevenLabs proxy)  │
-│                                     │
-│   Agent loop (Claude Haiku):        │
-│   tools = [                         │
-│     search_products,                │
-│     get_faq,                        │
-│     check_availability,             │
-│     escalate_to_human               │
-│   ]                                 │
-└─────────────────────────────────────┘
-            ▲         ▲          ▲
-  ┌─────────┘         │          └──────────────┐
-  │                   │                         │
-┌────────────┐ ┌─────────────┐  ┌──────────────────────┐
-│ Web Widget │ │ Voice HTML  │  │ n8n Email Auto-Reply  │
-│ (na sajtu) │ │ (BCS TTS)   │  │ Gmail → API → Reply   │
-└────────────┘ └─────────────┘  └──────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  FastAPI backend (Python, lokalno)                   │
+│  /api/chat   → Chat widget + Voice mod               │
+│  /api/email  → n8n webhook (email auto-reply)        │
+│  /api/tts    → ElevenLabs proxy (API ključ na serveru│
+│                                                      │
+│  Agent loop (Claude tool use):                       │
+│    search_products   — hibridna pretraga kataloga    │
+│    get_faq           — dostava, garancija, B2B...    │
+│    check_availability — zaliha po šifri              │
+│    escalate_to_human  — Viber/email prodajnog tima   │
+└──────────────────────────────────────────────────────┘
+           ▲                ▲               ▲
+   ┌───────┘                │               └────────────────┐
+   │                        │                               │
+┌──────────────┐  ┌─────────────────┐  ┌─────────────────────────┐
+│ Web Widget   │  │ Voice mod        │  │ n8n Email Auto-Reply     │
+│ widget.html  │  │ voice.html       │  │ IMAP → /api/email        │
+│ widget.js    │  │ Web Speech STT   │  │ → AI reply → SMTP        │
+└──────────────┘  │ ElevenLabs TTS   │  └─────────────────────────┘
+                  └─────────────────┘
 
-Knowledge base:
-  products.index.json  — 5.287 proizvoda + embeddings (lokalni vector store)
-  data/faq.md          — FAQ, dostava, plaćanje, garancija (ručno kurirano)
+Baza znanja:
+  data/products.index.npz  — 5.278 proizvoda, lokalni vektorski indeks
+  data/products.meta.json  — metadata (naziv, cijena, URL, dostupnost)
+  data/faq.md              — FAQ, dostava, plaćanje, garancija (ručno kurirano)
 ```
 
 ---
@@ -36,374 +37,371 @@ Knowledge base:
 
 ```
 bitlab-ai-asistent/
-├── server.js                  # Express backend, svi API endpointi
-├── package.json
-├── .env.example               # Šablon za env varijable
-├── lib/
-│   ├── agent.js               # Claude tool-use agent loop
-│   ├── tools.js               # Definicije i handleri alata
-│   ├── rag.js                 # Cosine similarity nad products.index.json
-│   ├── faq.js                 # FAQ pretraga
-│   └── system-prompt.md       # Jedan system prompt za sva tri kanala
-├── public/
-│   ├── widget.html            # Embeddable chat widget
-│   └── voice.html             # Voice mode (Web Speech + ElevenLabs)
+├── app/
+│   ├── main.py            # FastAPI: /api/chat, /api/email, /api/tts, /healthz
+│   ├── agent.py           # Claude tool-use agent loop (max 5 iteracija)
+│   ├── tools.py           # 4 alata: schema + handleri + dispatcher
+│   ├── rag.py             # Hibridna pretraga: BM25 (0.4) + vektor cosine (0.6)
+│   ├── faq.py             # Učitava faq.md, keyword scoring po sekcijama
+│   ├── system_prompts.py  # 3 system prompta: chat / voice / email
+│   ├── email_poller.py    # IMAP fallback poller (rezerva za n8n)
+│   └── config.py          # Pydantic Settings, čita .env
 ├── scripts/
-│   └── embed_products.py      # Generiše products.index.json (jednokratno)
-├── data/
-│   ├── all-products.json      # Sirovi podaci — 5.287 proizvoda
-│   ├── faq.md                 # Ručno kurirani FAQ sa sajta
-│   └── products.index.json    # Generisano skriptom — NE editovati ručno
+│   ├── embed_products.py  # JEDNOKRATNO: generiše products.index.npz
+│   └── smoke_test.py      # Provjera 4 pitanja end-to-end
+├── public/
+│   ├── widget.html        # Demo BitLab webshop sa embeddovanim widgetom
+│   ├── widget.js          # Embeddable chat widget (poziva /api/chat)
+│   └── voice.html         # Voice mod (Web Speech STT + ElevenLabs TTS)
 ├── n8n/
-│   └── email-autoreply.json   # n8n workflow export, importuje se klikom
-├── evals/
-│   ├── test-questions.json    # 15–20 realnih pitanja sa očekivanim alatom
-│   └── run.js                 # Pokreće evaluaciju, ispisuje pass/fail tabelu
-└── README.md
+│   └── email-autoreply.json  # n8n workflow export — importuje se jednim klikom
+├── evals/                 # Sesija 4
+├── tests/                 # Sesija 4
+├── data/
+│   ├── all-products.json  # Sirovi podaci — 5.287 proizvoda (phpMyAdmin export)
+│   ├── faq.md             # Ručno kurirani FAQ sa sajta
+│   ├── products.index.npz # Generiše embed_products.py — NE editovati
+│   └── products.meta.json # Generiše embed_products.py — NE editovati
+├── .env                   # Lokalni secrets (nije u gitu)
+├── .env.example           # Šablon za .env
+└── pyproject.toml         # Zavisnosti projekta
 ```
 
 ---
 
 ## Preduslovi
 
-| Alat | Minimalna verzija | Provjera |
-|------|-------------------|----------|
-| Node.js | 18+ | `node --version` |
-| npm | 9+ | `npm --version` |
-| Python | 3.10+ | `python --version` |
-| pip | 23+ | `pip --version` |
-| Git | bilo koja | `git --version` |
+| Alat | Verzija | Provjera |
+|------|---------|----------|
+| Python | 3.11+ | `python3 --version` |
+| pip | bilo koja | `pip --version` |
+
+Rad na **WSL2** (Windows) ili Linux/macOS terminalu.
 
 ---
 
-## Postavljanje projekta
+## 1. Postavljanje projekta
 
-### 1. Kloniranje repozitorija
+### Kloniranje
 
 ```bash
-git clone https://github.com/vas-username/bitlab-ai-asistent.git
+git clone https://github.com/tvoj-username/bitlab-ai-asistent.git
 cd bitlab-ai-asistent
 ```
 
-### 2. API ključevi — pribaviti PRIJE nastavka
-
-Trebate 4 ključa:
-
-| Servis | Gdje se dobija | Varijabla u .env |
-|--------|----------------|------------------|
-| Anthropic (Claude) | console.anthropic.com → API Keys | `ANTHROPIC_API_KEY` |
-| OpenAI (embeddings) | platform.openai.com/api-keys | `OPENAI_API_KEY` |
-| ElevenLabs (TTS) | elevenlabs.io → My Account → API Keys | `ELEVENLABS_API_KEY` |
-| ElevenLabs Voice ID | elevenlabs.io → Voices → (...) → Copy ID | `ELEVENLABS_VOICE_ID` |
-
-### 3. Kreiranje .env fajla
+### Virtuelno okruženje
 
 ```bash
-# Linux / macOS
-cp .env.example .env
-
-# Windows (PowerShell)
-Copy-Item .env.example .env
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-Otvorite `.env` u editoru i popunite vrijednosti:
+> **Windows (PowerShell — van WSL2):**
+> ```powershell
+> python -m venv .venv
+> .\.venv\Scripts\Activate.ps1
+> ```
+
+### Instalacija zavisnosti
+
+```bash
+# CPU-only PyTorch (~180MB, bez CUDA) — OBAVEZNO instalirati PRVO
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# Ostali paketi
+pip install -e .
+```
+
+Puna lista zavisnosti je u `pyproject.toml`.
+
+---
+
+## 2. API ključevi
+
+Kopiraj `.env.example` u `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Otvori `.env` i popuni:
 
 ```env
-# Claude API (agent loop)
+# Obavezno — Anthropic (Claude)
+# Dobiti na: console.anthropic.com → API Keys
 ANTHROPIC_API_KEY=sk-ant-api03-...
 
-# OpenAI (samo za generisanje embeddings — jednokratno)
-OPENAI_API_KEY=sk-...
-
-# ElevenLabs (TTS proxy)
+# Opciono — ElevenLabs (Voice mod)
+# Dobiti na: elevenlabs.io → My Account → API Keys
 ELEVENLABS_API_KEY=sk_...
-ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+# Voice Library → Add to My Voices → Copy ID
+# Preporučeni glas: Lara (Croatian/BCS, mlađi ženski)
+ELEVENLABS_VOICE_ID=...
 
-# Server
-PORT=3000
-NODE_ENV=development
+# Opciono — IMAP/SMTP (rezerva za n8n, vidi Sekciju 6)
+IMAP_HOST=imap.gmail.com
+IMAP_USER=email@bitlab.rs
+IMAP_PASSWORD=app-password-ovdje
+SMTP_HOST=smtp.gmail.com
+SMTP_USER=email@bitlab.rs
+SMTP_PASSWORD=app-password-ovdje
 ```
+
+> **Format:** koristi `=`, ne `:`. Bez navodnika oko vrijednosti.
 
 ---
 
-## Instalacija — Node.js backend
+## 3. Generisanje vektorske baze (jednokratno)
 
-### Linux / macOS
-
-```bash
-npm install
-```
-
-### Windows (PowerShell ili CMD)
-
-```powershell
-npm install
-```
-
-Ako dobijete grešku vezanu za `node-gyp` na Windowsu:
-
-```powershell
-npm install --ignore-scripts
-```
-
----
-
-## Generisanje vektorske baze (jednokratno)
-
-Ova skripta čita `data/all-products.json`, šalje svaki proizvod na OpenAI Embeddings API i upisuje rezultat u `data/products.index.json`.
-
-**Troškovi:** ~$0.10 za 5.287 proizvoda (text-embedding-3-small, $0.02/1M tokena).
-**Trajanje:** 3–5 minuta (API rate limiting).
-
-### Linux / macOS — Python venv
+Ova skripta čita `data/all-products.json`, generiše embeddings lokalno (bez API troška) i upisuje `data/products.index.npz` i `data/products.meta.json`.
 
 ```bash
-# Kreiraj virtualno okruženje
-python3 -m venv venv
-
-# Aktiviraj
-source venv/bin/activate
-
-# Instaliraj pakete
-pip install openai python-dotenv tqdm
-
-# Pokreni skriptu
 python scripts/embed_products.py
-
-# Deaktiviraj kad završiš
-deactivate
 ```
 
-### Windows — Python venv (PowerShell)
-
-```powershell
-# Kreiraj virtualno okruženje
-python -m venv venv
-
-# Aktiviraj (PowerShell)
-.\venv\Scripts\Activate.ps1
-
-# Ako dobijete grešku oko execution policy:
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-# Zatim ponovo:
-.\venv\Scripts\Activate.ps1
-
-# Instaliraj pakete
-pip install openai python-dotenv tqdm
-
-# Pokreni skriptu
-python scripts\embed_products.py
-
-# Deaktiviraj kad završiš
-deactivate
-```
-
-### Windows — Python venv (CMD)
-
-```cmd
-python -m venv venv
-venv\Scripts\activate.bat
-pip install openai python-dotenv tqdm
-python scripts\embed_products.py
-deactivate
-```
-
-**Očekivani output:**
+**Trajanje:** 3–5 minuta (prvi put skida ~120MB model; naredni puta ~1–2 min).  
+**Provjera:** na kraju ispiše:
 
 ```
-Učitavam all-products.json... 5287 proizvoda
-Generišem embeddings: 100%|████████████████| 5287/5287 [03:42<00:00, 23.8it/s]
-Upisujem products.index.json...
-✓ Gotovo. 5287 embeddings sačuvano u data/products.index.json
+✓ Sačuvano: data/products.index.npz (7.2 MB)
+✓ Sačuvano: data/products.meta.json (4.5 MB)
+
+Gotovo. Sad možeš pokrenuti uvicorn:
+    uvicorn app.main:app --reload
 ```
 
-> **Napomena:** `data/products.index.json` se ne commituje u Git (dodat u `.gitignore`) jer je ~32 MB.  
-> Svaki developer pokrene skriptu lokalno jednom.
+> **Napomena:** Oba `.npz` i `.meta.json` fajla su u `.gitignore`. Svaki developer pokrene skriptu jednom lokalno.
 
 ---
 
-## Pokretanje backend servera
-
-### Razvojni mod (s auto-reloadom)
+## 4. Pokretanje servera
 
 ```bash
-# Linux / macOS
-npm run dev
-
-# Windows
-npm run dev
+uvicorn app.main:app --reload
 ```
 
-### Produkcijski mod
+Server sluša na `http://localhost:8000`.
+
+**Startup log (očekivano):**
+
+```
+INFO:     Waiting for application startup.
+Loading weights: 100%|████████████| 199/199 [...]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+```
+
+### Provjera zdravlja
 
 ```bash
-# Linux / macOS
-npm start
-
-# Windows
-npm start
+curl http://localhost:8000/healthz
 ```
 
-Server sluša na `http://localhost:3000`.
+Očekivani odgovor:
 
-**Provjera da radi:**
-
-```bash
-# Linux / macOS
-curl -X POST http://localhost:3000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Imate li SSD 1TB?"}'
-
-# Windows (PowerShell)
-Invoke-RestMethod -Uri "http://localhost:3000/api/chat" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"message": "Imate li SSD 1TB?"}'
+```json
+{
+  "status": "ok",
+  "chat_model": "claude-haiku-4-5-20251001",
+  "email_model": "claude-sonnet-4-6",
+  "embed_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "products_index_present": true,
+  "products_meta_present": true,
+  "faq_present": true
+}
 ```
+
+### Swagger UI (interaktivni API docs)
+
+Otvori u browseru: `http://localhost:8000/docs`
 
 ---
 
-## Pokretanje evaluacija
+## 5. Demo — tri kanala
 
-Evaluacija pokreće 15–20 realnih pitanja kroz agenta i mjeri koliko alata agent ispravno poziva.
+### Chat widget
 
-```bash
-# Linux / macOS / Windows
-node evals/run.js
-```
+Otvori u browseru: `http://localhost:8000`  
+(ili direktno: `http://localhost:8000/public/widget.html`)
 
-**Očekivani output:**
-
-```
-┌─────────────────────────────────────────────┬──────────────────┬────────┐
-│ Pitanje                                     │ Očekivani alat   │ Status │
-├─────────────────────────────────────────────┼──────────────────┼────────┤
-│ Imate li SSD 1TB do 200KM?                  │ search_products  │ ✓ PASS │
-│ Dostavljate li u Mostar?                    │ get_faq          │ ✓ PASS │
-│ Trebam ponudu za firmu, JIB 123456789       │ escalate_to_human│ ✓ PASS │
-│ ...                                         │ ...              │ ...    │
-└─────────────────────────────────────────────┴──────────────────┴────────┘
-Rezultat: 18/20 pitanja prošlo (90%)
-```
-
----
-
-## Web widget — integracija na sajt
-
-Otvorite `public/widget.html` u browseru direktno, ili embed-ujte na postojeći sajt jednim blokom:
+Jednolinijska integracija na bilo koji sajt:
 
 ```html
 <!-- Zalijepiti pred </body> tag -->
-<script src="https://vasa-domena.com/widget.js"></script>
+<script src="http://localhost:8000/public/widget.js"></script>
 ```
 
-Widget poziva `POST /api/chat` — API ključ je na serveru, ne u HTML-u.
+Za produkciju zamijeni `localhost` sa ngrok/domenом.
 
----
+### Voice mod
 
-## Voice mode
+Otvori u **Chrome ili Edge** (Firefox ne podržava Web Speech API):
 
-Otvorite `public/voice.html` u **Chrome ili Edge** browseru (Firefox ne podržava Web Speech API).
+```
+http://localhost:8000/public/voice.html
+```
+
+Klikni mikrofon → govori → AI odgovara glasom (Lara, BCS).  
+TTS radi samo ako je `ELEVENLABS_API_KEY` i `ELEVENLABS_VOICE_ID` postavljen u `.env`.
+
+### Chat API (ručni test)
 
 ```bash
-# Linux / macOS — direktno otvaranje
-google-chrome public/voice.html
-# ili
-open public/voice.html   # macOS
-
-# Windows
-start public\voice.html
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Imate li SSD 1TB do 400 KM?", "channel": "chat"}'
 ```
 
-Ili posjetite `http://localhost:3000/voice.html` dok server radi.
+**PowerShell:**
 
----
-
-## n8n Email Auto-Reply
-
-1. Registrujte se na [n8n.io](https://n8n.io) (free tier, bez kartice)
-2. Kreirajte novi workflow → Import from JSON
-3. Učitajte `n8n/email-autoreply.json`
-4. U HTTP Request node-u zamijenite `YOUR_SERVER_URL` sa vašim deploy URL-om
-5. Konfigurirajte Gmail / IMAP credential u Trigger node-u
-6. Toggle **Active → ON**
-
-Workflow:
-```
-Gmail Trigger → IF (subject contains upit/ponuda/cijena/dostava) 
-  → POST /api/email → Gmail Reply → Slack notif
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8000/api/chat" `
+  -Method POST -ContentType "application/json" `
+  -Body '{"message": "Imate li SSD 1TB do 400 KM?", "channel": "chat"}'
 ```
 
----
-
-## Deploy (produkcija)
-
-### Render.com (preporučeno — besplatno)
-
-1. Push kod na GitHub
-2. Idite na [render.com](https://render.com) → New → Web Service
-3. Povežite GitHub repo
-4. Postavke:
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm start`
-   - **Environment:** Node
-5. Environment Variables: dodajte sve iz `.env`
-6. Klik **Create Web Service**
-
-Deploy traje 2–3 minute. Dobijete URL kao `https://bitlab-ai.onrender.com`.
-
-> **Napomena:** Na Render free tier, `products.index.json` mora biti commitovan ili generisan u build fazi. Dodajte u Build Command:  
-> `npm install && pip install openai python-dotenv && python scripts/embed_products.py`
-
-### Vercel (alternativa — za serverless)
+### Email API (ručni test)
 
 ```bash
-npm i -g vercel
-vercel --prod
+curl -X POST http://localhost:8000/api/email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sender": "kupac@example.com",
+    "subject": "Upit za SSD diskove",
+    "body": "Pozdrav, zanima me imate li SSD 1TB u ponudi i kolika je dostava?"
+  }'
 ```
 
 ---
 
-## Troškovi u produkciji
+## 6. Smoke test
 
-| Servis | Plan | Cijena | Za 1.000 pitanja/mj |
+Provjera da sva 4 osnovna upita rade end-to-end (server mora biti pokrenut):
+
+```bash
+python scripts/smoke_test.py
+```
+
+Očekivani output:
+
+```
+BitLab smoke test → http://localhost:8000/api/chat
+──────────────────────────────────────────────────
+✓ [Pretraga proizvoda — SSD]
+  alati: ['search_products']
+  reply: Pronašao sam nekoliko SSD opcija...
+
+✓ [FAQ — dostava]
+  alati: ['get_faq']
+  reply: Dostava unutar BiH...
+
+✓ [B2B eskalacija]
+  alati: ['escalate_to_human']
+  reply: Naš prodajni tim će vam se javiti...
+
+✓ [Voice kanal — gaming monitor]
+  alati: ['search_products']
+  reply: Imamo nekoliko gaming monitora...
+
+──────────────────────────────────────────────────
+Rezultat: 4/4
+```
+
+---
+
+## 7. n8n Email Auto-Reply
+
+### Postavljanje (jednom)
+
+1. Registruj se na [app.n8n.cloud](https://app.n8n.cloud) (free tier, bez kartice)
+2. **New Workflow → Import from JSON** → učitaj `n8n/email-autoreply.json`
+3. **Credentials → New → IMAP** — popuni IMAP podatke za email koji prima upite
+4. **Credentials → New → SMTP** — isti email, port 587
+
+### ngrok — da n8n dohvati lokalni server
+
+```bash
+# Instalacija (jednom)
+# Windows: choco install ngrok  ili  winget install ngrok
+# WSL2/Linux: snap install ngrok  ili  preuzeti sa ngrok.com
+
+ngrok http 8000
+```
+
+Kopiraj HTTPS URL (npr. `https://abc123.ngrok-free.app`) i zamijeni u n8n workflow-u:  
+**HTTP Request node → URL** → `https://abc123.ngrok-free.app/api/email`
+
+5. **Activate** workflow (toggle gornji desni ugao u n8n)
+6. Test: pošalji email na IMAP adresu sa subject `Upit za SSD` — za ~60s stiže AI reply
+
+### Fallback — IMAP poller (bez n8n)
+
+Ako n8n cloud nije dostupan, pokreni lokalni poller direktno:
+
+```bash
+python -m app.email_poller
+```
+
+Polluje INBOX svakih 60 sekundi. Zahtijeva popunjen IMAP/SMTP blok u `.env`.
+
+---
+
+## 8. Troškovi
+
+| Servis | Plan | Cijena | Za ~1.000 upita/mj |
 |--------|------|--------|---------------------|
-| Claude Haiku 4.5 | Pay-as-you-go | $0.80/1M input tokena | ~$1.20 |
-| Claude Sonnet (email) | Pay-as-you-go | $3/1M input tokena | ~$0.90 |
-| ElevenLabs | Starter | $5/mj | 30.000 karaktera |
-| OpenAI embeddings | Pay-as-you-go | $0.02/1M tokena | jednokratno ~$0.10 |
-| Render hosting | Free | $0 | — |
+| Claude Haiku 4.5 (chat/voice) | Pay-as-you-go | $0.80/1M input tokena | ~$1.20 |
+| Claude Sonnet 4.6 (email) | Pay-as-you-go | $3/1M input tokena | ~$0.60 |
+| ElevenLabs (TTS) | Free tier | $0 | 10.000 znakova/mj |
+| Sentence-transformers (embeddings) | Lokalno | $0 | $0 uvijek |
 | n8n | Free tier | $0 | 5.000 izvršenja/mj |
-| **Ukupno** | | | **~$7–12/mj** |
-
-**ROI:** 70%+ pitanja AI rješava sam = ~5 sati sedmično ušteđenih za vlasnika.
-
----
-
-## Česti problemi
-
-**`ECONNREFUSED` pri pozivu /api/chat**
-Server nije pokrenut. Pokrenite `npm run dev` u zasebnom terminalu.
-
-**`Invalid API key` u evaluacijama**
-Provjerite `.env` — bez razmaka oko `=`, bez navodnika oko vrijednosti.
-
-**Python skripta: `ModuleNotFoundError: No module named 'openai'`**
-Virtualnog okruženja nije aktivirano. Pokrenite `source venv/bin/activate` (Linux) ili `.\venv\Scripts\Activate.ps1` (Windows) pa opet `pip install`.
-
-**ElevenLabs: `401 Unauthorized`**
-API ključ počinje sa `sk_`, ne `sk-`. Provjerite na elevenlabs.io → My Account → API Keys.
-
-**Voice HTML ne radi u Firefoxu**
-Web Speech API podržavaju samo Chrome i Edge. Prebacite browser.
-
-**`products.index.json` ne postoji — server ne startuje**
-Potrebno je pokrenuti Python skriptu (vidi sekciju "Generisanje vektorske baze").
+| ngrok | Free tier | $0 | 1 tunel |
+| **Ukupno** | | | **~$2–5/mj** |
 
 ---
 
-## Kontakt i autori
+## 9. Česti problemi
 
-**Projekat:** AI Forward Faza 2 — BitLab AI Asistent  
-**Partneri:** ICBL Banja Luka + Bloomteq  
-**Predavač:** Đuro Grubišić
+**Server ne startuje — `products.index.npz` ne postoji**
+
+```bash
+python scripts/embed_products.py
+```
+
+**`anthropic.AuthenticationError: invalid x-api-key`**  
+Provjeri `.env` — format mora biti `ANTHROPIC_API_KEY=sk-ant-...` (sa `=`, ne `:`).
+
+**`Your credit balance is too low`**  
+Dodaj kredite na [console.anthropic.com](https://console.anthropic.com) → Plans & Billing.
+
+**TTS ne radi — `503 ElevenLabs nije konfigurisan`**  
+Postavi `ELEVENLABS_API_KEY` i `ELEVENLABS_VOICE_ID` u `.env`, pa restartuj server.
+
+**Voice HTML ne radi**  
+Web Speech API podržavaju samo Chrome i Edge. Firefox nije podržan.
+
+**`ModuleNotFoundError`**  
+Virtuelno okruženje nije aktivirano:
+```bash
+source .venv/bin/activate   # Linux/WSL2
+.\.venv\Scripts\Activate.ps1  # Windows PowerShell
+```
+
+**Port 8000 zauzet**
+
+```bash
+# WSL2/Linux
+fuser -k 8000/tcp
+# Windows PowerShell
+netstat -ano | findstr :8000
+# pronađi PID, pa:
+taskkill /F /PID <broj>
+```
+
+---
+
+## 10. Kontakt
+
+**BitLab d.o.o.** · Jevrejska 37, 78000 Banja Luka  
+prodaja@bitlab.rs · 066 516 174 · webshop.bitlab.rs  
+JIB: 4403711250001
