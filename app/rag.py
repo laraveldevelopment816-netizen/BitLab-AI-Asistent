@@ -90,12 +90,18 @@ class ProductIndex:
                 price = meta.get("price_km")
                 if price is not None and float(price) > max_price_km:
                     continue
+            url_raw = meta.get("url", "")
+            if "/proizvod/" in url_raw:
+                slug = url_raw.split("/proizvod/", 1)[1]
+                url = f"https://webshop.bitlab.rs/{slug}.html"
+            else:
+                url = url_raw or None
             results.append({
                 "sifra": meta.get("sifra", ""),
                 "name": meta.get("name", ""),
                 "price_km": meta.get("price_km"),
                 "availability": meta.get("availability_label", "Provjeri dostupnost"),
-                "url": meta.get("url"),
+                "url": url,
             })
 
         return results
