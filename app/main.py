@@ -57,12 +57,12 @@ if public_dir.exists():
 
 class ChatMessage(BaseModel):
     role: str = Field(..., pattern="^(user|assistant)$")
-    content: str
+    content: str = Field(..., max_length=4000)
 
 
 class ChatRequest(BaseModel):
-    message: str
-    history: list[ChatMessage] = Field(default_factory=list)
+    message: str = Field(..., min_length=1, max_length=2000)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=20)
     channel: str = Field(default="chat", pattern="^(chat|voice|email)$")
 
 
@@ -81,9 +81,9 @@ class ChatResponse(BaseModel):
 
 
 class EmailRequest(BaseModel):
-    sender: str
-    subject: str
-    body: str
+    sender: str = Field(..., max_length=200)
+    subject: str = Field(..., max_length=500)
+    body: str = Field(..., max_length=8000)
 
 
 class EmailResponse(BaseModel):
