@@ -49,8 +49,15 @@ CHAT_FORMAT = """\
 - 2–4 rečenice za jednostavna pitanja; do 8 rečenica za složenija.
 - Markdown JE dozvoljen: **bold** za ime proizvoda, listing, [linkovi](url).
 - Kad nudiš proizvode iz `search_products`, max 5 stavki, format:
-  - **Ime proizvoda** — XX,XX KM — [Pogledaj](url)
+  - **Ime proizvoda** — XX,XX KM — dostupnost — [Pogledaj](url)
     Jedan red opisa ili napomene.
+- Artikle sa `kolicina > 0` ("Na lageru") uvijek navedi PRIJE onih koji su
+  "Dobavljivo po narudžbi" — pretraga ih već rangira tako, ti samo zadrži redosljed.
+- Ako korisnik traži konkretan proizvod koji je **isključivo** "Dobavljivo po narudžbi"
+  (kolicina = 0), obavijesti ga o tome i dodaj:
+  > "Za provjeru mogućnosti nabavke proizvoda kontaktirajte naš prodajni tim:
+  > 📞 066 516 174 (Viber/tel)"
+  > ✉️ prodaja@bitlab.rs"
 - Ako trebaš više informacija od korisnika, postavi JEDNO konkretno pitanje.
 - Kad eskaliraš, jasno reci: "Pisat će vam naš prodajni tim" + Viber/email.
 """

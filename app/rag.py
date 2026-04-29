@@ -78,9 +78,10 @@ class ProductIndex:
         fused = 0.6 * _norm01(vec_scores) + 0.4 * _norm01(bm25_raw)
         ranked = np.argsort(-fused)
 
-        results: list[dict[str, Any]] = []
+        # Prikupi buffer kandidata (4× top_k) da re-sort ne osiromasi rezultate
+        candidates: list[tuple[dict[str, Any], float]] = []
         for idx in ranked:
-            if len(results) >= top_k:
+            if len(candidates) >= top_k * 4:
                 break
             pid = str(int(self.ids[idx]))
             meta = self._products.get(pid)
@@ -90,6 +91,13 @@ class ProductIndex:
                 price = meta.get("price_km")
                 if price is not None and float(price) > max_price_km:
                     continue
+            candidates.append((meta, float(fused[idx])))
+
+        # Artikli na stanju dolaze prvi; unutar grupe zadržava se redosljed relevantnosti
+        candidates.sort(key=lambda x: (0 if (x[0].get("kolicina") or 0) > 0 else 1, -x[1]))
+
+        results: list[dict[str, Any]] = []
+        for meta, _ in candidates[:top_k]:
             url_raw = meta.get("url", "")
             if "/proizvod/" in url_raw:
                 slug = url_raw.split("/proizvod/", 1)[1]
@@ -101,6 +109,7 @@ class ProductIndex:
                 "name": meta.get("name", ""),
                 "price_km": meta.get("price_km"),
                 "availability": meta.get("availability_label", "Provjeri dostupnost"),
+                "kolicina": meta.get("kolicina", 0),
                 "url": url,
             })
 
