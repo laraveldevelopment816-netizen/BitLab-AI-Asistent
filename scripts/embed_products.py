@@ -83,6 +83,13 @@ def availability_label(product: dict[str, Any]) -> str:
     return "Provjeri dostupnost"
 
 
+# Kategorije čiji proizvodi ne sadrže generičku ključnu riječ u imenu,
+# pa BM25 ne pronalazi rezultate na upite poput "laptop" ili "štampač".
+_CATEGORY_PREFIX: dict[str, str] = {
+    "98": "laptop notebook prijenosno računar",   # Notebook – Laptopi
+}
+
+
 def build_search_text(p: dict[str, Any]) -> str:
     """Tekst koji ide u embedding (i u BM25 korpus)."""
     parts = [
@@ -92,6 +99,12 @@ def build_search_text(p: dict[str, Any]) -> str:
         _clean(p.get("keywords")),
     ]
     text = ". ".join(part for part in parts if part)
+
+    cat_id = (p.get("categories_id") or "").strip()
+    prefix = _CATEGORY_PREFIX.get(cat_id, "")
+    if prefix:
+        text = prefix + ". " + text
+
     return text[:1000]  # cap da batch ostaje brz
 
 
