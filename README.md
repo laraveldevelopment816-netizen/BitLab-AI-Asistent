@@ -311,28 +311,120 @@ Rezultat: 4/4
 
 ## 7. n8n Email Auto-Reply
 
-### Postavljanje (jednom)
+### Kako ngrok radi
 
-1. Registruj se na [app.n8n.cloud](https://app.n8n.cloud) (free tier, bez kartice)
-2. **New Workflow → Import from JSON** → učitaj `n8n/email-autoreply.json`
-3. **Credentials → New → IMAP** — popuni IMAP podatke za email koji prima upite
-4. **Credentials → New → SMTP** — isti email, port 587
+```
+Internet
+    │
+    │  https://abc123.ngrok-free.app  ← javna adresa
+    ▼
+┌─────────────┐
+│  ngrok CDN  │  (ngrok cloud — prihvata zahtjeve izvana)
+└──────┬──────┘
+       │  enkriptovani tunel (agent na laptopu)
+       ▼
+┌──────────────────────────────────────┐
+│  Tvoj laptop (WSL2)                  │
+│                                      │
+│  ~/bin/ngrok ──► localhost:8000      │
+│                    (FastAPI server)  │
+└──────────────────────────────────────┘
+```
 
-### ngrok — da n8n dohvati lokalni server
+n8n je u cloudu i ne može direktno dohvatiti `localhost:8000`. ngrok pravi tunel i daje javni HTTPS URL koji n8n koristi kao webhook.
+
+### Korak 1 — Instalacija ngrok (jednom)
+
+**WSL2 / Linux:**
 
 ```bash
-# Instalacija (jednom)
-# Windows: choco install ngrok  ili  winget install ngrok
-# WSL2/Linux: snap install ngrok  ili  preuzeti sa ngrok.com
+# Preuzmi binarnu datoteku
+curl -L https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz -o /tmp/ngrok.tgz
+tar xzf /tmp/ngrok.tgz -C /tmp
 
+# Smjesti u ~/bin (ne treba sudo)
+mkdir -p ~/bin
+mv /tmp/ngrok ~/bin/ngrok
+
+# Provjera
+~/bin/ngrok version
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# Opcija A — winget (preporučeno, ugrađen u Windows 10/11)
+winget install ngrok.ngrok
+
+# Opcija B — Chocolatey
+choco install ngrok
+
+# Opcija C — ručno: preuzmi .zip sa https://ngrok.com/download,
+# raspakovaj ngrok.exe i dodaj folder u PATH
+
+# Provjera
+ngrok version
+```
+
+### Korak 2 — Poveži sa ngrok accountom (jednom)
+
+Authtoken se nalazi na [dashboard.ngrok.com](https://dashboard.ngrok.com) → Your Authtoken.
+
+**WSL2 / Linux:**
+
+```bash
+~/bin/ngrok config add-authtoken <TVOJ_AUTHTOKEN>
+```
+
+Token se čuva u `~/.config/ngrok/ngrok.yml`.
+
+**Windows (PowerShell):**
+
+```powershell
+ngrok config add-authtoken <TVOJ_AUTHTOKEN>
+```
+
+Token se čuva u `%USERPROFILE%\AppData\Local\ngrok\ngrok.yml`.
+
+### Korak 3 — Pokretanje tunela
+
+Server mora biti pokrenut (`uvicorn app.main:app --reload`) pa tek onda:
+
+**WSL2 / Linux:**
+
+```bash
+~/bin/ngrok http 8000
+```
+
+**Windows (PowerShell):**
+
+```powershell
 ngrok http 8000
 ```
 
-Kopiraj HTTPS URL (npr. `https://abc123.ngrok-free.app`) i zamijeni u n8n workflow-u:  
-**HTTP Request node → URL** → `https://abc123.ngrok-free.app/api/email`
+Output koji tražiš:
 
+```
+Forwarding  https://abc123.ngrok-free.app -> http://localhost:8000
+```
+
+Kopiraj taj `https://...` URL — koristi se u n8n (vidi ispod).
+
+> **Napomena:** Na free tier URL se mijenja pri svakom pokretanju ngrok-a. Platni plan daje fiksnu domenu.
+
+### Korak 4 — Postavljanje n8n
+
+1. Registruj se na [app.n8n.cloud](https://app.n8n.cloud) (free tier, bez kartice)
+2. **New Workflow → Import from JSON** → učitaj `n8n/email-autoreply.json`
+3. **Credentials → New → Gmail OAuth2** → klikni `Sign in with Google` — jedan login važi i za primanje i za slanje
+4. U workflow-u pronađi **HTTP Request node → URL** i zamijeni sa:
+   ```
+   https://abc123.ngrok-free.app/api/email
+   ```
 5. **Activate** workflow (toggle gornji desni ugao u n8n)
-6. Test: pošalji email na IMAP adresu sa subject `Upit za SSD` — za ~60s stiže AI reply
+6. Test: pošalji email na Gmail adresu sa subject `Upit za SSD` — za ~60s stiže AI reply
+
+> **Napomena:** Gmail OAuth2 zamjenjuje i IMAP i SMTP. Nema app passworda ni posebne konfiguracije mail servera.
 
 ### Fallback — IMAP poller (bez n8n)
 

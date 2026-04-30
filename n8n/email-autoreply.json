@@ -3,34 +3,57 @@
   "nodes": [
     {
       "parameters": {
-        "mailbox": "INBOX",
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false
+        },
         "options": {
-          "allowUnauthorizedCerts": false,
-          "downloadAttachments": false
+          "simple": false
         }
       },
       "id": "a1b2c3d4-0001-0001-0001-000000000001",
-      "name": "IMAP Email Trigger",
-      "type": "n8n-nodes-base.emailTrigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1,
       "position": [240, 300],
       "credentials": {
-        "imap": {
-          "id": "imap-creds",
-          "name": "BitLab IMAP"
+        "gmailOAuth2": {
+          "id": "gmail-oauth-creds",
+          "name": "BitLab Gmail OAuth"
         }
       },
-      "notes": "Konfiguriši IMAP credentials u n8n Settings > Credentials.\nIME: BitLab IMAP\nHost: imap.gmail.com (ili tvoj IMAP)\nPort: 993, SSL: true\nUser: email@bitlab.rs\nPassword: app-password"
+      "notes": "Polja: $json.Subject, $json.From, $json.Text"
     },
     {
       "parameters": {
         "conditions": {
           "string": [
-            {
-              "value1": "={{ $json.subject.toLowerCase() }}",
-              "operation": "contains",
-              "value2": "upit"
-            }
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "upit" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "ponuda" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "cijen" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "dostava" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "garancija" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "kako" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "imate li" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "trebam" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "kupiti" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "narudžba" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "upit" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "ponuda" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "cijen" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "dostava" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "garancija" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "kako" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "imate li" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "trebam" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "kupiti" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "narudžba" }
           ]
         },
         "combineOperation": "any"
@@ -38,25 +61,23 @@
       "id": "a1b2c3d4-0002-0002-0002-000000000002",
       "name": "IF: Relevantna tema",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 1,
       "position": [460, 300],
-      "notes": "Propušta emailove čiji subject sadrži bilo koji od ključnih pojmova.\nDodaj nove pojmove po potrebi (||  u expression-u).\n\nKompletan filter:\n={{ ['upit','ponuda','cijena','dostava','garancija','kako','imate li','trebam','kupiti','narudžba'].some(k => $json.subject.toLowerCase().includes(k)) }}"
+      "notes": "Propušta ako subject ili snippet sadrži bilo koji od ključnih pojmova."
     },
     {
       "parameters": {
-        "url": "=https://ZAMIJENI-SA-NGROK-URL.ngrok-free.app/api/email",
-        "sendHeaders": true,
-        "headerParameters": {
+        "method": "POST",
+        "url": "=https://bonsai-census-daisy.ngrok-free.dev/api/email",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
           "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
+            { "name": "sender", "value": "={{ $json.From }}" },
+            { "name": "subject", "value": "={{ $json.Subject }}" },
+            { "name": "body", "value": "={{ $json.snippet }}" }
           ]
         },
-        "sendBody": true,
-        "bodyContentType": "json",
-        "jsonBody": "={\n  \"sender\": \"{{ $json.from }}\",\n  \"subject\": \"{{ $json.subject }}\",\n  \"body\": \"{{ $json.text }}\"\n}",
         "options": {
           "timeout": 60000
         }
@@ -66,28 +87,39 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [680, 200],
-      "notes": "OBAVEZNO: Zamijeni URL sa tvojim ngrok URL-om!\nNgrok URL dobiješ pokretanjem: ngrok http 8000\nKopiraj HTTPS URL i zamijeni ZAMIJENI-SA-NGROK-URL dio."
+      "notes": "Šalje sender, subject, body (snippet) kao JSON. Vraća { reply, escalated, tools_used }."
     },
     {
       "parameters": {
-        "fromEmail": "=prodaja@bitlab.rs",
-        "toEmail": "={{ $('IMAP Email Trigger').item.json.from }}",
-        "subject": "=Re: {{ $('IMAP Email Trigger').item.json.subject }}",
-        "text": "={{ $json.reply }}",
+        "jsCode": "const reply = $input.item.json.reply || '';\n\nconst html = reply\n  .split('\\n\\n')\n  .map(para => {\n    const escaped = para\n      .replace(/&/g, '&amp;')\n      .replace(/</g, '&lt;')\n      .replace(/>/g, '&gt;');\n    return '<p>' + escaped.replace(/\\n/g, '<br>') + '</p>';\n  })\n  .join('\\n');\n\nreturn [{ json: { ...$input.item.json, replyHtml: html } }];"
+      },
+      "id": "a1b2c3d4-0006-0006-0006-000000000006",
+      "name": "Format: Text u HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200],
+      "notes": "Konvertuje \\n\\n → <p>, \\n → <br>. Escapuje HTML znakove."
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Gmail Trigger').item.json.From }}",
+        "subject": "=Re: {{ $('Gmail Trigger').item.json.Subject }}",
+        "emailType": "html",
+        "message": "={{ $json.replyHtml }}",
         "options": {}
       },
       "id": "a1b2c3d4-0004-0004-0004-000000000004",
-      "name": "Send Email: AI Reply",
-      "type": "n8n-nodes-base.sendEmail",
+      "name": "Gmail: Pošalji AI Reply",
+      "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
-      "position": [900, 200],
+      "position": [1120, 200],
       "credentials": {
-        "smtp": {
-          "id": "smtp-creds",
-          "name": "BitLab SMTP"
+        "gmailOAuth2": {
+          "id": "gmail-oauth-creds",
+          "name": "BitLab Gmail OAuth"
         }
       },
-      "notes": "Konfiguriši SMTP credentials:\nHost: smtp.gmail.com, Port: 587\nUser/Password: kao IMAP (app-password)"
+      "notes": "emailType: html → šalje HTML email. message = replyHtml iz prethodnog Code noda."
     },
     {
       "parameters": {},
@@ -99,7 +131,7 @@
     }
   ],
   "connections": {
-    "IMAP Email Trigger": {
+    "Gmail Trigger": {
       "main": [
         [
           {
@@ -132,7 +164,18 @@
       "main": [
         [
           {
-            "node": "Send Email: AI Reply",
+            "node": "Format: Text u HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Text u HTML": {
+      "main": [
+        [
+          {
+            "node": "Gmail: Pošalji AI Reply",
             "type": "main",
             "index": 0
           }
@@ -147,21 +190,24 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-04-29T00:00:00.000Z",
-  "versionId": "1",
+  "updatedAt": "2026-04-30T00:00:00.000Z",
+  "versionId": "4",
   "meta": {
     "instanceId": "bitlab-ai-demo"
   },
   "_setup_instructions": {
     "koraci": [
       "1. n8n cloud: app.n8n.cloud → New Workflow → Import from JSON → ovaj fajl",
-      "2. Credentials > New > IMAP: host/port/user/password za tvoj email",
-      "3. Credentials > New > SMTP: isti host/user, port 587",
-      "4. Pokrenuti ngrok: ngrok http 8000 → kopiraj HTTPS URL",
-      "5. U node 'HTTP: Pitaj AI Asistenta' zamijeni ZAMIJENI-SA-NGROK-URL sa ngrok subdomain-om",
-      "6. Activate workflow (toggle gornji desni ugao)",
-      "7. Test: pošalji email na IMAP adresu sa subject 'Upit za SSD' — za 60s stize AI reply"
+      "2. Credentials > New > Gmail OAuth2 → klikni 'Sign in with Google'",
+      "3. Pokrenuti lokalni server: uvicorn app.main:app --reload",
+      "4. Pokrenuti ngrok: ~/bin/ngrok http 8000",
+      "5. Activate workflow (toggle gornji desni ugao)",
+      "6. Test: pošalji email na Gmail adresu sa subject koji sadrži 'upit', 'ponuda', 'cijen' itd."
     ],
-    "napomena": "IF filter propušta samo emailove sa relevantnim subject-om. Uredi listu ključnih pojmova po potrebi."
+    "polja_gmail_triggera": {
+      "subject": "$json.Subject",
+      "posiljalac": "$json.From",
+      "snippet": "$json.snippet"
+    }
   }
 }

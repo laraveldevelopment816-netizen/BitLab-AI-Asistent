@@ -21,6 +21,13 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
+def _trim_email_preamble(text: str) -> str:
+    """Odsjeci sve prije 'Poštovani' ako Claude doda uvodne komentare."""
+    marker = "Poštovani"
+    idx = text.find(marker)
+    return text[idx:] if idx != -1 else text
+
+
 def run_agent(
     messages: list[dict[str, Any]],
     channel: str = "chat",
@@ -53,8 +60,9 @@ def run_agent(
                 last_text = block.text
 
         if response.stop_reason == "end_turn":
+            reply = _trim_email_preamble(last_text) if channel == "email" else last_text
             return {
-                "reply": last_text,
+                "reply": reply,
                 "tools_used": tools_used,
                 "escalated": escalated,
                 "iterations": iteration,

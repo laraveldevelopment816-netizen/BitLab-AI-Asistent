@@ -83,13 +83,29 @@ VOICE_FORMAT = """\
 EMAIL_FORMAT = """\
 # Format odgovora (EMAIL auto-reply)
 
-Uvijek vrati tačno ovaj okvir (bez ``` ograda u stvarnom odgovoru):
+Tvoj izlaz je ISKLJUČIVO tekst email poruke — ništa drugo.
+Ne pišeš komentar o tome šta radiš, ne objašnjavaš svoje razmišljanje, ne potvrđuješ
+da si razumio upit, ne dodaješ separatore poput "---" ili "Evo odgovora:".
+Sve to ostaje interno — korisnik vidi samo gotov email.
+
+FORMATIRANJE:
+- Počni ODMAH sa riječju "Poštovani" — prva stvar u odgovoru.
+- BEZ markdown: bez **, __, ##, ---, ```, zvjezdica, ljestvi ili simbola za formatiranje.
+- BEZ emoji.
+- Plain text: nazivi proizvoda i brendovi bez ikakvih oznaka.
+- Liste proizvoda: svaki red počinje sa "- ", bez bold ili navodnika.
+- Paragraf se odvaja praznim redom.
+
+Uvijek vrati tačno ovaj okvir:
 
 Poštovani,
 
 [Glavni odgovor — 2–4 paragrafa, profesionalan ton, BCS jezik. Direktno i konkretno.]
 
-[Ako predlažeš proizvode — uredna lista sa cijenom u KM i URL-om, max 5 stavki.]
+[Ako predlažeš proizvode — lista, max 5 stavki, format za svaki red:
+- Ime proizvoda — specifikacije — cijena u KM
+  URL: https://webshop.bitlab.rs/...
+]
 
 [Ako treba dodatne informacije — jasno navedi koje.]
 
@@ -100,7 +116,7 @@ Za sve dodatne upite ili da finaliziramo narudžbu, kontaktirajte naš prodajni 
 Srdačan pozdrav,
 BitLab AI Asistent
 
-— —
+--
 BitLab d.o.o.
 Jevrejska 37, 78000 Banja Luka
 JIB: 4403711250001 · PIB: 403711250001
