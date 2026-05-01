@@ -29,7 +29,7 @@
 
 **Fajl:** `.env.example:15`
 ```
-# GROQ_API_KEY=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
+# GROQ_API_KEY=gsk_***
 ```
 Ključ je u git istoriji (commits `79115546`, `bcbd1da3`) i repo je javan na GitHubu (`laraveldevelopment816-netizen/BitLab-AI-Asistent`).
 
