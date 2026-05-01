@@ -28,10 +28,20 @@ class Settings(BaseSettings):
     embed_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     embed_dim: int = 384  # za MiniLM-L12-v2
 
-    # ── ElevenLabs ────────────────────────────────────────────
+    # ── TTS glas (edge-tts default) ───────────────────────────
+    # Opcije za BCS: bs-BA-VesnaNeural, bs-BA-GoranNeural,
+    #   hr-HR-GabrijelaNeural, sr-RS-SophieNeural, sr-RS-NicholasNeural
+    tts_voice: str = "hr-HR-GabrijelaNeural"
+    tts_rate: str = "+15%"
+
+    # ── ElevenLabs (opcionalno) ───────────────────────────────
     elevenlabs_api_key: str | None = None
     elevenlabs_voice_id: str | None = None
     elevenlabs_model: str = "eleven_multilingual_v2"
+
+    # ── Groq Whisper (opcionalno — besplatno 7200s/dan) ───────
+    groq_api_key: str | None = None
+    groq_whisper_model: str = "whisper-large-v3-turbo"
 
     # ── Email (rezerva ako n8n cloud zataji) ──────────────────
     imap_host: str | None = None

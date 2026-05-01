@@ -3,6 +3,7 @@ Agent loop sa Claude tool use.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import anthropic
@@ -10,6 +11,15 @@ import anthropic
 from .config import settings
 from .system_prompts import system_prompt
 from .tools import ALL_TOOLS, dispatch
+
+
+def _parse_voice_xml(text: str) -> tuple[str, str]:
+    """Izvuci <text> i <voice> sekcije iz voice channel odgovora."""
+    text_m  = re.search(r'<text>(.*?)</text>',   text, re.DOTALL)
+    voice_m = re.search(r'<voice>(.*?)</voice>', text, re.DOTALL)
+    reply_text  = text_m.group(1).strip()  if text_m  else text
+    reply_voice = voice_m.group(1).strip() if voice_m else text
+    return reply_text, reply_voice
 
 _client: anthropic.Anthropic | None = None
 
@@ -60,9 +70,15 @@ def run_agent(
                 last_text = block.text
 
         if response.stop_reason == "end_turn":
-            reply = _trim_email_preamble(last_text) if channel == "email" else last_text
+            if channel == "email":
+                raw = _trim_email_preamble(last_text)
+                return {"reply": raw, "reply_voice": "", "tools_used": tools_used, "escalated": escalated, "iterations": iteration}
+            if channel == "voice":
+                reply_text, reply_voice = _parse_voice_xml(last_text)
+                return {"reply": reply_text, "reply_voice": reply_voice, "tools_used": tools_used, "escalated": escalated, "iterations": iteration}
             return {
-                "reply": reply,
+                "reply": last_text,
+                "reply_voice": "",
                 "tools_used": tools_used,
                 "escalated": escalated,
                 "iterations": iteration,
@@ -88,13 +104,11 @@ def run_agent(
         else:
             break
 
-    # Max iteracija dostignut ili neočekivan stop_reason
-    return {
-        "reply": last_text or (
-            "Žao mi je, trenutno ne mogu odgovoriti na vaš upit. "
-            "Kontaktirajte nas na Viber 066 516 174 ili prodaja@bitlab.rs."
-        ),
-        "tools_used": tools_used,
-        "escalated": escalated,
-        "iterations": settings.max_tool_iterations,
-    }
+    fallback = last_text or (
+        "Žao mi je, trenutno ne mogu odgovoriti. "
+        "Kontaktirajte nas na Viber 066 516 174 ili prodaja@bitlab.rs."
+    )
+    if channel == "voice":
+        reply_text, reply_voice = _parse_voice_xml(fallback)
+        return {"reply": reply_text, "reply_voice": reply_voice, "tools_used": tools_used, "escalated": escalated, "iterations": settings.max_tool_iterations}
+    return {"reply": fallback, "reply_voice": "", "tools_used": tools_used, "escalated": escalated, "iterations": settings.max_tool_iterations}
