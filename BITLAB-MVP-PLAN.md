@@ -396,8 +396,13 @@ Mehanički rad, sve specificirano u `SECURITY-REVIEW.md` (sekcija "Akcioni redos
 4. Konstanta `app/contacts.py` (N2).
 5. Pydantic validator na `anthropic_api_key` pri startu (N3).
 
-#### 7.7 Code review (kraj Sesije 7)
+#### 7.7 Code review (kraj Sesije 7) — ✅ ZAVRŠENO
 **Model: Opus 4.7 high effort** (~13k in / 3k out)
+**Rezultat (2026-05-02):** `CODE-REVIEW.md` napisan. 4 P1 nalaza (C1–C4):
+sync Anthropic SDK blokira event loop, TOCTOU race u 4 lazy-singleton helpera,
+Whisper preload izostao iz lifespan-a, endpointi bez strukturisanog error
+handling-a. ~45 min za P1 fix-eve. Memory profile bounded (DoS sweep clean).
+4 P2 nalaza (C5–C8) + 3 nice-to-have (C9–C11). MVP produkcijski spreman za demo.
 
 Pred-produkcijski review cijelog koda — Opus pregleda sve fajlove iz `app/`, traži:
 - Race condition u `lifespan` (preload modela)?
@@ -566,7 +571,7 @@ tokene samo na update `n8n/email-autoreply.json` URL-a i `HOSTING.md` uputstva.
 | 11 | **7.6 Security backlog** — V2, V3, S1, N2, N3 (mehanički) | Sonnet 4.6 medium | 6k / 4k | ✅ slowapi + CORS sužen + TtsRequest guard + STT 25MB guard + contacts.py + validator |
 | 12 | **7.4 Prompt review + Haiku polish** | Opus 4.7 medium | 8k / 5k | ✅ 11 pravila + injection delimiter; 2/2 injection testa odbijena |
 | 13 | **7.5 Voice → naruči → email cycle** *(opciono)* | Sonnet 4.6 medium | 5k / 4k | ☐ |
-| 14 | **7.7 Code review** — pred-produkcijski sweep | Opus 4.7 high | 13k / 3k | ☐ |
+| 14 | **7.7 Code review** — pred-produkcijski sweep | Opus 4.7 high | 13k / 3k | ✅ `CODE-REVIEW.md` — 4 P1 (sync SDK blokira loop, TOCTOU race, Whisper preload, error handling) + 4 P2 |
 
 **Izlaz iz Faze D:** sistem produkcijski spreman. Otvoreni nalazi iz `SECURITY-REVIEW.md`
 zatvoreni. Code review čist.
