@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from .contacts import EMAIL, TEL
+
 
 SEARCH_PRODUCTS: dict[str, Any] = {
     "name": "search_products",
@@ -193,9 +195,8 @@ def handle_escalate_to_human(reason: str, summary: str) -> str:
         f"Eskalacija inicirana — razlog: {reason}\n"
         f"Sažetak: {summary}\n\n"
         "Kontakti za korisnika:\n"
-        "• Viber / Tel: 066 516 174\n"
-        "• Email: prodaja@bitlab.rs\n"
-        "• Radno vrijeme: Pon–Pet 09:00–17:00\n"
+        f"• Viber / Tel: {TEL}\n"
+        f"• Email: {EMAIL}\n"
         "Prodajni tim je obaviješten i javit će se u toku radnog vremena."
     )
 

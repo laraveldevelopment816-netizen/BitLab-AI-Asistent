@@ -6,11 +6,14 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from .config import PROJECT_ROOT, settings
 
@@ -31,6 +34,8 @@ async def lifespan(app: FastAPI):
     yield
 
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     lifespan=lifespan,
     title="BitLab AI Asistent",
@@ -42,6 +47,9 @@ app = FastAPI(
     version="0.1.0",
 )
 
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -100,8 +108,8 @@ class EmailResponse(BaseModel):
 
 
 class TtsRequest(BaseModel):
-    text: str
-    voice_id: str | None = None
+    text: str = Field(..., max_length=2000)
+    voice_id: str | None = Field(default=None, max_length=100)
 
 
 # ── Endpointi ────────────────────────────────────────────────
@@ -130,7 +138,8 @@ async def healthz():
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def api_chat(req: ChatRequest) -> ChatResponse:
+@limiter.limit("30/minute")
+async def api_chat(request: Request, req: ChatRequest) -> ChatResponse:
     """Glavni endpoint — koristi se i iz widget-a i iz voice mode-a."""
     from .agent import run_agent
 
@@ -149,7 +158,8 @@ async def api_chat(req: ChatRequest) -> ChatResponse:
 
 
 @app.post("/api/email", response_model=EmailResponse)
-async def api_email(req: EmailRequest) -> EmailResponse:
+@limiter.limit("10/minute")
+async def api_email(request: Request, req: EmailRequest) -> EmailResponse:
     """Endpoint koji n8n zove kad stigne novi email; vraća draft replyja."""
     from .agent import run_agent
 
@@ -260,7 +270,8 @@ def _normalize_for_tts(text: str) -> str:
 
 
 @app.post("/api/tts")
-async def api_tts(req: TtsRequest):
+@limiter.limit("20/minute")
+async def api_tts(request: Request, req: TtsRequest):
     """TTS via edge-tts (Microsoft Azure neuralni glasovi, bez API ključa).
     Fallback: ElevenLabs ako je ELEVENLABS_API_KEY konfigurisan i radi.
     """
@@ -322,14 +333,22 @@ def _get_whisper():
 
 
 @app.post("/api/stt")
-async def api_stt(audio: UploadFile = File(...)):
+@limiter.limit("20/minute")
+async def api_stt(request: Request, audio: UploadFile = File(...)):
     """Transkribuje audio. Koristi Groq Whisper API ako je GROQ_API_KEY postavljen,
     inače lokalni faster-whisper. Vraća {text, language, provider}.
     """
     import tempfile, os
     from asyncio import get_event_loop
 
+    _MAX_AUDIO = 25 * 1_048_576  # 25 MB
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > _MAX_AUDIO:
+        raise HTTPException(status_code=413, detail="Audio fajl prevelik (max 25 MB).")
+
     data = await audio.read()
+    if len(data) > _MAX_AUDIO:
+        raise HTTPException(status_code=413, detail="Audio fajl prevelik (max 25 MB).")
     suffix = ".webm"
     if audio.content_type:
         if "ogg" in audio.content_type:

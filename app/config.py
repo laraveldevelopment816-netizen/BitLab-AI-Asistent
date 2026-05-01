@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -19,6 +19,16 @@ class Settings(BaseSettings):
 
     # ── Anthropic ─────────────────────────────────────────────
     anthropic_api_key: str = Field(default="")
+
+    @field_validator("anthropic_api_key")
+    @classmethod
+    def _require_api_key(cls, v: str) -> str:
+        if not v:
+            raise ValueError(
+                "ANTHROPIC_API_KEY nije postavljen u .env. "
+                "Dodaj: ANTHROPIC_API_KEY=sk-ant-..."
+            )
+        return v
     chat_model: str = "claude-haiku-4-5-20251001"
     email_model: str = "claude-sonnet-4-6"
     max_tool_iterations: int = 5
@@ -65,7 +75,9 @@ class Settings(BaseSettings):
     faq_path: Path = PROJECT_ROOT / "data" / "faq.md"
 
     # ── CORS ──────────────────────────────────────────────────
-    allowed_origins: list[str] = Field(default_factory=lambda: ["*"])
+    allowed_origins: list[str] = Field(
+        default_factory=lambda: ["https://webshop.bitlab.rs", "http://localhost:8000"]
+    )
 
 
 settings = Settings()

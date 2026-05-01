@@ -12,14 +12,14 @@
 |----|--------|--------|--------|
 | K1 | 🔴 Kritično | Groq API ključ u `.env.example` (git history) | ✅ **Zatvoreno** — dev free ključ sa strogim limitima, prihvaćen rizik |
 | V1 | 🟠 Visoko | `/api/email` bez autentifikacije (n8n cloud + ngrok) | ✅ **Zatvoreno** — migracija na lokalni n8n (Sesija 6), ngrok se uklanja |
-| V2 | 🟠 Visoko | CORS `["*"]` + nema rate-limita | 🔓 Otvoreno → Sesija 7 |
-| V3 | 🟠 Visoko | `/api/tts` i `/api/stt` bez veličinskih ograničenja | 🔓 Otvoreno → Sesija 7 |
-| S1 | 🟡 Srednje | Halucinacija u `escalate_to_human` (radno vrijeme) | 🔓 Otvoreno → Sesija 7 |
+| V2 | 🟠 Visoko | CORS `["*"]` + nema rate-limita | ✅ **Zatvoreno** — CORS sužen na webshop.bitlab.rs + localhost; slowapi 30/10/20 req/min po IP |
+| V3 | 🟠 Visoko | `/api/tts` i `/api/stt` bez veličinskih ograničenja | ✅ **Zatvoreno** — `TtsRequest.text max_length=2000`; STT Content-Length + data guard 25 MB |
+| S1 | 🟡 Srednje | Halucinacija u `escalate_to_human` (radno vrijeme) | ✅ **Zatvoreno** — red "Radno vrijeme: Pon–Pet..." uklonjen iz handler-a |
 | S2 | 🟡 Srednje | Slaba prompt-injection odbrana u `/api/email` | ✅ **Zatvoreno** — Sesija 7.4: `<email_body>` delimiter + BITLAB_BASE pravilo 10 + EMAIL_FORMAT "Bezbjednost"; 2/2 injection testa odbijena |
 | S3 | 🟡 Srednje | Eskalacija pri praznom search-u nije propisana | ✅ **Zatvoreno** — Sesija 7.4: BITLAB_BASE pravilo 9 + 7.1 smart matching smanjuje 0-result frekvenciju |
 | N1 | 🟢 Nisko | ngrok URL hardkodovan u n8n JSON-u | ✅ Riješeno migracijom na lokalni n8n |
-| N2 | 🟢 Nisko | Duplikat kontakata (telefon, JIB) na više mjesta | 🔓 Otvoreno → Sesija 7 |
-| N3 | 🟢 Nisko | Prazan `anthropic_api_key` default → generički 500 | 🔓 Otvoreno → Sesija 7 |
+| N2 | 🟢 Nisko | Duplikat kontakata (telefon, JIB) na više mjesta | ✅ **Zatvoreno** — `app/contacts.py`; `tools.py` i `system_prompts.py` importuju konstante |
+| N3 | 🟢 Nisko | Prazan `anthropic_api_key` default → generički 500 | ✅ **Zatvoreno** — Pydantic `field_validator` u `config.py` — app ne starta bez ključa |
 
 ---
 

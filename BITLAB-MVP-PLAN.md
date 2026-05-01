@@ -563,7 +563,7 @@ tokene samo na update `n8n/email-autoreply.json` URL-a i `HOSTING.md` uputstva.
 
 | # | Podzadatak | Model | Tokeni (in/out) | Status |
 |---|---|---|---|---|
-| 11 | **7.6 Security backlog** — V2, V3, S1, N2, N3 (mehanički) | Sonnet 4.6 medium | 6k / 4k | ☐ |
+| 11 | **7.6 Security backlog** — V2, V3, S1, N2, N3 (mehanički) | Sonnet 4.6 medium | 6k / 4k | ✅ slowapi + CORS sužen + TtsRequest guard + STT 25MB guard + contacts.py + validator |
 | 12 | **7.4 Prompt review + Haiku polish** | Opus 4.7 medium | 8k / 5k | ✅ 11 pravila + injection delimiter; 2/2 injection testa odbijena |
 | 13 | **7.5 Voice → naruči → email cycle** *(opciono)* | Sonnet 4.6 medium | 5k / 4k | ☐ |
 | 14 | **7.7 Code review** — pred-produkcijski sweep | Opus 4.7 high | 13k / 3k | ☐ |
