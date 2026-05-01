@@ -1,0 +1,15 @@
+{
+  "_comment": "Mapiranje kategorija na primary terms koji NISU u imenima proizvoda te kategorije. Korisi se i u embed_products.py (prefix u search_text-u) i u rag.py (search-time category boost za kratke upite). Format: cat_id -> [list of BCS terms]. Dodaj nove kategorije kad korisnici traže tip proizvoda koji se ne nađe.",
+  "98":  ["laptop", "notebook", "prijenosno", "prijenosni racunar", "prenosivi"],
+  "17":  ["pc", "racunar", "kompjuter", "desktop", "all-in-one", "stoni"],
+  "108": ["maticna", "matična ploča", "motherboard", "mainboard", "mb"],
+  "163": ["televizor", "tv", "smart tv"],
+  "166": ["daljinski", "daljinski upravljac", "remote", "tv box", "chromecast"],
+  "173": ["kamera", "action camera", "akciona kamera", "fotoaparat"],
+  "174": ["foto oprema", "dvogled", "torba za fotoaparat", "stativ"],
+  "184": ["fiksni telefon", "dect telefon", "kucni telefon", "bezicni telefon"],
+  "202": ["powerbank", "eksterna baterija", "punjac za telefon", "prenosivi punjac"],
+  "290": ["kontroler", "adapter", "ide sata", "pcie kartica"],
+  "380": ["elektricni romobil", "scooter", "kickscooter", "trotinet"],
+  "393": ["gift card", "voucher", "robux", "playstation kredit", "digitalni kredit"]
+}

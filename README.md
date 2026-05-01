@@ -192,6 +192,15 @@ Gotovo. Sad možeš pokrenuti uvicorn:
 
 > **Napomena:** Oba `.npz` i `.meta.json` fajla su u `.gitignore`. Svaki developer pokrene skriptu jednom lokalno.
 
+### Smart matching: `data/category_terms.json`
+
+Mapiranje kategorija → terminima koji nisu u imenima proizvoda te kategorije. Koristi se u dva sloja:
+
+1. **Build-time** (`embed_products.py`): prefix se ponavlja 3× u `search_text` polju → embedding razumije "laptop" iako su u imenu samo brendovi (Acer Nitro, Lenovo IdeaPad).
+2. **Search-time** (`app/rag.py`): kratki upiti (npr. "laptop", "tv 50") boost-uju proizvode iz match-ed kategorije za +0.25 — sprečava da accessory-i (torbe za laptop, postolja) preuzmu top rezultate.
+
+**Kad dodati novu kategoriju:** ako korisnici traže tip proizvoda po generičkoj riječi koja nije u imenima, dopuni `category_terms.json` i pokreni rebuild. Skripta `scripts/embed_products.py` ima ugrađen detektor — proizvodi u kategorijama gdje prva riječ imena nije konzistentna su kandidati za prefix.
+
 ---
 
 ## 4. Pokretanje servera

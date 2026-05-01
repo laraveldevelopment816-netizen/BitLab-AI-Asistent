@@ -83,15 +83,29 @@ def availability_label(product: dict[str, Any]) -> str:
     return "Provjeri dostupnost"
 
 
-# Kategorije čiji proizvodi ne sadrže generičku ključnu riječ u imenu,
-# pa BM25 ne pronalazi rezultate na upite poput "laptop" ili "štampač".
-_CATEGORY_PREFIX: dict[str, str] = {
-    "98": "laptop notebook prijenosno računar",   # Notebook – Laptopi
-}
+# Mapiranje kategorija → terms se čita iz data/category_terms.json
+# (single source of truth koji rag.py i ova skripta dijele).
+_CATEGORY_TERMS_PATH = PROJECT_ROOT / "data" / "category_terms.json"
+
+
+def _load_category_terms() -> dict[str, list[str]]:
+    if not _CATEGORY_TERMS_PATH.exists():
+        return {}
+    raw = json.loads(_CATEGORY_TERMS_PATH.read_text(encoding="utf-8"))
+    return {k: v for k, v in raw.items() if not k.startswith("_") and isinstance(v, list)}
+
+
+_CATEGORY_TERMS = _load_category_terms()
 
 
 def build_search_text(p: dict[str, Any]) -> str:
-    """Tekst koji ide u embedding (i u BM25 korpus)."""
+    """Tekst koji ide u embedding (i u BM25 korpus).
+
+    Za kategorije iz `category_terms.json`, prefix se ponavlja 3 puta da poveća
+    semantic density u MiniLM embeddingu — bez ovoga tehnički specifikacijski
+    šum (Intel i5, 16GB, Ryzen, FHD AG, ...) preglasa značaj generičke riječi
+    poput "laptop" jer prefix čini <2% tokena u ~1000-char tekstu.
+    """
     parts = [
         _clean(p.get("name")),
         _clean(p.get("description")),
@@ -101,11 +115,13 @@ def build_search_text(p: dict[str, Any]) -> str:
     text = ". ".join(part for part in parts if part)
 
     cat_id = (p.get("categories_id") or "").strip()
-    prefix = _CATEGORY_PREFIX.get(cat_id, "")
-    if prefix:
-        text = prefix + ". " + text
+    terms = _CATEGORY_TERMS.get(cat_id)
+    if terms:
+        prefix = " ".join(terms)
+        # 3x ponavljanje da podigne tf u BM25 i density u embeddingu
+        text = ((prefix + ". ") * 3) + text
 
-    return text[:1000]  # cap da batch ostaje brz
+    return text[:1200]
 
 
 def build_product_meta(p: dict[str, Any]) -> dict[str, Any]:

@@ -4,26 +4,7 @@ Anthropic tool use schema + handler implementacije.
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
-
-# Kada korisnik pita za "laptop/laptopovi", BM25 neće naći stvarne uređaje
-# jer su indeksirani samo po modelu (IdeaPad, ProBook...) — bez riječi "laptop".
-# Query expansion dodaje model-serije da pomogne BM25-u.
-_LAPTOP_RE = re.compile(
-    r"\blaptop(a|u|om|ov|ovi|ova|e)?\b|\bnotebook\b|\bprijenosn",
-    re.IGNORECASE,
-)
-_LAPTOP_EXPANSION = (
-    " notebook laptop ideapad thinkbook thinkpad probook vivobook"
-    " elitebook nitro aspire zenbook inspiron matebook galaxy book"
-)
-
-
-def _expand_query(query: str) -> str:
-    if _LAPTOP_RE.search(query):
-        return query + _LAPTOP_EXPANSION
-    return query
 
 
 SEARCH_PRODUCTS: dict[str, Any] = {
@@ -177,7 +158,7 @@ def handle_search_products(
     top_k: int = 5,
     max_price_km: float | None = None,
 ) -> str:
-    results = _get_index().search(_expand_query(query), top_k=top_k, max_price_km=max_price_km)
+    results = _get_index().search(query, top_k=top_k, max_price_km=max_price_km)
     if not results:
         return "Nema proizvoda koji odgovaraju upitu."
     return json.dumps(results, ensure_ascii=False)

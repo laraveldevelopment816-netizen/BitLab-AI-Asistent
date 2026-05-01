@@ -535,7 +535,7 @@ STT-om je neupotrebljiv.
 | # | Podzadatak | Model | Tokeni (in/out) | Status |
 |---|---|---|---|---|
 | 7 | **7.2 CPU-only deps** — brži startup (cilj < 15s) | Sonnet 4.6 medium | 4k / 3k | ✅ Startup pao sa 60s na **2.7s** (lazy import + bg preload + pin ST<4) |
-| 8 | **7.1 Smart product matching** — laptop ↔ notebook | Opus 4.7 high | 6k / 4k | ☐ |
+| 8 | **7.1 Smart product matching** — laptop ↔ notebook | Opus 4.7 high | 6k / 4k | ✅ `category_terms.json` + 3× prefix u indeksu + search-time boost; "laptop", "notebook", "matična ploča", "powerbank", "tv" sve rade. 19/19 testova ✓ |
 | 9 | **7.3 STT fix** — lokalni faster-whisper primarni | Sonnet 4.6 medium | 3k / 2k | ☐ |
 
 **Izlaz iz Faze B:** demo-ready sistem. Ako tokeni presahnu, ovo je sigurna tačka.

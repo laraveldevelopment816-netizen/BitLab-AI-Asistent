@@ -37,10 +37,10 @@
 #bl-launcher {
   position:fixed; bottom:24px; right:24px;
   width:62px; height:62px; border-radius:50%;
-  background:linear-gradient(135deg,#FB923C,#C2410C);
+  background:linear-gradient(135deg,#fb6d3b,#eA5c2a);
   color:white; border:none; font-size:28px;
   cursor:pointer; z-index:9999;
-  box-shadow:0 6px 20px rgba(251,146,60,.45);
+  box-shadow:0 6px 20px rgba(251,109,59,.45);
   transition:transform .2s;
 }
 #bl-launcher:hover { transform:scale(1.08); }
@@ -56,7 +56,7 @@
 #bl-window.open { display:flex; }
 
 #bl-header {
-  background:linear-gradient(135deg,#0F2A47,#1a3d6e);
+  background:linear-gradient(135deg,#1a1a2e,#2a2a3e);
   color:#fff; padding:14px 18px;
   display:flex; justify-content:space-between; align-items:center;
   flex-shrink:0;
@@ -64,7 +64,7 @@
 .bl-header-left { display:flex; align-items:center; gap:10px; }
 .bl-avatar {
   width:38px; height:38px; border-radius:50%;
-  background:linear-gradient(135deg,#FB923C,#C2410C);
+  background:linear-gradient(135deg,#fb6d3b,#eA5c2a);
   display:flex; align-items:center; justify-content:center;
   font-size:19px; flex-shrink:0;
 }
@@ -91,21 +91,21 @@
 }
 #bl-messages::-webkit-scrollbar { width:5px; }
 #bl-messages::-webkit-scrollbar-track { background:#EFF2F5; }
-#bl-messages::-webkit-scrollbar-thumb { background:#FDBA74; border-radius:3px; }
-#bl-messages::-webkit-scrollbar-thumb:hover { background:#FB923C; }
+#bl-messages::-webkit-scrollbar-thumb { background:#fed1bb; border-radius:3px; }
+#bl-messages::-webkit-scrollbar-thumb:hover { background:#fb6d3b; }
 .bl-msg {
   margin-bottom:10px; padding:10px 13px; border-radius:12px;
   max-width:88%; line-height:1.5; word-break:break-word;
 }
 .bl-msg.user {
-  background:#FB923C; color:#fff;
+  background:#fb6d3b; color:#fff;
   margin-left:auto; border-bottom-right-radius:4px;
 }
 .bl-msg.bot {
   background:#fff; border:1px solid #E5E7EB;
   color:#1F2937; border-bottom-left-radius:4px;
 }
-.bl-msg.bot a { color:#FB923C; }
+.bl-msg.bot a { color:#fb6d3b; }
 .bl-msg.bot img {
   width:64px; height:64px; object-fit:contain;
   border-radius:6px; border:1px solid #E5E7EB;
@@ -131,8 +131,8 @@
 .bl-qr-label { font-size:11px; color:#94A3B8; margin-bottom:6px; padding-top:4px; }
 .bl-quick-chips { display:flex; flex-wrap:wrap; gap:6px; }
 .bl-chip {
-  background:#FFF7ED; border:1px solid #FDBA74;
-  color:#C2410C; border-radius:16px;
+  background:#FFF7ED; border:1px solid #fed1bb;
+  color:#eA5c2a; border-radius:16px;
   padding:5px 12px; font-size:12px; cursor:pointer;
   transition:background .15s; white-space:nowrap; line-height:1.3;
 }
@@ -146,9 +146,9 @@
   flex:1; padding:9px 13px; border:1px solid #E5E7EB;
   border-radius:20px; outline:none; font-size:14px; font-family:inherit;
 }
-#bl-input:focus { border-color:#FB923C; }
+#bl-input:focus { border-color:#fb6d3b; }
 #bl-send {
-  background:#FB923C; color:#fff; border:none;
+  background:#fb6d3b; color:#fff; border:none;
   border-radius:50%; width:38px; height:38px;
   cursor:pointer; font-size:16px; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
@@ -187,7 +187,7 @@
 
 /* Header — isti gradijent kao chat */
 #bl-vheader {
-  background:linear-gradient(135deg,#0F2A47,#1a3d6e);
+  background:linear-gradient(135deg,#1a1a2e,#2a2a3e);
   color:#fff; padding:14px 18px;
   display:flex; align-items:center; gap:12px; flex-shrink:0;
 }
@@ -200,7 +200,7 @@
 #bl-voice-orb.orb-listening  { background:radial-gradient(circle,#16a34a,#15803d); animation:vOrbG 2s infinite; }
 #bl-voice-orb.orb-recording  { background:radial-gradient(circle,#dc2626,#991b1b); animation:vOrbR .65s infinite; }
 #bl-voice-orb.orb-processing { background:radial-gradient(circle,#7c3aed,#6d28d9); animation:vSpin 1s linear infinite; }
-#bl-voice-orb.orb-speaking   { background:radial-gradient(circle,#FB923C,#C2410C); animation:vOrbO .9s infinite; }
+#bl-voice-orb.orb-speaking   { background:radial-gradient(circle,#fb6d3b,#eA5c2a); animation:vOrbO .9s infinite; }
 
 @keyframes vOrbG {
   0%,100%{ box-shadow:0 0 0 0 rgba(22,163,74,0); }
@@ -211,8 +211,8 @@
   50%{ transform:scale(1.1); box-shadow:0 0 0 8px rgba(220,38,38,.22); }
 }
 @keyframes vOrbO {
-  0%,100%{ box-shadow:0 0 0 0 rgba(251,146,60,0); }
-  50%{ box-shadow:0 0 0 9px rgba(251,146,60,.28); transform:scale(1.06); }
+  0%,100%{ box-shadow:0 0 0 0 rgba(251,109,59,0); }
+  50%{ box-shadow:0 0 0 9px rgba(251,109,59,.28); transform:scale(1.06); }
 }
 @keyframes vSpin { to{ transform:rotate(360deg); } }
 
@@ -231,7 +231,7 @@
 #bl-vlevel-wrap { height:3px; background:#EFF2F5; flex-shrink:0; }
 #bl-vlevel-bar  {
   height:100%; width:0%;
-  background:linear-gradient(90deg,#4ade80,#FB923C);
+  background:linear-gradient(90deg,#4ade80,#fb6d3b);
   transition:width .05s;
 }
 
@@ -242,8 +242,8 @@
 }
 #bl-vtranscript::-webkit-scrollbar { width:5px; }
 #bl-vtranscript::-webkit-scrollbar-track { background:#EFF2F5; }
-#bl-vtranscript::-webkit-scrollbar-thumb { background:#FDBA74; border-radius:3px; }
-#bl-vtranscript::-webkit-scrollbar-thumb:hover { background:#FB923C; }
+#bl-vtranscript::-webkit-scrollbar-thumb { background:#fed1bb; border-radius:3px; }
+#bl-vtranscript::-webkit-scrollbar-thumb:hover { background:#fb6d3b; }
 
 /* Veliki centralni orb (vidljiv samo u vp-idle stanju) */
 #bl-vorb-center {
@@ -256,8 +256,8 @@
   font-size:40px; margin-bottom:12px; transition:background .35s;
 }
 #bl-vorb-large.orb-idle {
-  background:linear-gradient(135deg,#FB923C,#C2410C);
-  box-shadow:0 8px 24px rgba(251,146,60,.5);
+  background:linear-gradient(135deg,#fb6d3b,#eA5c2a);
+  box-shadow:0 8px 24px rgba(251,109,59,.5);
 }
 #bl-vorb-large.orb-listening {
   background:radial-gradient(circle,#16a34a,#15803d);
@@ -710,7 +710,7 @@
           'Dodaj <code style="background:rgba(255,255,255,.15);padding:1px 5px;border-radius:3px">' + location.origin + '</code> → Relaunch<br><br>' +
           '<strong>Firefox:</strong> localhost radi bez izmjena.<br><br>' +
           'Ili koristi <a href="/public/voice.html" target="_blank" ' +
-          'style="color:#FDBA74;font-weight:700">Voice Asistent (novi tab)</a>' +
+          'style="color:#fed1bb;font-weight:700">Voice Asistent (novi tab)</a>' +
           '</div>';
       } else if (err.name === 'NotAllowedError') {
         vEls.status.textContent = 'Dozvola odbijena — odobri mikrofon u browseru';
