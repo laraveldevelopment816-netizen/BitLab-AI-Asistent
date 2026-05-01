@@ -357,16 +357,16 @@ Na VPS-u više **nema potrebe za ngrok-om** — n8n direktno zove lokalni FastAP
 
 Postoje dva načina da pokreneš n8n lokalno na serveru.
 
-### Opcija A: n8n cloud (najlakše, besplatno)
+### Opcija A: n8n cloud (najlakše — n8n cloud poziva VPS Nginx)
 
-Koristi isti n8n cloud account, samo promijeni URL u HTTP Request nodu:
+Ako koristiš n8n cloud account, promijeni URL u HTTP Request nodu da pokazuje na VPS domenu:
 
 ```
-PRIJE (lokalno):  https://abc123.ngrok-free.app/api/email
-POSLIJE (VPS):    https://ai.bitlab.rs/api/email
+http://127.0.0.1:8000/api/email   ← NE (n8n cloud ne vidi tvoj 127.0.0.1)
+https://ai.bitlab.rs/api/email    ← DA (n8n cloud poziva Nginx koji proxira na 8000)
 ```
 
-Nema docker-a, nema instalacije. Preporučeno za početak.
+Nema docker-a, nema instalacije. Preporučeno ako već imaš Nginx + SSL aktivan (Korak 4).
 
 ### Opcija B: n8n self-hosted (Docker Compose)
 
@@ -575,6 +575,6 @@ Hugging Face cache je u `~/.cache/huggingface/`. Persists između restartova ser
 5. Systemd servis (Korak 3) — provjeri `curl http://127.0.0.1:8000/healthz`
 6. Nginx + SSL (Korak 4) — provjeri `curl https://ai.bitlab.rs/healthz`
 7. CORS update u `.env` → `systemctl restart bitlab-ai`
-8. n8n: Opcija A (cloud, promijeni URL) ili Opcija B (Docker)
+8. n8n: Opcija A (desktop, URL = `http://localhost:8000/api/email`) ili Opcija B (Docker, URL = `http://127.0.0.1:8000/api/email`)
 9. Widget `<script>` tag na webshop
 10. Cron za automatsko osvježavanje (Korak 6)

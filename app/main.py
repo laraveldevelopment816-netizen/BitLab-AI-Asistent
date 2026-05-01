@@ -153,11 +153,16 @@ async def api_email(req: EmailRequest) -> EmailResponse:
     """Endpoint koji n8n zove kad stigne novi email; vraća draft replyja."""
     from .agent import run_agent
 
-    # Sklopi poruku sa kontekstom emaila
+    # Sklopi poruku sa kontekstom emaila.
+    # Body se obavija u <email_body> tagove — system prompt nalaže Claude-u da
+    # tekst između tagova tretira kao SADRŽAJ, ne instrukcije (prompt-injection
+    # odbrana, vidi BITLAB_BASE pravilo 10 i EMAIL_FORMAT "Bezbjednost" sekciju).
+    # Sanitizacija: ako korisnik proba zatvoriti tag prijevremeno, escape-ujemo.
+    safe_body = req.body.strip().replace("</email_body>", "</email_body_>")
     message = (
         f"Email od: {req.sender}\n"
         f"Predmet: {req.subject}\n\n"
-        f"{req.body.strip()}"
+        f"<email_body>\n{safe_body}\n</email_body>"
     )
     result = run_agent(
         [{"role": "user", "content": message}],

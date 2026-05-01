@@ -68,7 +68,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://bonsai-census-daisy.ngrok-free.dev/api/email",
+        "url": "http://host.docker.internal:8000/api/email",
         "sendBody": true,
         "contentType": "json",
         "bodyParameters": {
@@ -197,13 +197,15 @@
   },
   "_setup_instructions": {
     "koraci": [
-      "1. n8n cloud: app.n8n.cloud → New Workflow → Import from JSON → ovaj fajl",
-      "2. Credentials > New > Gmail OAuth2 → klikni 'Sign in with Google'",
-      "3. Pokrenuti lokalni server: uvicorn app.main:app --reload",
-      "4. Pokrenuti ngrok: ~/bin/ngrok http 8000",
+      "1. Pokreni n8n lokalno: docker run -d --name n8n --restart always -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n",
+      "   ALI: Desktop n8n (n8n.io/download) → URL u HTTP Request nodu postavi na http://localhost:8000/api/email",
+      "2. Otvori http://localhost:5678 → New Workflow → Import from JSON → ovaj fajl",
+      "3. Credentials > New > Gmail OAuth2 → klikni 'Sign in with Google'",
+      "4. Pokrenuti FastAPI server: uvicorn app.main:app --reload",
       "5. Activate workflow (toggle gornji desni ugao)",
-      "6. Test: pošalji email na Gmail adresu sa subject koji sadrži 'upit', 'ponuda', 'cijen' itd."
+      "6. Test: pošalji email sa subject koji sadrži 'upit', 'ponuda', 'cijen' itd. — za ~60s stiže AI reply"
     ],
+    "napomena_url": "Docker n8n koristi host.docker.internal za pristup hostu. Desktop n8n koristi localhost. Ne mijenjaj osim ako n8n radi u drugačijem network modu.",
     "polja_gmail_triggera": {
       "subject": "$json.Subject",
       "posiljalac": "$json.From",

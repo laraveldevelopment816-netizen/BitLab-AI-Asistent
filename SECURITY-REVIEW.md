@@ -15,8 +15,8 @@
 | V2 | 🟠 Visoko | CORS `["*"]` + nema rate-limita | 🔓 Otvoreno → Sesija 7 |
 | V3 | 🟠 Visoko | `/api/tts` i `/api/stt` bez veličinskih ograničenja | 🔓 Otvoreno → Sesija 7 |
 | S1 | 🟡 Srednje | Halucinacija u `escalate_to_human` (radno vrijeme) | 🔓 Otvoreno → Sesija 7 |
-| S2 | 🟡 Srednje | Slaba prompt-injection odbrana u `/api/email` | 🔓 Otvoreno → Sesija 7 |
-| S3 | 🟡 Srednje | Eskalacija pri praznom search-u nije propisana | 🔓 Otvoreno → Sesija 7 |
+| S2 | 🟡 Srednje | Slaba prompt-injection odbrana u `/api/email` | ✅ **Zatvoreno** — Sesija 7.4: `<email_body>` delimiter + BITLAB_BASE pravilo 10 + EMAIL_FORMAT "Bezbjednost"; 2/2 injection testa odbijena |
+| S3 | 🟡 Srednje | Eskalacija pri praznom search-u nije propisana | ✅ **Zatvoreno** — Sesija 7.4: BITLAB_BASE pravilo 9 + 7.1 smart matching smanjuje 0-result frekvenciju |
 | N1 | 🟢 Nisko | ngrok URL hardkodovan u n8n JSON-u | ✅ Riješeno migracijom na lokalni n8n |
 | N2 | 🟢 Nisko | Duplikat kontakata (telefon, JIB) na više mjesta | 🔓 Otvoreno → Sesija 7 |
 | N3 | 🟢 Nisko | Prazan `anthropic_api_key` default → generički 500 | 🔓 Otvoreno → Sesija 7 |

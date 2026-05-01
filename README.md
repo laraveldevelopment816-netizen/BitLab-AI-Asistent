@@ -260,7 +260,7 @@ Jednolinijska integracija na bilo koji sajt:
 <script src="http://localhost:8000/public/widget.js"></script>
 ```
 
-Za produkciju zamijeni `localhost` sa ngrok/domenом.
+Za produkciju zamijeni `localhost` sa domenом (npr. `ai.bitlab.rs`).
 
 ### Voice mod
 
@@ -340,130 +340,56 @@ Rezultat: 4/4
 
 ## 7. n8n Email Auto-Reply
 
-### Kako ngrok radi
+n8n radi **lokalno** na istoj mašini kao i FastAPI server — `/api/email` nije izložen javnom internetu.
 
 ```
-Internet
-    │
-    │  https://abc123.ngrok-free.app  ← javna adresa
-    ▼
-┌─────────────┐
-│  ngrok CDN  │  (ngrok cloud — prihvata zahtjeve izvana)
-└──────┬──────┘
-       │  enkriptovani tunel (agent na laptopu)
-       ▼
-┌──────────────────────────────────────┐
-│  Tvoj laptop (WSL2)                  │
-│                                      │
-│  ~/bin/ngrok ──► localhost:8000      │
-│                    (FastAPI server)  │
-└──────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│  Tvoja mašina (laptop / VPS)                    │
+│                                                 │
+│  n8n (localhost:5678) ──► localhost:8000        │
+│  Gmail trigger           (FastAPI /api/email)   │
+└─────────────────────────────────────────────────┘
 ```
 
-n8n je u cloudu i ne može direktno dohvatiti `localhost:8000`. ngrok pravi tunel i daje javni HTTPS URL koji n8n koristi kao webhook.
+### Opcija A: n8n Desktop (najlakše za lokalni demo)
 
-### Korak 1 — Instalacija ngrok (jednom)
-
-**WSL2 / Linux:**
-
-```bash
-# Preuzmi binarnu datoteku
-curl -L https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz -o /tmp/ngrok.tgz
-tar xzf /tmp/ngrok.tgz -C /tmp
-
-# Smjesti u ~/bin (ne treba sudo)
-mkdir -p ~/bin
-mv /tmp/ngrok ~/bin/ngrok
-
-# Provjera
-~/bin/ngrok version
-```
-
-**Windows (PowerShell):**
-
-```powershell
-# Opcija A — winget (preporučeno, ugrađen u Windows 10/11)
-winget install ngrok.ngrok
-
-# Opcija B — Chocolatey
-choco install ngrok
-
-# Opcija C — ručno: preuzmi .zip sa https://ngrok.com/download,
-# raspakovaj ngrok.exe i dodaj folder u PATH
-
-# Provjera
-ngrok version
-```
-
-### Korak 2 — Poveži sa ngrok accountom (jednom)
-
-Authtoken se nalazi na [dashboard.ngrok.com](https://dashboard.ngrok.com) → Your Authtoken.
-
-**WSL2 / Linux:**
-
-```bash
-~/bin/ngrok config add-authtoken <TVOJ_AUTHTOKEN>
-```
-
-Token se čuva u `~/.config/ngrok/ngrok.yml`.
-
-**Windows (PowerShell):**
-
-```powershell
-ngrok config add-authtoken <TVOJ_AUTHTOKEN>
-```
-
-Token se čuva u `%USERPROFILE%\AppData\Local\ngrok\ngrok.yml`.
-
-### Korak 3 — Pokretanje tunela
-
-Server mora biti pokrenut (`uvicorn app.main:app --reload`) pa tek onda:
-
-**WSL2 / Linux:**
-
-```bash
-~/bin/ngrok http 8000
-```
-
-**Windows (PowerShell):**
-
-```powershell
-ngrok http 8000
-```
-
-Output koji tražiš:
-
-```
-Forwarding  https://abc123.ngrok-free.app -> http://localhost:8000
-```
-
-Kopiraj taj `https://...` URL — koristi se u n8n (vidi ispod).
-
-> **Napomena:** Na free tier URL se mijenja pri svakom pokretanju ngrok-a. Platni plan daje fiksnu domenu.
-
-### Korak 4 — Postavljanje n8n
-
-1. Registruj se na [app.n8n.cloud](https://app.n8n.cloud) (free tier, bez kartice)
-2. **New Workflow → Import from JSON** → učitaj `n8n/email-autoreply.json`
-3. **Credentials → New → Gmail OAuth2** → klikni `Sign in with Google` — jedan login važi i za primanje i za slanje
-4. U workflow-u pronađi **HTTP Request node → URL** i zamijeni sa:
+1. Preuzmi i instaliraj sa [n8n.io/download](https://n8n.io/download).
+2. Pokreni aplikaciju → otvori `http://localhost:5678`.
+3. **New Workflow → Import from JSON** → učitaj `n8n/email-autoreply.json`.
+4. U **HTTP: Pitaj AI Asistenta** nodu promijeni URL na:
    ```
-   https://abc123.ngrok-free.app/api/email
+   http://localhost:8000/api/email
    ```
-5. **Activate** workflow (toggle gornji desni ugao u n8n)
-6. Test: pošalji email na Gmail adresu sa subject `Upit za SSD` — za ~60s stiže AI reply
+5. **Credentials → New → Gmail OAuth2** → klikni `Sign in with Google`.
+6. **Activate** workflow (toggle gornji desni ugao).
+7. Test: pošalji email sa subject `Upit za SSD` — za ~60s stiže AI reply.
 
-> **Napomena:** Gmail OAuth2 zamjenjuje i IMAP i SMTP. Nema app passworda ni posebne konfiguracije mail servera.
+### Opcija B: n8n Docker (preporučeno za VPS / produkciju)
+
+```bash
+docker run -d \
+  --name n8n \
+  --restart always \
+  -p 5678:5678 \
+  -v n8n_data:/home/node/.n8n \
+  n8nio/n8n
+```
+
+Otvori `http://localhost:5678` → **New Workflow → Import from JSON** → `n8n/email-autoreply.json`.
+
+URL u HTTP Request nodu je već postavljen na `http://host.docker.internal:8000/api/email` — to je hostname koji Docker kontejner koristi za pristup hostu. **Ne mijenjaj** osim ako koristiš docker network mode=host (tada postavi `localhost`).
+
+**Credentials → New → Gmail OAuth2** → `Sign in with Google` → **Activate** workflow.
 
 ### Fallback — IMAP poller (bez n8n)
 
-Ako n8n cloud nije dostupan, pokreni lokalni poller direktno:
+Ako n8n nije dostupan, lokalni poller radi isti posao:
 
 ```bash
 python -m app.email_poller
 ```
 
-Polluje INBOX svakih 60 sekundi. Zahtijeva popunjen IMAP/SMTP blok u `.env`.
+Polluje INBOX svakih 60 sekundi. Zahtijeva popunjen `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD` u `.env`.
 
 ---
 
@@ -475,8 +401,7 @@ Polluje INBOX svakih 60 sekundi. Zahtijeva popunjen IMAP/SMTP blok u `.env`.
 | Claude Sonnet 4.6 (email) | Pay-as-you-go | $3/1M input tokena | ~$0.60 |
 | ElevenLabs (TTS) | Free tier | $0 | 10.000 znakova/mj |
 | Sentence-transformers (embeddings) | Lokalno | $0 | $0 uvijek |
-| n8n | Free tier | $0 | 5.000 izvršenja/mj |
-| ngrok | Free tier | $0 | 1 tunel |
+| n8n (lokalni Docker) | Self-hosted | $0 | bez limita |
 | **Ukupno** | | | **~$2–5/mj** |
 
 ---
@@ -521,7 +446,146 @@ taskkill /F /PID <broj>
 
 ---
 
-## 10. Kontakt
+## 10. Deployment na server (VPS)
+
+> Detaljan vodič: `HOSTING.md`. Ovo je brzi pregled redoslijeda koraka.
+
+**Preduslovi:** Ubuntu 22.04+, Python 3.11+, 1 GB RAM, domena usmjerena na VPS IP.
+
+### Korak 1 — Kloniranje i okruženje
+
+```bash
+ssh user@YOUR-VPS-IP
+
+cd /opt
+sudo git clone https://github.com/tvoj-username/bitlab-ai-asistent.git
+sudo chown -R $USER:$USER /opt/bitlab-ai-asistent
+cd /opt/bitlab-ai-asistent
+
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu
+```
+
+### Korak 2 — Konfiguracija
+
+```bash
+cp .env.example .env
+nano .env   # popuni ANTHROPIC_API_KEY, ELEVENLABS_*, IMAP/SMTP, ALLOWED_ORIGINS
+```
+
+### Korak 3 — Generisanje indeksa
+
+```bash
+# Kopiraj data/all-products.json na server, pa:
+python scripts/embed_products.py
+ls -lh data/products.index.npz data/products.meta.json  # provjera
+```
+
+### Korak 4 — Systemd servis
+
+```bash
+sudo nano /etc/systemd/system/bitlab-ai.service
+```
+
+```ini
+[Unit]
+Description=BitLab AI Asistent
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/opt/bitlab-ai-asistent
+EnvironmentFile=/opt/bitlab-ai-asistent/.env
+ExecStart=/opt/bitlab-ai-asistent/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo sed -i "s/YOUR_USERNAME/$(whoami)/g" /etc/systemd/system/bitlab-ai.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now bitlab-ai
+curl http://127.0.0.1:8000/healthz   # provjera
+```
+
+### Korak 5 — Nginx + SSL
+
+```bash
+sudo apt install nginx certbot python3-certbot-nginx -y
+
+# Konfiguracija (zamijeni ai.bitlab.rs)
+sudo tee /etc/nginx/sites-available/bitlab-ai <<'EOF'
+server {
+    listen 80;
+    server_name ai.bitlab.rs;
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+}
+EOF
+
+sudo ln -s /etc/nginx/sites-available/bitlab-ai /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx
+
+# SSL — DNS mora biti aktivan (sačekaj 5-30 min propagaciju)
+sudo certbot --nginx -d ai.bitlab.rs
+curl https://ai.bitlab.rs/healthz   # provjera
+```
+
+### Korak 6 — n8n (email auto-reply)
+
+**Docker (preporučeno):**
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER && newgrp docker
+
+docker run -d \
+  --name n8n \
+  --restart always \
+  -p 5678:5678 \
+  -v n8n_data:/home/node/.n8n \
+  n8nio/n8n
+```
+
+Otvori `http://YOUR-VPS-IP:5678` → **New Workflow → Import from JSON** → `n8n/email-autoreply.json`.
+
+URL u HTTP Request nodu postavi na:
+```
+http://127.0.0.1:8000/api/email
+```
+
+**Credentials → Gmail OAuth2 → Sign in with Google → Activate workflow.**
+
+> Firewall: `sudo ufw allow from YOUR-OFFICE-IP to any port 5678` — n8n UI ne treba biti javno dostupan.
+
+### Korak 7 — Widget na webshop
+
+```html
+<!-- Dodati pred </body> na webshop sajtu -->
+<script src="https://ai.bitlab.rs/public/widget.js"></script>
+```
+
+### Korak 8 — Auto-osvježavanje kataloga (cron, noću)
+
+```bash
+sudo crontab -e
+# Dodaj:
+0 3 * * * /opt/bitlab-ai-asistent/scripts/refresh_index.sh >> /var/log/bitlab-refresh.log 2>&1
+```
+
+---
+
+## 11. Kontakt
 
 **BitLab d.o.o.** · Jevrejska 37, 78000 Banja Luka  
 prodaja@bitlab.rs · 066 516 174 · webshop.bitlab.rs  

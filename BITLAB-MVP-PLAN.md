@@ -293,7 +293,7 @@ funkcionalnih bolnih tačaka koje su se pojavile tokom testiranja MVP-a:
 > engineering, prompt review). Sonnet radi obim koda i config-a. Haiku samo za
 > mehanički rad ako se pojavi.
 
-#### 7.1 Smart product matching — laptop ↔ notebook problem
+#### 7.1 Smart product matching — laptop ↔ notebook problem — ✅ ZAVRŠENO
 **Model: Opus 4.7 high effort** (~6k in / 4k out)
 
 Trenutno `tools.py:13` ima hardkodiranu regex listu serija (`ideapad|thinkbook|...`).
@@ -311,8 +311,9 @@ Ne skalira. Treba pametniji pristup:
 Plus: zatvara nalaz **S3** (eskalacija pri praznom search-u) — ako oba pokušaja vrate
 prazno, eskalira.
 
-#### 7.2 CPU-only deps — brži startup
+#### 7.2 CPU-only deps — brži startup — ✅ ZAVRŠENO
 **Model: Sonnet 4.6 medium effort** (~4k in / 3k out)
+**Rezultat:** startup pao sa **60s na 2.7s**. Lazy import + bg preload + ST<4 pin + WSL2 napomena u README.
 
 `sentence-transformers` i `faster-whisper` povlače full PyTorch wheel (~2GB sa CUDA).
 Mi smo na CPU-u — prepolovljava se memorija i import vrijeme ako se eksplicitno
@@ -336,8 +337,11 @@ instalira CPU-only torch.
    da prvi `/api/stt` ne bude lag.
 5. Dokumentovati u README-u: očekivani startup time (cilj: < 15s sa CPU-only).
 
-#### 7.3 STT fix — vraćanje na lokalni faster-whisper kao primarni
+#### 7.3 STT fix — vraćanje na lokalni faster-whisper kao primarni — ⏸ ODGOĐENO
 **Model: Sonnet 4.6 medium effort** (~3k in / 2k out)
+**Status (2026-05-01):** odgođeno da se prvo benchmark-uje trenutni Groq STT vs novi
+lokalni faster-whisper na realnim BCS audio uzorcima. Cilj: dokumentovati prednosti
+i greške jednog i drugog prije switch-a. Vraća se nakon 7.4.
 
 `/api/stt` u `main.py:313` trenutno prvo pokušava Groq Whisper, pa fallback na lokalni.
 Groq maši — preokreni redoslijed ili ukloni Groq potpuno.
@@ -350,8 +354,14 @@ Groq maši — preokreni redoslijed ili ukloni Groq potpuno.
 4. Ako medium nije dovoljan, isprobati **Voxtral** (Mistral) ili **AssemblyAI** kao
    alternative (van scope-a Sesije 7 ako traje predugo).
 
-#### 7.4 Prompt review + Haiku polish
+#### 7.4 Prompt review + Haiku polish — ✅ ZAVRŠENO
 **Model: Opus 4.7 medium effort** (~8k in / 5k out)
+**Rezultat:** `BITLAB_BASE` reorganizovan na 11 jasnih pravila (8 = konkretni okidači
+eskalacije, 9 = empty-search → escalate, 10 = pojačana injection odbrana, 11 = Haiku
+stil "kratko, direktno"). `CHAT_FORMAT` izbacio halucinaciju "izmišljaj opis".
+`VOICE_FORMAT` riješio konflikt sa `_normalize_for_tts` (brojevi ostaju brojevi).
+`EMAIL_FORMAT` dobio "Bezbjednost" sekciju + delimiter logika u `main.py`. Eval
+testovi #19/#20 dodati. Live testovi: 2/2 injection-a odbijena ✓
 
 Opus radi prompt engineering kao u Sesiji 1. Cilj: smanjiti "čudna objašnjenja" Haiku-a.
 
@@ -536,7 +546,7 @@ STT-om je neupotrebljiv.
 |---|---|---|---|---|
 | 7 | **7.2 CPU-only deps** — brži startup (cilj < 15s) | Sonnet 4.6 medium | 4k / 3k | ✅ Startup pao sa 60s na **2.7s** (lazy import + bg preload + pin ST<4) |
 | 8 | **7.1 Smart product matching** — laptop ↔ notebook | Opus 4.7 high | 6k / 4k | ✅ `category_terms.json` + 3× prefix u indeksu + search-time boost; "laptop", "notebook", "matična ploča", "powerbank", "tv" sve rade. 19/19 testova ✓ |
-| 9 | **7.3 STT fix** — lokalni faster-whisper primarni | Sonnet 4.6 medium | 3k / 2k | ☐ |
+| 9 | **7.3 STT fix** — lokalni faster-whisper primarni | Sonnet 4.6 medium | 3k / 2k | ⏸ Odgođeno za benchmark Groq vs lokalni |
 
 **Izlaz iz Faze B:** demo-ready sistem. Ako tokeni presahnu, ovo je sigurna tačka.
 
@@ -544,7 +554,7 @@ STT-om je neupotrebljiv.
 
 | # | Podzadatak | Model | Tokeni (in/out) | Status |
 |---|---|---|---|---|
-| 10 | **Sesija 6** — Migracija n8n na lokalni hosting (zatvara V1) | Sonnet 4.6 medium | ~3k / 2k* | ☐ |
+| 10 | **Sesija 6** — Migracija n8n na lokalni hosting (zatvara V1) | Sonnet 4.6 medium | ~3k / 2k* | ✅ n8n/email-autoreply.json → host.docker.internal; ngrok uklonjen iz README + HOSTING; server guide u README Sekcija 10 |
 
 \* Stvarna potrošnja je niska jer je pola posla ručno (Docker, n8n UI). Claude troši
 tokene samo na update `n8n/email-autoreply.json` URL-a i `HOSTING.md` uputstva.
@@ -554,7 +564,7 @@ tokene samo na update `n8n/email-autoreply.json` URL-a i `HOSTING.md` uputstva.
 | # | Podzadatak | Model | Tokeni (in/out) | Status |
 |---|---|---|---|---|
 | 11 | **7.6 Security backlog** — V2, V3, S1, N2, N3 (mehanički) | Sonnet 4.6 medium | 6k / 4k | ☐ |
-| 12 | **7.4 Prompt review + Haiku polish** | Opus 4.7 medium | 8k / 5k | ☐ |
+| 12 | **7.4 Prompt review + Haiku polish** | Opus 4.7 medium | 8k / 5k | ✅ 11 pravila + injection delimiter; 2/2 injection testa odbijena |
 | 13 | **7.5 Voice → naruči → email cycle** *(opciono)* | Sonnet 4.6 medium | 5k / 4k | ☐ |
 | 14 | **7.7 Code review** — pred-produkcijski sweep | Opus 4.7 high | 13k / 3k | ☐ |
 
@@ -571,7 +581,11 @@ zatvoreni. Code review čist.
    URL update. Claude se zove samo za commit izmjene `n8n/email-autoreply.json`.
 4. **Posle svake faze:** quick smoke test (`python scripts/smoke_test.py` + ručni demo flow)
    prije nego se ide u sljedeću fazu.
+5. **7.3 STT switch zahtijeva benchmark (2026-05-01 odluka):** prije nego se Groq Whisper
+   skine sa primarnog mjesta, snimaju se 5–10 BCS audio uzoraka, transkribuju oba
+   providera, dokumentuje accuracy/error tabela u `docs/stt-benchmark.md`. Tek tada
+   odluka koji ide u default.
 
 ---
 
-**Sljedeći korak: 7.2 — CPU-only deps.**
+**Trenutni korak: 7.4 — Prompt review + Haiku polish.**
