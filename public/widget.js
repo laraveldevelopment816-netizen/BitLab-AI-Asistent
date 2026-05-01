@@ -20,10 +20,13 @@
   ];
 
   // ── Voice VAD constants ──────────────────────────────────────────
-  const SPEECH_THRESHOLD    = 0.013;
+  const SPEECH_THRESHOLD    = 0.038;
+  const SPEECH_ONSET_MS     = 400;
+  const ONSET_GAP_MS        = 75;
   const SILENCE_MS          = 1100;
-  const MIN_SPEECH_MS       = 350;
-  const INTERRUPT_THRESHOLD = 0.022;
+  const MIN_SPEECH_MS       = 500;
+  const INTERRUPT_THRESHOLD = 0.10;   // visoko — samo jak glas prekida, ne zvučnik
+  const TTS_COOLDOWN_MS     = 750;    // pauza nakon TTS da reverb utihne
   const VS = {
     IDLE:'idle', LISTENING:'listening', RECORDING:'recording',
     PROCESSING:'processing', SPEAKING:'speaking',
@@ -86,6 +89,10 @@
   flex:1; overflow-y:auto; padding:14px;
   background:#F9FAFB; font-size:14px;
 }
+#bl-messages::-webkit-scrollbar { width:5px; }
+#bl-messages::-webkit-scrollbar-track { background:#EFF2F5; }
+#bl-messages::-webkit-scrollbar-thumb { background:#FDBA74; border-radius:3px; }
+#bl-messages::-webkit-scrollbar-thumb:hover { background:#FB923C; }
 .bl-msg {
   margin-bottom:10px; padding:10px 13px; border-radius:12px;
   max-width:88%; line-height:1.5; word-break:break-word;
@@ -160,91 +167,124 @@
   #bl-window { right:8px; left:8px; width:auto; bottom:88px; }
 }
 
-/* ── Voice overlay ── */
+/* ── Voice overlay — samo tamna pozadina, klik na pozadinu NE zatvara ── */
 #bl-voice-overlay {
   position:fixed; inset:0;
-  background:rgba(0,0,0,0.82);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
+  background:rgba(0,0,0,0.55);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   display:none; align-items:center; justify-content:center;
   z-index:10001;
 }
 #bl-voice-overlay.open { display:flex; }
 
+/* Panel — bijeli, identičan widgetu */
 #bl-voice-panel {
-  width:min(400px, 92vw);
-  background:linear-gradient(160deg,#0F2A47 0%,#1a3d6e 100%);
-  border-radius:28px; padding:26px 24px 32px;
-  display:flex; flex-direction:column; align-items:center;
-  color:#fff; box-shadow:0 40px 100px rgba(0,0,0,.6);
-  position:relative; gap:4px;
+  width:min(460px, 96vw); max-height:88vh;
+  background:#fff; border-radius:18px;
+  display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:0 24px 80px rgba(0,0,0,.35); color:#1F2937;
 }
-#bl-voice-close-btn {
-  position:absolute; top:16px; right:16px;
-  background:rgba(255,255,255,.12); border:none; color:#fff;
-  width:34px; height:34px; border-radius:50%; cursor:pointer;
-  font-size:18px; display:flex; align-items:center; justify-content:center;
-  line-height:1;
+
+/* Header — isti gradijent kao chat */
+#bl-vheader {
+  background:linear-gradient(135deg,#0F2A47,#1a3d6e);
+  color:#fff; padding:14px 18px;
+  display:flex; align-items:center; gap:12px; flex-shrink:0;
 }
-#bl-voice-close-btn:hover { background:rgba(255,255,255,.22); }
-
-.bl-vpanel-title { font-size:12px; opacity:.6; letter-spacing:.04em; margin-bottom:6px; }
-
 #bl-voice-orb {
-  width:120px; height:120px; border-radius:50%;
+  width:42px; height:42px; border-radius:50%; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
-  font-size:52px; margin:10px 0 18px;
-  transition:background .35s;
+  font-size:20px; transition:background .35s;
 }
-#bl-voice-orb.orb-idle       { background:rgba(255,255,255,.08); }
-#bl-voice-orb.orb-listening  { background:radial-gradient(circle,#16a34a 30%,#15803d); animation:vOrbG 2s infinite; }
-#bl-voice-orb.orb-recording  { background:radial-gradient(circle,#dc2626 30%,#991b1b); animation:vOrbR .65s infinite; }
-#bl-voice-orb.orb-processing { background:radial-gradient(circle,#7c3aed 30%,#6d28d9); animation:vSpin 1s linear infinite; }
-#bl-voice-orb.orb-speaking   { background:radial-gradient(circle,#FB923C 30%,#C2410C); animation:vOrbO .9s infinite; }
+#bl-voice-orb.orb-idle       { background:rgba(255,255,255,.15); }
+#bl-voice-orb.orb-listening  { background:radial-gradient(circle,#16a34a,#15803d); animation:vOrbG 2s infinite; }
+#bl-voice-orb.orb-recording  { background:radial-gradient(circle,#dc2626,#991b1b); animation:vOrbR .65s infinite; }
+#bl-voice-orb.orb-processing { background:radial-gradient(circle,#7c3aed,#6d28d9); animation:vSpin 1s linear infinite; }
+#bl-voice-orb.orb-speaking   { background:radial-gradient(circle,#FB923C,#C2410C); animation:vOrbO .9s infinite; }
 
 @keyframes vOrbG {
-  0%,100%{ box-shadow:0 0 0 0 rgba(22,163,74,0); transform:scale(1); }
-  50%{ box-shadow:0 0 0 22px rgba(22,163,74,.12); transform:scale(1.06); }
+  0%,100%{ box-shadow:0 0 0 0 rgba(22,163,74,0); }
+  50%{ box-shadow:0 0 0 10px rgba(22,163,74,.3); transform:scale(1.06); }
 }
 @keyframes vOrbR {
   0%,100%{ transform:scale(1); }
-  50%{ transform:scale(1.08); box-shadow:0 0 0 14px rgba(220,38,38,.14); }
+  50%{ transform:scale(1.1); box-shadow:0 0 0 8px rgba(220,38,38,.22); }
 }
 @keyframes vOrbO {
-  0%,100%{ box-shadow:0 0 0 0 rgba(251,146,60,0); transform:scale(1); }
-  50%{ box-shadow:0 0 0 20px rgba(251,146,60,.12); transform:scale(1.05); }
+  0%,100%{ box-shadow:0 0 0 0 rgba(251,146,60,0); }
+  50%{ box-shadow:0 0 0 9px rgba(251,146,60,.28); transform:scale(1.06); }
 }
 @keyframes vSpin { to{ transform:rotate(360deg); } }
 
-#bl-vstate { font-size:15px; font-weight:600; min-height:22px; text-align:center; }
-#bl-vhint  { font-size:12px; opacity:.55; min-height:18px; text-align:center; margin-bottom:10px; }
+#bl-vheader-info { flex:1; }
+.bl-vtitle { font-weight:700; font-size:15px; }
+#bl-vstate { font-size:11px; opacity:.8; margin-top:2px; min-height:16px; }
 
-#bl-vlevel-wrap {
-  width:140px; height:4px; background:rgba(255,255,255,.12);
-  border-radius:2px; overflow:hidden; margin-bottom:18px;
+#bl-voice-close-btn {
+  background:rgba(255,255,255,.15); border:none; color:#fff;
+  width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:16px;
+  display:flex; align-items:center; justify-content:center;
 }
-#bl-vlevel-bar {
+#bl-voice-close-btn:hover { background:rgba(255,255,255,.28); }
+
+/* Level bar — tanki strip ispod headera */
+#bl-vlevel-wrap { height:3px; background:#EFF2F5; flex-shrink:0; }
+#bl-vlevel-bar  {
   height:100%; width:0%;
   background:linear-gradient(90deg,#4ade80,#FB923C);
-  border-radius:2px; transition:width .05s;
+  transition:width .05s;
 }
 
+/* Transcript — isti kao chat messages area */
 #bl-vtranscript {
-  width:100%; max-height:210px; overflow-y:auto;
-  display:flex; flex-direction:column; gap:8px;
+  flex:1; overflow-y:auto; padding:14px;
+  background:#F9FAFB; font-size:14px; min-height:260px;
 }
-.bl-vt-msg {
-  padding:8px 12px; border-radius:10px;
-  font-size:13px; line-height:1.5;
+#bl-vtranscript::-webkit-scrollbar { width:5px; }
+#bl-vtranscript::-webkit-scrollbar-track { background:#EFF2F5; }
+#bl-vtranscript::-webkit-scrollbar-thumb { background:#FDBA74; border-radius:3px; }
+#bl-vtranscript::-webkit-scrollbar-thumb:hover { background:#FB923C; }
+
+/* Veliki centralni orb (vidljiv samo u vp-idle stanju) */
+#bl-vorb-center {
+  display:flex; flex-direction:column; align-items:center;
+  padding:32px 0 22px; flex-shrink:0;
 }
-.bl-vt-user { background:rgba(255,255,255,.1); text-align:right; }
-.bl-vt-ai   { background:rgba(251,146,60,.12); border:1px solid rgba(251,146,60,.2); }
-.bl-vt-ai a { color:#FDBA74; }
-.bl-vt-ai strong { font-weight:700; }
-.bl-vt-ai img {
-  width:44px; height:44px; object-fit:contain;
-  border-radius:6px; vertical-align:middle; margin-right:6px;
+#bl-vorb-large {
+  width:88px; height:88px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:40px; margin-bottom:12px; transition:background .35s;
 }
+#bl-vorb-large.orb-idle {
+  background:linear-gradient(135deg,#FB923C,#C2410C);
+  box-shadow:0 8px 24px rgba(251,146,60,.5);
+}
+#bl-vorb-large.orb-listening {
+  background:radial-gradient(circle,#16a34a,#15803d);
+  animation:vOrbG 2s infinite;
+}
+#bl-vorb-label {
+  font-size:13px; color:#64748B; text-align:center; line-height:1.5;
+}
+
+/* Panel stanje — toggle orba između centra i headera */
+#bl-voice-panel.vp-idle   #bl-voice-orb   { display:none !important; }
+#bl-voice-panel.vp-active #bl-voice-orb   { display:flex; }
+#bl-voice-panel.vp-idle   #bl-vorb-center { display:flex; }
+#bl-voice-panel.vp-active #bl-vorb-center { display:none; }
+
+/* Stop dugme — donje, crveno, čisto */
+#bl-vstop-wrap {
+  padding:12px; border-top:1px solid #E5E7EB;
+  background:#fff; display:flex; justify-content:center; flex-shrink:0;
+}
+#bl-vstop {
+  background:#FEF2F2; border:1.5px solid #FECACA;
+  color:#DC2626; border-radius:8px;
+  padding:8px 32px; font-size:14px; font-weight:600;
+  cursor:pointer; transition:background .15s, border-color .15s;
+}
+#bl-vstop:hover { background:#FEE2E2; border-color:#FCA5A5; }
 `;
 
   // ── Inject CSS & HTML ────────────────────────────────────────────
@@ -279,14 +319,24 @@
 </div>
 
 <div id="bl-voice-overlay" role="dialog" aria-label="Voice Mode">
-  <div id="bl-voice-panel">
-    <button id="bl-voice-close-btn" aria-label="Zatvori voice mode">&times;</button>
-    <div class="bl-vpanel-title">BITLAB VOICE ASISTENT</div>
-    <div id="bl-voice-orb" class="orb-idle">🎤</div>
-    <div id="bl-vstate">Inicijalizacija...</div>
-    <div id="bl-vhint">Molimo odobriti pristup mikrofonu</div>
+  <div id="bl-voice-panel" class="vp-idle">
+    <div id="bl-vheader">
+      <div id="bl-voice-orb" class="orb-idle">🎤</div>
+      <div id="bl-vheader-info">
+        <div class="bl-vtitle">BitLab Voice Asistent</div>
+        <div id="bl-vstate">Inicijalizacija...</div>
+      </div>
+      <button id="bl-voice-close-btn" aria-label="Zatvori voice mode">&times;</button>
+    </div>
+    <div id="bl-vorb-center">
+      <div id="bl-vorb-large" class="orb-idle">🎤</div>
+      <div id="bl-vorb-label">Inicijalizacija mikrofona...</div>
+    </div>
     <div id="bl-vlevel-wrap"><div id="bl-vlevel-bar"></div></div>
     <div id="bl-vtranscript"></div>
+    <div id="bl-vstop-wrap">
+      <button id="bl-vstop">&#9632;&nbsp; Zaustavi</button>
+    </div>
   </div>
 </div>
 `);
@@ -382,43 +432,56 @@
 
   // ── Voice state ──────────────────────────────────────────────────
   let vState = VS.IDLE;
+  let voiceModeActive = false;
+  let conversationStarted = false;
   let audioCtx = null, analyser = null, micStream = null;
   let recorder = null, chunks = [], silenceTimer = null, speechStart = 0;
+  let speechOnsetTimer = null;
+  let onsetGapTimer = null;
   let vadRafId = null, currentAudio = null;
 
   const vEls = {
-    orb:    document.getElementById('bl-voice-orb'),
-    status: document.getElementById('bl-vstate'),
-    hint:   document.getElementById('bl-vhint'),
-    level:  document.getElementById('bl-vlevel-bar'),
-    trans:  document.getElementById('bl-vtranscript'),
+    orb:      document.getElementById('bl-voice-orb'),
+    largOrb:  document.getElementById('bl-vorb-large'),
+    orbLabel: document.getElementById('bl-vorb-label'),
+    panel:    document.getElementById('bl-voice-panel'),
+    status:   document.getElementById('bl-vstate'),
+    level:    document.getElementById('bl-vlevel-bar'),
+    trans:    document.getElementById('bl-vtranscript'),
   };
 
   function setVoiceState(s) {
     vState = s;
-    vEls.orb.className = 'orb-' + s;
+
+    // Kad počne snimanje → permanentno pređi na mali header orb
+    if (s === VS.RECORDING || s === VS.PROCESSING || s === VS.SPEAKING) {
+      conversationStarted = true;
+    }
+    vEls.panel.className = conversationStarted ? 'vp-active' : 'vp-idle';
+
+    const stateClass = 'orb-' + s;
+    vEls.orb.className = stateClass;
+    vEls.largOrb.className = stateClass;
+
     const map = {
-      [VS.IDLE]:       ['🎤', 'Čeka...', ''],
-      [VS.LISTENING]:  ['👂', 'Slušam...', 'Govori prirodno — pauza automatski šalje'],
-      [VS.RECORDING]:  ['⏺',  'Snimam govor...', ''],
+      [VS.IDLE]:       ['🎤', 'Čeka...', 'Inicijalizacija mikrofona...'],
+      [VS.LISTENING]:  ['👂', 'Slušam...', 'Govori — pauzom šalješ poruku'],
+      [VS.RECORDING]:  ['⏺',  'Snimam...', ''],
       [VS.PROCESSING]: ['⏳', 'Razmišljam...', ''],
-      [VS.SPEAKING]:   ['🔊', 'Govorim...', 'Počni govoriti da me prekinete'],
+      [VS.SPEAKING]:   ['🔊', 'Govorim...', ''],
     };
-    const [icon, status, hint] = map[s];
+    const [icon, statusTxt, labelTxt] = map[s];
     vEls.orb.textContent = icon;
-    vEls.status.textContent = status;
-    vEls.hint.textContent = hint;
+    vEls.largOrb.textContent = icon;
+    vEls.status.textContent = statusTxt;
+    if (labelTxt !== '') vEls.orbLabel.textContent = labelTxt;
     if (s !== VS.RECORDING && s !== VS.LISTENING) vEls.level.style.width = '0%';
   }
 
   function addVoiceMsg(role, content) {
     const div = document.createElement('div');
-    div.className = 'bl-vt-msg bl-vt-' + role;
-    if (role === 'ai') {
-      div.innerHTML = renderMarkdown(content);
-    } else {
-      div.textContent = content;
-    }
+    div.className = 'bl-msg ' + (role === 'user' ? 'user' : 'bot');
+    div.innerHTML = role === 'user' ? escHtml(content) : renderMarkdown(content);
     vEls.trans.appendChild(div);
     vEls.trans.scrollTop = vEls.trans.scrollHeight;
   }
@@ -459,8 +522,28 @@
       if (vState === VS.LISTENING || vState === VS.RECORDING)
         vEls.level.style.width = Math.min(rms / 0.08 * 100, 100) + '%';
 
-      if (vState === VS.LISTENING && rms > SPEECH_THRESHOLD) {
-        startCapture();
+      if (vState === VS.LISTENING) {
+        if (rms > SPEECH_THRESHOLD) {
+          // RMS iznad praga — poništi gap timer, pokreni onset ako već ne teče
+          clearTimeout(onsetGapTimer); onsetGapTimer = null;
+          if (!speechOnsetTimer) {
+            speechOnsetTimer = setTimeout(() => {
+              speechOnsetTimer = null;
+              if (vState === VS.LISTENING) startCapture();
+            }, SPEECH_ONSET_MS);
+          }
+        } else if (speechOnsetTimer) {
+          // Kratka pauza unutar onset prozora — dozvoli do ONSET_GAP_MS
+          // (inter-fonemski razmaci u govoru su <50ms, tastatura pravi pauze >100ms)
+          if (!onsetGapTimer) {
+            onsetGapTimer = setTimeout(() => {
+              onsetGapTimer = null;
+              clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
+            }, ONSET_GAP_MS);
+          }
+        } else {
+          clearTimeout(onsetGapTimer); onsetGapTimer = null;
+        }
       } else if (vState === VS.RECORDING) {
         if (rms > SPEECH_THRESHOLD) {
           clearTimeout(silenceTimer); silenceTimer = null;
@@ -502,41 +585,50 @@
 
     if (elapsed < MIN_SPEECH_MS) {
       recorder.stop(); chunks = [];
-      setVoiceState(VS.LISTENING);
+      if (voiceModeActive) setVoiceState(VS.LISTENING);
       return;
     }
 
-    setVoiceState(VS.PROCESSING);
+    if (voiceModeActive) setVoiceState(VS.PROCESSING);
     await new Promise(resolve => { recorder.onstop = resolve; recorder.stop(); });
     const blob = new Blob(chunks, { type: recorder.mimeType });
     chunks = [];
 
+    if (!voiceModeActive) return;
+
     try {
       const transcript = await transcribeAudio(blob);
-      if (!transcript.trim()) { rearmVoice(); return; }
+      if (!transcript.trim() || !voiceModeActive) { rearmVoice(); return; }
 
-      // Add to voice transcript display
       addVoiceMsg('user', transcript);
-      // Add to shared chat history
       addMsg(transcript, 'user');
       history.push({ role: 'user', content: transcript });
 
       const { replyText, replyVoice } = await chatVoiceApi(transcript);
+      if (!voiceModeActive) return;
 
       addVoiceMsg('ai', replyText);
       addMsg(replyText, 'bot');
       history.push({ role: 'assistant', content: replyText });
 
+      if (!voiceModeActive) return;
       setVoiceState(VS.SPEAKING);
       await speakText(replyVoice || replyText);
     } catch (err) {
-      vEls.hint.textContent = 'Greška: ' + err.message;
+      if (voiceModeActive) vEls.status.textContent = 'Greška: ' + err.message;
     }
-    rearmVoice();
+    if (voiceModeActive) rearmVoice(true);  // cool-down nakon TTS
   }
 
-  function rearmVoice() {
-    if (vState === VS.IDLE) return;
+  async function rearmVoice(afterTts = false) {
+    if (!voiceModeActive) return;
+    if (afterTts) {
+      // Čekaj da reverb zvučnika utihne prije nego se ponovo sluša
+      clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
+      clearTimeout(onsetGapTimer);    onsetGapTimer = null;
+      await new Promise(r => setTimeout(r, TTS_COOLDOWN_MS));
+      if (!voiceModeActive) return;
+    }
     setVoiceState(VS.LISTENING);
   }
 
@@ -590,12 +682,17 @@
   async function openVoiceMode() {
     const overlay = document.getElementById('bl-voice-overlay');
     overlay.classList.add('open');
+    conversationStarted = false;
+    vEls.panel.className = 'vp-idle';
     vEls.trans.innerHTML = '';
     vEls.status.textContent = 'Zahtijevam pristup mikrofonu...';
-    vEls.hint.textContent = '';
     vEls.orb.className = 'orb-idle';
     vEls.orb.textContent = '🎤';
+    vEls.largOrb.className = 'orb-idle';
+    vEls.largOrb.textContent = '🎤';
+    vEls.orbLabel.textContent = 'Inicijalizacija mikrofona...';
 
+    voiceModeActive = true;
     try {
       await openMic();
       setVoiceState(VS.LISTENING);
@@ -606,7 +703,6 @@
 
       if (err.message === 'NIJE_SECURE_CONTEXT') {
         vEls.status.textContent = 'Browser blokira mikrofon';
-        vEls.hint.textContent = 'Stranica mora biti HTTPS ili localhost.';
         vEls.trans.innerHTML =
           '<div class="bl-vt-msg bl-vt-ai" style="font-size:12px;line-height:1.7">' +
           '<strong>Chrome fix:</strong><br>' +
@@ -617,19 +713,20 @@
           'style="color:#FDBA74;font-weight:700">Voice Asistent (novi tab)</a>' +
           '</div>';
       } else if (err.name === 'NotAllowedError') {
-        vEls.status.textContent = 'Dozvola odbijena';
-        vEls.hint.textContent = 'Odobri pristup mikrofonu u browser-u i pokušaj ponovo.';
+        vEls.status.textContent = 'Dozvola odbijena — odobri mikrofon u browseru';
       } else {
-        vEls.status.textContent = 'Mikrofon nedostupan';
-        vEls.hint.textContent = err.message;
+        vEls.status.textContent = 'Mikrofon nedostupan: ' + err.message;
       }
     }
   }
 
   function closeVoiceMode() {
+    voiceModeActive = false;
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     clearTimeout(silenceTimer); silenceTimer = null;
+    clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
+    clearTimeout(onsetGapTimer); onsetGapTimer = null;
     cancelAnimationFrame(vadRafId);
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     closeMic();
@@ -673,9 +770,6 @@
   document.getElementById('bl-voice-btn').addEventListener('click', () => openVoiceMode());
 
   document.getElementById('bl-voice-close-btn').addEventListener('click', () => closeVoiceMode());
+  document.getElementById('bl-vstop').addEventListener('click', () => closeVoiceMode());
 
-  // Klik na overlay izvan panela zatvara voice mode
-  document.getElementById('bl-voice-overlay').addEventListener('click', function (e) {
-    if (e.target === this) closeVoiceMode();
-  });
 })();

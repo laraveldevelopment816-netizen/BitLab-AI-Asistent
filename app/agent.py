@@ -17,8 +17,22 @@ def _parse_voice_xml(text: str) -> tuple[str, str]:
     """Izvuci <text> i <voice> sekcije iz voice channel odgovora."""
     text_m  = re.search(r'<text>(.*?)</text>',   text, re.DOTALL)
     voice_m = re.search(r'<voice>(.*?)</voice>', text, re.DOTALL)
-    reply_text  = text_m.group(1).strip()  if text_m  else text
-    reply_voice = voice_m.group(1).strip() if voice_m else text
+    reply_text = text_m.group(1).strip() if text_m else text
+
+    if voice_m:
+        reply_voice = voice_m.group(1).strip()
+    else:
+        # Claude nije vratio <voice> tag — izvuci prve 2 rečenice čistog teksta
+        raw = reply_text
+        raw = re.sub(r'\*+', '', raw)
+        raw = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', raw)
+        raw = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', raw)
+        raw = re.sub(r'#+\s*', '', raw)
+        raw = re.sub(r'^\s*[-*]\s+', '', raw, flags=re.MULTILINE)
+        raw = re.sub(r'\s+', ' ', raw).strip()
+        sentences = re.split(r'(?<=[.!?])\s+', raw)
+        reply_voice = ' '.join(sentences[:2])
+
     return reply_text, reply_voice
 
 _client: anthropic.Anthropic | None = None

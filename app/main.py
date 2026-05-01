@@ -326,6 +326,18 @@ async def api_stt(audio: UploadFile = File(...)):
         elif "wav" in audio.content_type:
             suffix = ".wav"
 
+    # Poznate Whisper halucinacije na tišini / tihu audio
+    _HALLUCINATIONS = {
+        "hvala", "hvala vam", "hvala ti", "hvala lijepo", "hvala puno",
+        "zahvaljujem", "zahvaljujem vam", "thank you", "thanks",
+        "mersi", "merci", "pretplatite se", "lajkujte",
+        ".", "..", "...", " ",
+    }
+
+    def _clean_stt(text: str) -> str:
+        t = text.strip()
+        return "" if t.lower() in _HALLUCINATIONS else t
+
     # ── Groq Whisper (brži, bolji, besplatno 7200s/dan) ──────────
     if settings.groq_api_key:
         try:
@@ -338,10 +350,12 @@ async def api_stt(audio: UploadFile = File(...)):
                         "model": settings.groq_whisper_model,
                         "language": "hr",
                         "response_format": "json",
+                        "prompt": "Razgovor s BitLab prodajnim asistentom o IT opremi.",
                     },
                 )
             if resp.status_code == 200:
-                return {"text": resp.json().get("text", "").strip(), "language": "hr", "provider": "groq"}
+                text = _clean_stt(resp.json().get("text", ""))
+                return {"text": text, "language": "hr", "provider": "groq"}
         except Exception:
             pass  # Groq nedostupan, fallback na lokalni
 
@@ -355,9 +369,14 @@ async def api_stt(audio: UploadFile = File(...)):
         model = await loop.run_in_executor(None, _get_whisper)
         segments, info = await loop.run_in_executor(
             None,
-            lambda: model.transcribe(tmp_path, language="hr", beam_size=5),
+            lambda: model.transcribe(
+                tmp_path, language="hr", beam_size=5,
+                no_speech_threshold=0.6,   # ignoriši segmente gdje Whisper sumnja da nema govora
+                log_prob_threshold=-1.0,
+            ),
         )
-        text = " ".join(seg.text.strip() for seg in segments).strip()
+        text = _clean_stt(" ".join(seg.text.strip() for seg in segments
+                                   if seg.no_speech_prob < 0.6))
     finally:
         os.unlink(tmp_path)
 
