@@ -102,17 +102,37 @@ source .venv/bin/activate
 > .\.venv\Scripts\Activate.ps1
 > ```
 
+> **⚠️ WSL2 napomena (kritično za startup brzinu):** Ako je projekat na `/mnt/c/...`
+> (Windows filesystem mounted u WSL2), Python import preko 9p protokola je **5–10× sporiji**
+> nego na native Linux FS. Sentence-transformers ima ~180 .py fajlova → import može trajati
+> 50+ sekundi.
+>
+> **Rješenje:** Drži `.venv` izvan `/mnt/c`:
+> ```bash
+> python3 -m venv ~/.venvs/bitlab
+> source ~/.venvs/bitlab/bin/activate
+> # nastavi sa pip install -e . iz projekat foldera
+> ```
+> Kod (sa `/mnt/c`) može ostati gdje jeste — samo venv treba biti na ext4.
+
 ### Instalacija zavisnosti
 
 ```bash
-# CPU-only PyTorch (~180MB, bez CUDA) — OBAVEZNO instalirati PRVO
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-
-# Ostali paketi
-pip install -e .
+# Sve odjednom: torch CPU + projekat sa pinned deps
+pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu
 ```
 
-Puna lista zavisnosti je u `pyproject.toml`.
+Šta dolazi:
+- **torch CPU** (~200MB) umjesto CUDA wheel-a (~1.2GB) — ne koristimo GPU.
+- **sentence-transformers <4** — bez `sparse_encoder` modula koji u v5.x dodaje ~30s import.
+- **faster-whisper, edge-tts** — voice mod (lazy-loaded, ne usporavaju startup).
+
+Provjera:
+```bash
+python -c "import torch; print('CUDA:', torch.cuda.is_available())"  # False ✓
+```
+
+> Opcionalno za pull iz MySQL baze: `pip install -e ".[mysql]"`
 
 ---
 

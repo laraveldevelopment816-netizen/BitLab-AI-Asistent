@@ -10,9 +10,11 @@ from typing import Any
 
 import numpy as np
 from rank_bm25 import BM25Okapi
-from sentence_transformers import SentenceTransformer
 
 from .config import settings
+
+# sentence_transformers se lazy-importuje u _embed/preload_model — povlači
+# torch + transformers (~50s na WSL2 /mnt/c). Bez ovoga startup je nepodnošljiv.
 
 _WORD_RE = re.compile(r"\w+", re.UNICODE)
 
@@ -49,16 +51,17 @@ class ProductIndex:
             for pid in self.ids
         ]
         self.bm25 = BM25Okapi(corpus)
-        self._model: SentenceTransformer | None = None
+        self._model: Any | None = None
 
     def preload_model(self) -> None:
-        """Pozovi pri startu da bi prvi upit bio brz."""
+        """Pozovi pri startu da bi prvi upit bio brz. Skupo na WSL2 (~50s)."""
         if self._model is None:
+            from sentence_transformers import SentenceTransformer
             self._model = SentenceTransformer(settings.embed_model)
 
     def _embed(self, text: str) -> np.ndarray:
         if self._model is None:
-            self._model = SentenceTransformer(settings.embed_model)
+            self.preload_model()
         return self._model.encode(
             [text],
             normalize_embeddings=True,

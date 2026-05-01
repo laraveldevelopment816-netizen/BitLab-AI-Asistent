@@ -83,7 +83,7 @@ bitlab-ai-asistent/
 
 > **Princip:** Opus radi tamo gdje je razmišljanje skupo (arhitektura, prompt engineering, security/eval review). Sonnet radi obim posla. Effort se diže samo gdje stvarno donosi razliku — inače se troši nepotrebno.
 
-### 🟢 Sesija 0 — Priprema (van Claude Code, **0 tokena**)
+### 🟢 Sesija 0 — Priprema (van Claude Code, **0 tokena**) — ✅ ZAVRŠENO
 
 Ručni rad **prije** prve sesije. Cilj: ući u sesiju sa svim ključevima, nalozima i indeksom već gotovim.
 
@@ -105,7 +105,7 @@ Ručni rad **prije** prve sesije. Cilj: ući u sesiju sa svim ključevima, naloz
 
 ---
 
-### 🟡 Sesija 1 — Arhitektura, skelet, sistem prompt
+### 🟡 Sesija 1 — Arhitektura, skelet, sistem prompt — ✅ ZAVRŠENO
 **Model: Opus 4.7 sa visokim effortom**
 **Procjena: ~25k input / 12k output tokena**
 
@@ -130,7 +130,7 @@ Opus jer ovdje su odluke najskuplje da se isprave kasnije: shape API-ja, oblik t
 
 ---
 
-### 🔵 Sesija 2 — Agent loop, alati, RAG
+### 🔵 Sesija 2 — Agent loop, alati, RAG — ✅ ZAVRŠENO
 **Model: Sonnet 4.6 sa visokim effortom**
 **Procjena: ~30k input / 20k output tokena**
 
@@ -158,7 +158,7 @@ Najveći blok obima posla. Sonnet je tu jer Opus ne donosi dovoljnu razliku za s
 
 ---
 
-### 🟣 Sesija 3 — Kanali (widget + voice + email + n8n)
+### 🟣 Sesija 3 — Kanali (widget + voice + email + n8n) — ✅ ZAVRŠENO
 **Model: Sonnet 4.6 sa srednjim effortom**
 **Procjena: ~25k input / 15k output tokena**
 
@@ -190,9 +190,13 @@ Ovo je više "pisanje fajlova po šablonu" nego razmišljanje, pa srednji effort
 
 ---
 
-### 🟠 Sesija 4 — Evali + polish + security review
+### 🟠 Sesija 4 — Evali + polish + security review — ✅ ZAVRŠENO
 **Početak: Sonnet 4.6 srednji effort. Završetak: Opus 4.7 visoki effort za review.**
 **Procjena: ~20k input / 12k output tokena**
+
+**Status (2026-05-01):** Tačke 1–4 (evali, README, unit testovi) završene. Tačka 5 (security
+review) završena — vidi `SECURITY-REVIEW.md`. Otvorene stavke (V2, V3, S1–S3, N2, N3)
+prebačene u Sesiju 7.
 
 **Sonnet dio:**
 
@@ -222,7 +226,7 @@ Ovo je više "pisanje fajlova po šablonu" nego razmišljanje, pa srednji effort
 
 ---
 
-### ⚪ Sesija 5 — Demo prep i pitch (opciono, ako ostane vremena/tokena)
+### ⚪ Sesija 5 — Demo prep i pitch (opciono, ako ostane vremena/tokena) — ✅ ZAVRŠENO
 **Model: Sonnet 4.6 sa niskim effortom (ili bez thinking-a)**
 **Procjena: ~8k input / 6k output tokena**
 
@@ -237,6 +241,168 @@ Ovo je više "pisanje fajlova po šablonu" nego razmišljanje, pa srednji effort
 
 ---
 
+### 🔴 Sesija 6 — Migracija n8n na lokalni hosting (ngrok out)
+**Model: Sonnet 4.6 sa srednjim effortom**
+**Procjena: ~10k input / 6k output tokena**
+
+Cilj: skinuti `/api/email` sa javnog interneta. Time se zatvara security nalaz **V1**
+iz `SECURITY-REVIEW.md` (otvoren `/api/email` bez auth-a). Ngrok cloud tunel se uklanja.
+
+**Šta se radi:**
+
+1. **n8n lokalno (Docker ili desktop):**
+   - `docker run -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n` — radi na `localhost:5678`.
+   - Importovati postojeći `n8n/email-autoreply.json`.
+   - Promijeniti URL u **HTTP Request** node-u sa `https://bonsai-census-daisy.ngrok-free.dev/api/email`
+     na `http://host.docker.internal:8000/api/email` (Docker) ili `http://localhost:8000/api/email`
+     (desktop n8n).
+   - IMAP/Gmail trigger ostaje isti — samo n8n→backend leg ide preko lokalne mreže.
+2. **Update `n8n/email-autoreply.json`** — eksport sa novim URL-om i commit.
+3. **Update `HOSTING.md`** — sekcija "n8n cloud + ngrok" se mijenja u "n8n lokalno (Docker)";
+   uputstvo kako se podiže prvi put.
+4. **Provjera demo flow-a:**
+   - Pošalji testni email → n8n trigger → POST na `localhost:8000/api/email` → SMTP reply.
+   - Provjeriti da Gmail OAuth credentials u n8n-u i dalje rade nakon migracije.
+5. **Ukloniti ngrok** iz `.env.example`, `HOSTING.md`, README-a (ako se igdje pominje).
+
+**Šta NE radi:** ne dirati `/api/email` Pydantic schema, ne uvoditi shared-secret header
+(nije više potrebno jer endpoint nije izložen javnom internetu).
+
+**Izlaz iz sesije 6:** `/api/email` više nije javno dostupan. n8n radi lokalno. Demo flow
+end-to-end potvrđen.
+
+---
+
+### 🟤 Sesija 7 — Quality polish: search, STT, deps, prompt review, security backlog
+**Mješoviti model — vidi raspodjelu po podzadatku.**
+**Procjena: ~45k input / 25k output tokena (ukupno za sve podzadatke)**
+
+Cilj: zatvoriti **sve preostale stavke iz `SECURITY-REVIEW.md`** + popraviti nekoliko
+funkcionalnih bolnih tačaka koje su se pojavile tokom testiranja MVP-a:
+
+- Search ne nalazi laptopove jer su u bazi indeksirani kao "notebook" / model-serije.
+- Server se diže ~1 minut (sentence-transformers + faster-whisper povlače `torch` sa
+  CUDA wheelovima koji nam ne trebaju, traje import).
+- Groq Whisper (cloud STT) maši riječi — vraćamo se na lokalni `faster-whisper`
+  ili tražimo bolju alternativu.
+- Haiku 4.5 ponekad daje čudna objašnjenja u chat odgovoru — prompt polish.
+- Voice flow "naruči" → mailto link radi, ali treba dotjerati cross-channel cycle.
+
+**Princip raspodjele modela (token štednja, imamo do sutra):**
+> Opus radi tamo gdje je pogrešna odluka skupa da se ispravi (algoritmi, prompt
+> engineering, prompt review). Sonnet radi obim koda i config-a. Haiku samo za
+> mehanički rad ako se pojavi.
+
+#### 7.1 Smart product matching — laptop ↔ notebook problem
+**Model: Opus 4.7 high effort** (~6k in / 4k out)
+
+Trenutno `tools.py:13` ima hardkodiranu regex listu serija (`ideapad|thinkbook|...`).
+Ne skalira. Treba pametniji pristup:
+
+- **Opcija A (preporučena):** generisati synonym/category dictionary **iz baze** pri
+  build-u indeksa. `scripts/embed_products.py` već čita `all-products.json` — proširiti
+  ga da ekstraktuje kategorije i top-K riječi po kategoriji u `data/category_terms.json`.
+  Pri search-u, ako query sadrži generičku riječ ("laptop", "tastatura", "monitor"),
+  query expansion dodaje stvarne termine iz baze.
+- **Opcija B:** koristiti BM25 + vektor weighting drugačije — ako BM25 vrati 0 hitova,
+  povući top-1 vektorski rezultat i njegovu kategoriju, pa re-search-ovati po kategoriji.
+- Opus odlučuje između A/B na osnovu strukture `all-products.json`.
+
+Plus: zatvara nalaz **S3** (eskalacija pri praznom search-u) — ako oba pokušaja vrate
+prazno, eskalira.
+
+#### 7.2 CPU-only deps — brži startup
+**Model: Sonnet 4.6 medium effort** (~4k in / 3k out)
+
+`sentence-transformers` i `faster-whisper` povlače full PyTorch wheel (~2GB sa CUDA).
+Mi smo na CPU-u — prepolovljava se memorija i import vrijeme ako se eksplicitno
+instalira CPU-only torch.
+
+**Šta se radi:**
+1. Update `pyproject.toml` — odvojiti optional dependencies:
+   ```toml
+   [project.optional-dependencies]
+   cpu = [
+     "torch==2.5.1+cpu ; platform_system != 'Darwin'",
+     "torch==2.5.1 ; platform_system == 'Darwin'",
+     "faster-whisper>=1.1",
+     "edge-tts>=7.0",
+   ]
+   ```
+2. Dodati `--extra-index-url https://download.pytorch.org/whl/cpu` instrukciju u README.
+3. Provjeriti da `app/main.py` lazy-importuje `faster_whisper` i `edge_tts` — već radi
+   (linija 256, 307), ali potvrditi.
+4. `lifespan` u `main.py:18` — eksplicitno preload `WhisperModel` u background task-u
+   da prvi `/api/stt` ne bude lag.
+5. Dokumentovati u README-u: očekivani startup time (cilj: < 15s sa CPU-only).
+
+#### 7.3 STT fix — vraćanje na lokalni faster-whisper kao primarni
+**Model: Sonnet 4.6 medium effort** (~3k in / 2k out)
+
+`/api/stt` u `main.py:313` trenutno prvo pokušava Groq Whisper, pa fallback na lokalni.
+Groq maši — preokreni redoslijed ili ukloni Groq potpuno.
+
+**Šta se radi:**
+1. Default = lokalni `faster-whisper` (model "small", BCS dobar).
+2. Groq ostaje kao **opt-in** preko env varijable `STT_PROVIDER=groq` (default: `local`).
+3. Eksperimentalno isprobati `faster-whisper` "medium" model — bolji za BCS po cijenu
+   ~50% sporiji. Mjeriti accuracy na 5–10 testnih audio fajlova.
+4. Ako medium nije dovoljan, isprobati **Voxtral** (Mistral) ili **AssemblyAI** kao
+   alternative (van scope-a Sesije 7 ako traje predugo).
+
+#### 7.4 Prompt review + Haiku polish
+**Model: Opus 4.7 medium effort** (~8k in / 5k out)
+
+Opus radi prompt engineering kao u Sesiji 1. Cilj: smanjiti "čudna objašnjenja" Haiku-a.
+
+**Šta se radi:**
+1. Pregled `app/system_prompts.py` — tačka po tačka:
+   - Da li su pravila u `BITLAB_BASE` redundantna ili u konfliktu?
+   - Treba li više primjera (few-shot) za chat format?
+   - Voice format — `<text>` i `<voice>` tagovi rade, ali da li XML-style limitira Haiku?
+2. Dodati pravilo S3 (eskalacija pri praznom search-u — vidi 7.1).
+3. Wrap email body u `<email_body>` tagove (zatvara nalaz **S2**).
+4. Dopisati u `BITLAB_BASE` tačku 11: stil za Haiku — "kratko, direktno, bez fillera".
+5. **Code review promptova** — provjeriti tone consistency između chat i voice (ne miješati).
+
+#### 7.5 Workflow polish — voice → naruči → email cycle
+**Model: Sonnet 4.6 medium effort** (~5k in / 4k out)
+
+Voice mod već radi mailto link. Treba doraditi:
+1. Provjeriti da `[NAZIV_PROIZVODA]` i `[CIJENA]` placeholderi se popunjavaju i u voice
+   kanalu — sad samo u chat-u.
+2. Email auto-reply template — u `EMAIL_FORMAT` možda dodati varijantu za "potvrda
+   narudžbe primljene" kad korisnik pošalje email sa namjerom kupovine.
+3. Razmotriti novi tool `prepare_order_email(product_sifra, address)` koji vraća
+   strukturirani mailto URL — eliminiše Claude rad oko URL encodinga.
+
+#### 7.6 Security backlog — V2, V3, S1, N2, N3
+**Model: Sonnet 4.6 medium effort** (~6k in / 4k out)
+
+Mehanički rad, sve specificirano u `SECURITY-REVIEW.md` (sekcija "Akcioni redoslijed"):
+1. Sužavanje CORS-a + slowapi rate-limit (V2).
+2. `max_length` na `TtsRequest`, file-size guard na `/api/stt` (V3).
+3. Provjeri/ispravi radno vrijeme u `escalate_to_human` handler-u (S1).
+4. Konstanta `app/contacts.py` (N2).
+5. Pydantic validator na `anthropic_api_key` pri startu (N3).
+
+#### 7.7 Code review (kraj Sesije 7)
+**Model: Opus 4.7 high effort** (~13k in / 3k out)
+
+Pred-produkcijski review cijelog koda — Opus pregleda sve fajlove iz `app/`, traži:
+- Race condition u `lifespan` (preload modela)?
+- Memory leak u `_whisper_model` global-u?
+- Ko može da iscrpi memoriju? (Već smo zatvorili `/api/stt` size limit u 7.6.)
+- Dead code, neiskorišteni importi.
+- Konzistentnost error handling-a (sve handler-e u `tools.py` već imaju try/except —
+  da li se i u `main.py` endpointi vraćaju strukturirani error?).
+- Output: kratak `CODE-REVIEW.md` sa nalazima i prioritetima.
+
+**Izlaz iz sesije 7:** Search radi za "laptop". Server starta < 15s. STT ima dobar accuracy.
+Svi otvoreni nalazi iz `SECURITY-REVIEW.md` zatvoreni. Sistem je produkcijski spreman.
+
+---
+
 ## 5. Sumarna tabela — model × effort × posao
 
 | Sesija | Model | Effort | Glavni izlaz | Procjena tokena (in/out) |
@@ -247,9 +413,23 @@ Ovo je više "pisanje fajlova po šablonu" nego razmišljanje, pa srednji effort
 | 3 | **Sonnet 4.6** | **Medium** | Widget, voice, email, n8n JSON | 25k / 15k |
 | 4 | **Sonnet 4.6** → **Opus 4.7** | **Med → High** | Evali, README, security review | 20k / 12k |
 | 5 | **Sonnet 4.6** | **Low / no thinking** | Demo skript, polish | 8k / 6k |
-| **Ukupno** | | | | **~108k / ~65k** |
+| 6 | **Sonnet 4.6** | **Medium** | n8n lokalni hosting (ngrok out) | 10k / 6k |
+| 7.1 | **Opus 4.7** | **High** | Smart product matching (laptop↔notebook) | 6k / 4k |
+| 7.2 | **Sonnet 4.6** | **Medium** | CPU-only deps, brži startup | 4k / 3k |
+| 7.3 | **Sonnet 4.6** | **Medium** | STT fix — lokalni faster-whisper primarni | 3k / 2k |
+| 7.4 | **Opus 4.7** | **Medium** | Prompt review + Haiku polish | 8k / 5k |
+| 7.5 | **Sonnet 4.6** | **Medium** | Voice → naruči → email cycle | 5k / 4k |
+| 7.6 | **Sonnet 4.6** | **Medium** | Security backlog (V2, V3, S1, N2, N3) | 6k / 4k |
+| 7.7 | **Opus 4.7** | **High** | Code review (kraj) | 13k / 3k |
+| **Ukupno** | | | | **~163k / ~96k** |
 
 Komotno staje u 20€ Pro budžet ako je raspoređeno preko više 5h-prozora (1 sesija po prozoru je sigurno; 2 ako su lakše).
+
+**Token štednja u Sesiji 7:** Opus radi 3 podzadatka (7.1, 7.4, 7.7 — algoritam, prompt
+engineering, code review). Sonnet radi 4 (7.2, 7.3, 7.5, 7.6 — config, STT switch,
+workflow polish, security backlog). Haiku se NE koristi za ove podzadatke — sve traži
+ili razmišljanje ili razumijevanje toka. Ako tokeni gore brzo, prvo izbaciti 7.5
+(workflow polish) — najmanje hitan.
 
 ---
 
@@ -325,3 +505,73 @@ Kritično za BitLab jer je IT/elektronika — pun SKU brojeva, brendova, skraće
 ---
 
 **Sve potvrđeno → krećemo Sesiju 1 sa Opus 4.7 / high effort.**
+
+---
+
+## 10. Redoslijed izvršavanja od MVP-a do produkcije
+
+> **Datum dogovora:** 2026-05-01
+>
+> Sesije 0–5 su završene (MVP isporučen). Sesije 6 i 7 dodate nakon Sesije 4 security
+> review-a + bugova prijavljenih iz testiranja. Ovaj redoslijed je dogovoren sa korisnikom
+> i prati se do kraja produkcijskog ciklusa.
+
+### Faza A — ✅ MVP (završeno)
+| # | Sesija | Status |
+|---|---|---|
+| 1 | Sesija 0 — Priprema | ✅ |
+| 2 | Sesija 1 — Arhitektura, skelet, system prompt | ✅ |
+| 3 | Sesija 2 — Agent loop, alati, RAG | ✅ |
+| 4 | Sesija 3 — Kanali (widget + voice + email + n8n) | ✅ |
+| 5 | Sesija 4 — Evali + polish + security review (vidi `SECURITY-REVIEW.md`) | ✅ |
+| 6 | Sesija 5 — Demo prep i pitch | ✅ |
+
+### Faza B — 🔥 Hot path: kritični demo bugovi (sad)
+
+Razlog redoslijeda: 7.2 prvi jer brzi startup ubrzava sve naredne iteracije. Onda 7.1
+zato što search koji ne nalazi laptopove razbija demo. Onda 7.3 jer voice mod sa lošim
+STT-om je neupotrebljiv.
+
+| # | Podzadatak | Model | Tokeni (in/out) | Status |
+|---|---|---|---|---|
+| 7 | **7.2 CPU-only deps** — brži startup (cilj < 15s) | Sonnet 4.6 medium | 4k / 3k | ✅ Startup pao sa 60s na **2.7s** (lazy import + bg preload + pin ST<4) |
+| 8 | **7.1 Smart product matching** — laptop ↔ notebook | Opus 4.7 high | 6k / 4k | ☐ |
+| 9 | **7.3 STT fix** — lokalni faster-whisper primarni | Sonnet 4.6 medium | 3k / 2k | ☐ |
+
+**Izlaz iz Faze B:** demo-ready sistem. Ako tokeni presahnu, ovo je sigurna tačka.
+
+### Faza C — ⏳ Security cleanup
+
+| # | Podzadatak | Model | Tokeni (in/out) | Status |
+|---|---|---|---|---|
+| 10 | **Sesija 6** — Migracija n8n na lokalni hosting (zatvara V1) | Sonnet 4.6 medium | ~3k / 2k* | ☐ |
+
+\* Stvarna potrošnja je niska jer je pola posla ručno (Docker, n8n UI). Claude troši
+tokene samo na update `n8n/email-autoreply.json` URL-a i `HOSTING.md` uputstva.
+
+### Faza D — 🧹 Polish + zatvaranje security backlog-a
+
+| # | Podzadatak | Model | Tokeni (in/out) | Status |
+|---|---|---|---|---|
+| 11 | **7.6 Security backlog** — V2, V3, S1, N2, N3 (mehanički) | Sonnet 4.6 medium | 6k / 4k | ☐ |
+| 12 | **7.4 Prompt review + Haiku polish** | Opus 4.7 medium | 8k / 5k | ☐ |
+| 13 | **7.5 Voice → naruči → email cycle** *(opciono)* | Sonnet 4.6 medium | 5k / 4k | ☐ |
+| 14 | **7.7 Code review** — pred-produkcijski sweep | Opus 4.7 high | 13k / 3k | ☐ |
+
+**Izlaz iz Faze D:** sistem produkcijski spreman. Otvoreni nalazi iz `SECURITY-REVIEW.md`
+zatvoreni. Code review čist.
+
+### Pravila za toku izvršavanja
+
+1. **Token budžet — ako tanji od 30k preostalih:** preskoči 7.5 (najmanje hitan).
+2. **Ako 7.1 (smart matching) traje predugo:** Opus se vraća i radi minimalnu varijantu
+   (proširiti hardkodiranu listu sinonima u `tools.py`); puno rješenje (category dictionary
+   iz baze) odlazi u Fazu D ili kasnije.
+3. **Sesija 6 može se odraditi i bez Claude-a:** Docker pull + n8n import + manuelni
+   URL update. Claude se zove samo za commit izmjene `n8n/email-autoreply.json`.
+4. **Posle svake faze:** quick smoke test (`python scripts/smoke_test.py` + ručni demo flow)
+   prije nego se ide u sljedeću fazu.
+
+---
+
+**Sljedeći korak: 7.2 — CPU-only deps.**

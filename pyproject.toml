@@ -10,11 +10,19 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
     "python-dotenv>=1.0",
-    "sentence-transformers>=3.3",
+    # sentence-transformers <4: stabilna API + bez sparse_encoder bloat-a koji
+    # u v5.x dodaje ~30s import vrijeme i nije nam potreban (koristimo samo encode()).
+    "sentence-transformers>=3.3,<4.0",
     "rank-bm25>=0.2.2",
     "numpy>=2.0",
     "httpx>=0.27",
     "python-multipart>=0.0.12",
+    # CPU-only torch: na CPU-u smo, CUDA wheel (~1.2GB) ne treba.
+    # Instaliraj sa: pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu
+    "torch>=2.4,<3.0",
+    # Voice/audio (lazy-loaded u main.py — ne usporavaju startup)
+    "faster-whisper>=1.1",
+    "edge-tts>=7.0",
 ]
 
 [project.optional-dependencies]
@@ -22,6 +30,9 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
     "ruff>=0.7",
+]
+mysql = [
+    "pymysql>=1.1",
 ]
 
 [build-system]

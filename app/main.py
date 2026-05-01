@@ -17,11 +17,17 @@ from .config import PROJECT_ROOT, settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Preload RAG indeks i embedding model pri startu da bi prvi upit bio brz
+    # Preload RAG indeks odmah (čisti numpy/json — brzo).
+    # Embedding model i Whisper se griju u BACKGROUND task-u — server ne čeka.
+    # Razlog: na WSL2 /mnt/c sentence-transformers import traje ~50s. Bez ovoga
+    # startup je minut+. Sa ovim, /healthz odgovara odmah, prvi /api/chat čeka model.
+    import asyncio
+
     if settings.products_index.exists() and settings.products_meta.exists():
         from .rag import get_index
-        idx = get_index()
-        idx.preload_model()
+        idx = get_index()  # učitava .npz + meta.json — brzo
+        asyncio.create_task(asyncio.to_thread(idx.preload_model))
+
     yield
 
 
