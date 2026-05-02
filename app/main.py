@@ -272,14 +272,47 @@ def _normalize_for_tts(text: str) -> str:
 @app.post("/api/tts")
 @limiter.limit("20/minute")
 async def api_tts(request: Request, req: TtsRequest):
-    """TTS via edge-tts (Microsoft Azure neuralni glasovi, bez API ključa).
-    Fallback: ElevenLabs ako je ELEVENLABS_API_KEY konfigurisan i radi.
+    """TTS — fallback chain (po prioritetu):
+       1. Azure Speech Services (zvanični API ključ — najbolji kvalitet)
+       2. ElevenLabs (ako je voice ID dostupan)
+       3. edge-tts (free, bez ključa — koristi iste Azure neural glasove neoficijalno)
     """
     import io
     import edge_tts
+    import xml.sax.saxutils as _sx
 
     voice = req.voice_id or settings.elevenlabs_voice_id or settings.tts_voice
     tts_text = _normalize_for_tts(req.text)
+
+    # ── Azure Speech Services (preferirano kad je ključ postavljen) ──
+    # SSML format sa rate prosody — isti glas (npr. hr-HR-GabrijelaNeural)
+    # kao edge-tts, ali zvanični SLA i veći stabilnost.
+    if settings.azure_speech_key and "-" in voice:
+        try:
+            # SSML: rate "+15%" → +15% u SSML notaciji
+            rate = settings.tts_rate
+            xml_lang = "-".join(voice.split("-")[:2])  # npr. "hr-HR" iz "hr-HR-GabrijelaNeural"
+            ssml = (
+                f'<speak version="1.0" xml:lang="{xml_lang}">'
+                f'<voice name="{voice}">'
+                f'<prosody rate="{rate}">{_sx.escape(tts_text)}</prosody>'
+                f'</voice></speak>'
+            )
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"https://{settings.azure_speech_region}.tts.speech.microsoft.com/cognitiveservices/v1",
+                    headers={
+                        "Ocp-Apim-Subscription-Key": settings.azure_speech_key,
+                        "Content-Type": "application/ssml+xml",
+                        "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+                        "User-Agent": "BitLab-AI-Asistent",
+                    },
+                    content=ssml.encode("utf-8"),
+                )
+            if resp.status_code == 200 and resp.content:
+                return Response(content=resp.content, media_type="audio/mpeg")
+        except Exception:
+            pass  # Azure nedostupan, padamo na ElevenLabs ili edge-tts
 
     # Ako je to ElevenLabs voice ID format (ne sadrži '-'), pokušaj ElevenLabs
     if settings.elevenlabs_api_key and "-" not in voice:
@@ -317,6 +350,51 @@ async def api_tts(request: Request, req: TtsRequest):
             buf.write(chunk["data"])
     buf.seek(0)
     return Response(content=buf.read(), media_type="audio/mpeg")
+
+
+# ── Audio decoder (WebM/OGG/MP3 → WAV PCM 16kHz mono) ────────
+# Koristi PyAV (već dependency od faster-whisper) sa bundled ffmpeg lib-ovima.
+# Azure STT REST oficijalno prihvata samo WAV i OGG-Opus — WebM kontejner odbija.
+def _decode_to_wav_pcm16(audio_bytes: bytes, target_rate: int = 16000) -> bytes | None:
+    """Dekoduje bilo koji audio format u WAV PCM s16le mono na target_rate.
+    Vraća None ako dekodiranje pukne (caller pada na fallback chain)."""
+    try:
+        import av
+        import io
+        import wave
+
+        in_buf = io.BytesIO(audio_bytes)
+        in_container = av.open(in_buf, mode="r")
+        try:
+            audio_streams = [s for s in in_container.streams if s.type == "audio"]
+            if not audio_streams:
+                return None
+            resampler = av.audio.resampler.AudioResampler(
+                format="s16", layout="mono", rate=target_rate
+            )
+            pcm_chunks: list[bytes] = []
+            for frame in in_container.decode(audio=0):
+                for resampled in resampler.resample(frame):
+                    pcm_chunks.append(bytes(resampled.planes[0]))
+            # Flush resampler — bitno za zadnji partial frame
+            for resampled in resampler.resample(None):
+                pcm_chunks.append(bytes(resampled.planes[0]))
+        finally:
+            in_container.close()
+
+        pcm_data = b"".join(pcm_chunks)
+        if not pcm_data:
+            return None
+
+        out_buf = io.BytesIO()
+        with wave.open(out_buf, "wb") as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)  # 16-bit
+            wav.setframerate(target_rate)
+            wav.writeframes(pcm_data)
+        return out_buf.getvalue()
+    except Exception:
+        return None
 
 
 # ── Whisper STT ──────────────────────────────────────────────
@@ -368,7 +446,26 @@ async def api_stt(request: Request, audio: UploadFile = File(...)):
         t = text.strip()
         return "" if t.lower() in _HALLUCINATIONS else t
 
-    # ── Groq Whisper (brži, bolji, besplatno 7200s/dan) ──────────
+    # ── Prioritet STT provider-a ─────────────────────────────────
+    # Whisper-large-v3 (Groq) → daleko bolji za bs/hr/sr od Azure STT.
+    # Azure STT je dobar za major jezike (en/de/fr) ali ima slabiji recall za
+    # južnoslavenski govor. Zato:
+    #   1. Groq Whisper (besplatno 7200s/dan, najbolji kvalitet)
+    #   2. Azure (fallback, samo ako Groq pukne ili nema ključa)
+    #   3. Lokalni faster-whisper (offline fallback)
+
+    # Domain prompt — Whisper se prima na ove riječi i bolje hvata
+    # IT termine i lokalna imena. Funkcioniše kao bias hint, ne kao filter.
+    _DOMAIN_HINT = (
+        "Razgovor sa BitLab prodajnim asistentom o IT opremi u Banja Luci. "
+        "Klijent pita za laptop, računar, monitor, SSD, RAM, GPU, miš, tastaturu, "
+        "slušalice, gaming opremu. Brendovi: ASUS, Lenovo, HP, Dell, MSI, Acer, "
+        "Intel, AMD, NVIDIA, Samsung, Kingston, Crucial, Logitech, Razer. "
+        "Cijene se daju u markama (KM), npr. 'do hiljadu maraka', 'oko 500 KM'. "
+        "Pita se i o dostavi, garanciji, plaćanju, MKD ratama, B2B fakturama."
+    )
+
+    # ── Groq Whisper-large-v3 (primarno) ──────────────────────────
     if settings.groq_api_key:
         try:
             async with httpx.AsyncClient(timeout=30) as client:
@@ -380,16 +477,48 @@ async def api_stt(request: Request, audio: UploadFile = File(...)):
                         "model": settings.groq_whisper_model,
                         "language": "hr",
                         "response_format": "json",
-                        "prompt": "Razgovor s BitLab prodajnim asistentom o IT opremi.",
+                        "prompt": _DOMAIN_HINT,
+                        "temperature": "0",  # deterministicno, manje halucinacija
                     },
                 )
             if resp.status_code == 200:
                 text = _clean_stt(resp.json().get("text", ""))
-                return {"text": text, "language": "hr", "provider": "groq"}
+                if text:
+                    return {"text": text, "language": "hr", "provider": "groq"}
         except Exception:
-            pass  # Groq nedostupan, fallback na lokalni
+            pass  # Groq nedostupan / prazan, padamo na Azure
 
-    # ── Lokalni faster-whisper (fallback) ─────────────────────────
+    # ── Azure Speech-to-Text (fallback) ──────────────────────────
+    if settings.azure_speech_key:
+        try:
+            from asyncio import get_event_loop as _loop
+            wav_bytes = await _loop().run_in_executor(None, _decode_to_wav_pcm16, data)
+            if wav_bytes:
+                async with httpx.AsyncClient(timeout=30) as client:
+                    resp = await client.post(
+                        f"https://{settings.azure_speech_region}.stt.speech.microsoft.com"
+                        "/speech/recognition/conversation/cognitiveservices/v1",
+                        params={
+                            "language": settings.azure_stt_language,
+                            "format": "simple",
+                            "profanity": "raw",
+                        },
+                        headers={
+                            "Ocp-Apim-Subscription-Key": settings.azure_speech_key,
+                            "Content-Type": "audio/wav; codecs=audio/pcm; samplerate=16000",
+                            "Accept": "application/json",
+                        },
+                        content=wav_bytes,
+                    )
+                if resp.status_code == 200:
+                    j = resp.json()
+                    text = _clean_stt(j.get("DisplayText", ""))
+                    if j.get("RecognitionStatus") == "Success" and text:
+                        return {"text": text, "language": settings.azure_stt_language[:2], "provider": "azure"}
+        except Exception:
+            pass  # Azure nedostupan, padamo na lokalni
+
+    # ── Lokalni faster-whisper (offline fallback) ────────────────
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name
@@ -401,7 +530,8 @@ async def api_stt(request: Request, audio: UploadFile = File(...)):
             None,
             lambda: model.transcribe(
                 tmp_path, language="hr", beam_size=5,
-                no_speech_threshold=0.6,   # ignoriši segmente gdje Whisper sumnja da nema govora
+                initial_prompt=_DOMAIN_HINT,
+                no_speech_threshold=0.6,
                 log_prob_threshold=-1.0,
             ),
         )

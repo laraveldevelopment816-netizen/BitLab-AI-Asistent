@@ -27,14 +27,17 @@
     { icon: 'truck',  title: 'Dostava i plaćanje', desc: 'Cijene, rokovi, MKD rate',           q: 'Kakve su opcije dostave i načini plaćanja?' },
   ];
 
-  // ── Voice VAD constants — IDENTICAL to v2 ───────────────────────
-  const SPEECH_THRESHOLD    = 0.038;
-  const SPEECH_ONSET_MS     = 400;
-  const ONSET_GAP_MS        = 75;
-  const SILENCE_MS          = 1100;
-  const MIN_SPEECH_MS       = 500;
-  const INTERRUPT_THRESHOLD = 0.10;
-  const TTS_COOLDOWN_MS     = 750;
+  // ── Voice VAD constants ─────────────────────────────────────────
+  // Strategija: kontinuirano snimanje od trenutka otvaranja mikrofona.
+  // VAD detektuje samo KRAJ govora (silence) — početak nikad ne propusti.
+  const SPEECH_THRESHOLD    = 0.025;  // RMS prag — niži = osetljiviji
+  const SILENCE_MS          = 1500;   // koliko tišine = "korisnik je završio"
+                                       // (1.5s daje vremena za "razmišljanje" pauzu
+                                       // unutar rečenice prije nego što finaliziramo)
+  const MIN_SPEECH_MS       = 500;    // minimalna dužina govora — kraće = drop
+  const MAX_RECORDING_MS    = 30000;  // safety cap — auto-finalize posle 30s
+  const INTERRUPT_THRESHOLD = 0.10;   // viši prag za prekid AI govora (anti-reverb)
+  const TTS_COOLDOWN_MS     = 750;    // pauza nakon TTS da reverb utihne
   const VS = {
     IDLE:'idle', LISTENING:'listening', RECORDING:'recording',
     PROCESSING:'processing', SPEAKING:'speaking',
@@ -486,6 +489,12 @@
   z-index: 10001; padding: 16px;
 }
 #bl-voice-overlay.open { display: flex; }
+/* Zaključaj scroll pozadinske stranice dok je modal otvoren */
+html.bl-scroll-lock,
+html.bl-scroll-lock body {
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+}
 #bl-voice-panel {
   width: 460px; max-width: 100%; max-height: 92vh;
   background: #fff; border-radius: 24px;
@@ -493,6 +502,7 @@
   display: flex; flex-direction: column; overflow: hidden;
   font-family: var(--bl-font); color: var(--bl-text);
   border: 1px solid var(--bl-line);
+  overscroll-behavior: contain;
 }
 
 #bl-vheader {
@@ -568,10 +578,30 @@
 .bl-orb--listening .bl-orb__ring,
 .bl-orb--recording .bl-orb__ring { border-color: rgba(22,163,74,.4); }
 .bl-orb--processing .bl-orb__core {
-  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-  box-shadow: 0 12px 32px rgba(124,58,237,.4), inset 0 2px 4px rgba(255,255,255,.3);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  box-shadow: 0 12px 32px rgba(37,99,235,.5), inset 0 2px 4px rgba(255,255,255,.3);
+  animation: bl-orb-throb 1.6s ease-in-out infinite;
 }
-.bl-orb--processing .bl-orb__ring { border-color: rgba(124,58,237,.4); }
+.bl-orb--processing .bl-orb__ring { border-color: rgba(37,99,235,.45); }
+@keyframes bl-orb-throb {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.05); }
+}
+/* 3-dot loader inside orb during PROCESSING (zamjenjuje mic ikonu) */
+.bl-orb__loader {
+  display: flex; gap: 7px; align-items: center; justify-content: center;
+}
+.bl-orb__loader span {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: #fff;
+  animation: bl-orb-loader-dot 1.3s infinite ease-in-out;
+}
+.bl-orb__loader span:nth-child(2) { animation-delay: 0.2s; }
+.bl-orb__loader span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bl-orb-loader-dot {
+  0%, 80%, 100% { opacity: 0.35; transform: scale(0.65); }
+  40%           { opacity: 1; transform: scale(1); }
+}
 .bl-orb--paused .bl-orb__core {
   background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
   box-shadow: 0 8px 20px rgba(100,116,139,.3);
@@ -833,9 +863,10 @@
 
   // Match a product line in markdown:
   //   - ![](image_url) **Name** — 389 KM — Na lageru — [Pogledaj](url)
-  // Leading "- " bullet, image, availability, and link are all optional.
+  //   1. ![](image_url) **Name** — 389 KM — Na lageru — [Pogledaj](url)
+  // Leading bullet ("- ", "* ", or "1. "), image, availability, link → svi optional.
   const PROD_RE = new RegExp(
-    '^\\s*(?:[-*]\\s+)?' +                                    // optional list bullet
+    '^\\s*(?:[-*]\\s+|\\d+\\.\\s+)?' +                        // optional list bullet (- * 1.)
     '(?:!\\[[^\\]]*\\]\\((https?:\\/\\/[^)]+)\\)\\s+)?' +     // 1: image url (optional)
     '\\*\\*([^*]+?)\\*\\*' +                                  // 2: name
     '\\s*[—–-]\\s*' +
@@ -959,14 +990,15 @@
   let voiceModeActive = false;
   let voicePaused = false;
   let audioCtx = null, analyser = null, micStream = null;
-  let recorder = null, chunks = [], silenceTimer = null, speechStart = 0;
-  let speechOnsetTimer = null;
-  let onsetGapTimer = null;
+  let recorder = null, chunks = [], silenceTimer = null;
+  let recorderStartTs = 0, speechDetected = false, speechStartTs = 0;
+  let maxRecordingTimer = null;
   let vadRafId = null, currentAudio = null;
 
   const vEls = {
     panel:    $('bl-voice-panel'),
     orb:      $('bl-voice-orb'),
+    core:     $('bl-vorb-large'),
     statusTxt:$('bl-vstate-text'),
     tline:    $('bl-vtline'),
     wave:     $('bl-vwave'),
@@ -975,6 +1007,8 @@
     pauseBtn: $('bl-vpause'),
     pauseLbl: $('bl-vpause-label'),
   };
+
+  const ORB_LOADER_HTML = '<span class="bl-orb__loader"><span></span><span></span><span></span></span>';
 
   const STATE_MAP = {
     [VS.IDLE]:       { mod: '',           status: 'Spremno · pritisni mikrofon', tline: '<em>Postavi pitanje glasom.</em><br><em>Govori bosanski, srpski ili hrvatski.</em>', wave: false, hint: true },
@@ -993,6 +1027,13 @@
     vEls.tline.innerHTML = cfg.tline;
     vEls.wave.classList.toggle('bl-hidden', !cfg.wave);
     vEls.hint.classList.toggle('bl-hidden', !cfg.hint);
+    setOrbCoreContent(s === VS.PROCESSING ? 'loader' : 'mic');
+  }
+
+  function setOrbCoreContent(kind) {
+    if (vEls.core.dataset.kind === kind) return;
+    vEls.core.innerHTML = (kind === 'loader') ? ORB_LOADER_HTML : I.mic;
+    vEls.core.dataset.kind = kind;
   }
 
   function setPausedState() {
@@ -1002,6 +1043,7 @@
     vEls.tline.innerHTML = '<em>Pauzirano — klikni "Nastavi" da nastaviš razgovor.</em>';
     vEls.wave.classList.add('bl-hidden');
     vEls.hint.classList.add('bl-hidden');
+    setOrbCoreContent('mic');
   }
 
   function addVoiceMsg(role, content) {
@@ -1018,7 +1060,14 @@
     if (!window.isSecureContext || !navigator.mediaDevices) {
       throw new Error('NIJE_SECURE_CONTEXT');
     }
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,    // gasi TTS reverb iz zvučnika
+        noiseSuppression: true,    // gasi pozadinski šum
+        autoGainControl: true,     // izjednačava jačinu glasa
+        channelCount: 1,
+      },
+    });
     audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
     analyser  = audioCtx.createAnalyser();
     analyser.fftSize = 512;
@@ -1040,37 +1089,60 @@
     return Math.sqrt(sum / buf.length);
   }
 
+  // ── Continuous recording: start ASAP, capture from frame 0 ──────
+  // Recorder se pokreće odmah kad smo u LISTENING stanju. Sve što
+  // korisnik kaže (uključujući "Dobar dan", prve slogove, itd.) ide
+  // u recording. VAD samo detektuje KRAJ govora (silence) i tada
+  // šalje cijeli buffer na STT.
+  function startListeningRecorder() {
+    if (!micStream || !voiceModeActive) return;
+    // Stop bilo kakav postojeći recorder (bez triggera onstop logike)
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.onstop = null;
+      try { recorder.stop(); } catch (e) {}
+    }
+    clearTimeout(silenceTimer); silenceTimer = null;
+    clearTimeout(maxRecordingTimer); maxRecordingTimer = null;
+    chunks = [];
+    speechDetected = false;
+    speechStartTs = 0;
+    recorderStartTs = Date.now();
+
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus' : 'audio/ogg;codecs=opus';
+    recorder = new MediaRecorder(micStream, { mimeType: mime });
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.start(100);
+    setVoiceState(VS.LISTENING);
+
+    // Safety cap — ako korisnik priča duže od 30s bez pauze, prisilno finalize
+    maxRecordingTimer = setTimeout(() => {
+      if (voiceModeActive && speechDetected) finalizeAndSend();
+    }, MAX_RECORDING_MS);
+  }
+
   // ── VAD loop ─────────────────────────────────────────────────────
   function startVad() {
     function tick() {
       if (voicePaused) { vadRafId = requestAnimationFrame(tick); return; }
       const rms = getRms();
+      const now = Date.now();
 
-      if (vState === VS.LISTENING) {
+      if (vState === VS.LISTENING || vState === VS.RECORDING) {
         if (rms > SPEECH_THRESHOLD) {
-          clearTimeout(onsetGapTimer); onsetGapTimer = null;
-          if (!speechOnsetTimer) {
-            speechOnsetTimer = setTimeout(() => {
-              speechOnsetTimer = null;
-              if (vState === VS.LISTENING) startCapture();
-            }, SPEECH_ONSET_MS);
+          // Govor se događa — markiraj detekciju (sticky), reset silence timer
+          if (!speechDetected) {
+            speechDetected = true;
+            speechStartTs = now;
+            if (vState === VS.LISTENING) setVoiceState(VS.RECORDING);
           }
-        } else if (speechOnsetTimer) {
-          if (!onsetGapTimer) {
-            onsetGapTimer = setTimeout(() => {
-              onsetGapTimer = null;
-              clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
-            }, ONSET_GAP_MS);
-          }
-        } else {
-          clearTimeout(onsetGapTimer); onsetGapTimer = null;
-        }
-      } else if (vState === VS.RECORDING) {
-        if (rms > SPEECH_THRESHOLD) {
           clearTimeout(silenceTimer); silenceTimer = null;
-        } else if (!silenceTimer) {
+        } else if (speechDetected && !silenceTimer) {
+          // Govor je već bio, sad tišina — počni odbrojavati silence
           silenceTimer = setTimeout(() => {
-            if (vState === VS.RECORDING) finishCapture();
+            if ((vState === VS.LISTENING || vState === VS.RECORDING) && voiceModeActive) {
+              finalizeAndSend();
+            }
           }, SILENCE_MS);
         }
       } else if (vState === VS.SPEAKING && rms > INTERRUPT_THRESHOLD) {
@@ -1084,29 +1156,18 @@
   function interruptAndListen() {
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
-    clearTimeout(silenceTimer); silenceTimer = null;
-    startCapture();
+    startListeningRecorder();
   }
 
-  // ── Recording ────────────────────────────────────────────────────
-  function startCapture() {
-    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus' : 'audio/ogg;codecs=opus';
-    recorder = new MediaRecorder(micStream, { mimeType: mime });
-    chunks = []; speechStart = Date.now();
-    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-    recorder.start(100);
-    setVoiceState(VS.RECORDING);
-  }
-
-  async function finishCapture() {
+  async function finalizeAndSend() {
     clearTimeout(silenceTimer); silenceTimer = null;
+    clearTimeout(maxRecordingTimer); maxRecordingTimer = null;
     if (!recorder || recorder.state === 'inactive') return;
-    const elapsed = Date.now() - speechStart;
 
-    if (elapsed < MIN_SPEECH_MS) {
-      recorder.stop(); chunks = [];
-      if (voiceModeActive) setVoiceState(VS.LISTENING);
+    const speechElapsed = speechDetected ? (Date.now() - speechStartTs) : 0;
+    if (!speechDetected || speechElapsed < MIN_SPEECH_MS) {
+      // Nema validnog govora — restart fresh
+      if (voiceModeActive) startListeningRecorder();
       return;
     }
 
@@ -1119,7 +1180,10 @@
 
     try {
       const transcript = await transcribeAudio(blob);
-      if (!transcript.trim() || !voiceModeActive) { rearmVoice(); return; }
+      if (!transcript.trim() || !voiceModeActive) {
+        if (voiceModeActive) startListeningRecorder();
+        return;
+      }
 
       addVoiceMsg('user', transcript);
       addMsg(transcript, 'user');
@@ -1138,18 +1202,12 @@
     } catch (err) {
       if (voiceModeActive) vEls.statusTxt.textContent = 'Greška: ' + err.message;
     }
-    if (voiceModeActive) rearmVoice(true);  // cool-down nakon TTS
-  }
 
-  async function rearmVoice(afterTts = false) {
-    if (!voiceModeActive) return;
-    if (afterTts) {
-      clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
-      clearTimeout(onsetGapTimer);    onsetGapTimer = null;
+    // Cooldown nakon TTS-a (anti-reverb), pa ponovo slušaj
+    if (voiceModeActive) {
       await new Promise(r => setTimeout(r, TTS_COOLDOWN_MS));
-      if (!voiceModeActive) return;
+      if (voiceModeActive) startListeningRecorder();
     }
-    setVoiceState(VS.LISTENING);
   }
 
   // ── Voice API calls ──────────────────────────────────────────────
@@ -1201,6 +1259,8 @@
   async function openVoiceMode() {
     const overlay = $('bl-voice-overlay');
     overlay.classList.add('open');
+    // Zaključaj scroll pozadinske stranice — modal preuzima ekran
+    document.documentElement.classList.add('bl-scroll-lock');
     voicePaused = false;
     vEls.pauseLbl.textContent = 'Pauziraj';
     vEls.pauseBtn.querySelector('svg')?.replaceWith(
@@ -1213,7 +1273,7 @@
 
     try {
       await openMic();
-      setVoiceState(VS.LISTENING);
+      startListeningRecorder();
       startVad();
     } catch (err) {
       vEls.orb.className = 'bl-orb bl-orb--paused';
@@ -1241,13 +1301,13 @@
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     clearTimeout(silenceTimer); silenceTimer = null;
-    clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
-    clearTimeout(onsetGapTimer); onsetGapTimer = null;
+    clearTimeout(maxRecordingTimer); maxRecordingTimer = null;
     cancelAnimationFrame(vadRafId);
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     closeMic();
     setVoiceState(VS.IDLE);
     $('bl-voice-overlay').classList.remove('open');
+    document.documentElement.classList.remove('bl-scroll-lock');
     vEls.trans.innerHTML = '';
     vEls.trans.classList.add('bl-hidden');
   }
@@ -1260,9 +1320,11 @@
       if (currentAudio) { currentAudio.pause(); currentAudio = null; }
       if (window.speechSynthesis) window.speechSynthesis.cancel();
       clearTimeout(silenceTimer); silenceTimer = null;
-      clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
-      clearTimeout(onsetGapTimer); onsetGapTimer = null;
-      if (recorder && recorder.state !== 'inactive') recorder.stop();
+      clearTimeout(maxRecordingTimer); maxRecordingTimer = null;
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.onstop = null;
+        try { recorder.stop(); } catch (e) {}
+      }
       setPausedState();
       vEls.pauseLbl.textContent = 'Nastavi';
       vEls.pauseBtn.querySelector('svg')?.replaceWith(
@@ -1273,7 +1335,7 @@
       vEls.pauseBtn.querySelector('svg')?.replaceWith(
         Object.assign(document.createElement('span'), { innerHTML: I.pause }).firstChild
       );
-      setVoiceState(VS.LISTENING);
+      startListeningRecorder();
     }
   }
 
