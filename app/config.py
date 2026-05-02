@@ -38,16 +38,11 @@ class Settings(BaseSettings):
     embed_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     embed_dim: int = 384  # za MiniLM-L12-v2
 
-    # ── TTS glas (edge-tts default) ───────────────────────────
+    # ── TTS glas (Azure / edge-tts) ───────────────────────────
     # Opcije za BCS: bs-BA-VesnaNeural, bs-BA-GoranNeural,
     #   hr-HR-GabrijelaNeural, sr-RS-SophieNeural, sr-RS-NicholasNeural
     tts_voice: str = "hr-HR-GabrijelaNeural"
     tts_rate: str = "+15%"
-
-    # ── ElevenLabs (opcionalno) ───────────────────────────────
-    elevenlabs_api_key: str | None = None
-    elevenlabs_voice_id: str | None = None
-    elevenlabs_model: str = "eleven_multilingual_v2"
 
     # ── Azure Speech Services — preferirani TTS + STT za bs/hr/sr ───
     # Free tier (uvijek besplatno): 500K znakova/mjesec Neural TTS,

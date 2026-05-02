@@ -269,29 +269,43 @@ def _normalize_for_tts(text: str) -> str:
     return text.strip()
 
 
+def _normalize_rate(rate: str) -> str:
+    """Normalizuj TTS rate u format koji Azure SSML i edge-tts strogo zahtijevaju.
+    Mora imati eksplicitni + ili - i % na kraju (npr. '+0%', '-10%', '+15%').
+    "0%", "0", "" → "+0%". "10%" → "+10%". "-15%" → "-15%".
+    """
+    if not rate or not str(rate).strip():
+        return "+0%"
+    s = str(rate).strip().replace(" ", "")
+    if not s.endswith("%"):
+        s += "%"
+    if not (s.startswith("+") or s.startswith("-")):
+        s = "+" + s
+    return s
+
+
 @app.post("/api/tts")
 @limiter.limit("20/minute")
 async def api_tts(request: Request, req: TtsRequest):
-    """TTS — fallback chain (po prioritetu):
-       1. Azure Speech Services (zvanični API ključ — najbolji kvalitet)
-       2. ElevenLabs (ako je voice ID dostupan)
-       3. edge-tts (free, bez ključa — koristi iste Azure neural glasove neoficijalno)
+    """TTS — fallback chain:
+       1. Azure Speech Services (oficijalno, sa AZURE_SPEECH_KEY)
+       2. edge-tts (free, koristi iste Azure neural glasove neoficijalno)
     """
     import io
     import edge_tts
     import xml.sax.saxutils as _sx
 
-    voice = req.voice_id or settings.elevenlabs_voice_id or settings.tts_voice
     tts_text = _normalize_for_tts(req.text)
+    rate = _normalize_rate(settings.tts_rate)
 
-    # ── Azure Speech Services (preferirano kad je ključ postavljen) ──
-    # SSML format sa rate prosody — isti glas (npr. hr-HR-GabrijelaNeural)
-    # kao edge-tts, ali zvanični SLA i veći stabilnost.
-    if settings.azure_speech_key and "-" in voice:
+    # Voice se očekuje u Microsoft formatu (npr. "hr-HR-GabrijelaNeural").
+    requested = (req.voice_id or "").strip()
+    voice = requested if "-" in requested else settings.tts_voice
+
+    # ── Azure Speech Services (primarno kad je ključ postavljen) ──
+    if settings.azure_speech_key:
         try:
-            # SSML: rate "+15%" → +15% u SSML notaciji
-            rate = settings.tts_rate
-            xml_lang = "-".join(voice.split("-")[:2])  # npr. "hr-HR" iz "hr-HR-GabrijelaNeural"
+            xml_lang = "-".join(voice.split("-")[:2])
             ssml = (
                 f'<speak version="1.0" xml:lang="{xml_lang}">'
                 f'<voice name="{voice}">'
@@ -311,45 +325,26 @@ async def api_tts(request: Request, req: TtsRequest):
                 )
             if resp.status_code == 200 and resp.content:
                 return Response(content=resp.content, media_type="audio/mpeg")
-        except Exception:
-            pass  # Azure nedostupan, padamo na ElevenLabs ili edge-tts
+            print(f"[TTS] Azure failed: {resp.status_code} {resp.text[:200]!r}")
+        except Exception as e:
+            print(f"[TTS] Azure exception: {e!r}")
 
-    # Ako je to ElevenLabs voice ID format (ne sadrži '-'), pokušaj ElevenLabs
-    if settings.elevenlabs_api_key and "-" not in voice:
-        try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    f"https://api.elevenlabs.io/v1/text-to-speech/{voice}",
-                    headers={
-                        "xi-api-key": settings.elevenlabs_api_key,
-                        "Content-Type": "application/json",
-                        "Accept": "audio/mpeg",
-                    },
-                    json={
-                        "text": tts_text,
-                        "model_id": settings.elevenlabs_model,
-                        "voice_settings": {
-                            "stability": 0.5,
-                            "similarity_boost": 0.75,
-                            "style": 0.3,
-                            "use_speaker_boost": True,
-                        },
-                    },
-                )
-            if resp.status_code == 200:
-                return Response(content=resp.content, media_type="audio/mpeg")
-        except Exception:
-            pass  # ElevenLabs nedostupan, padamo na edge-tts
+    # ── edge-tts (final fallback — uvijek dostupno bez ključa) ──
+    try:
+        buf = io.BytesIO()
+        communicate = edge_tts.Communicate(tts_text, voice, rate=rate)
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                buf.write(chunk["data"])
+        buf.seek(0)
+        audio_data = buf.read()
+        if audio_data:
+            return Response(content=audio_data, media_type="audio/mpeg")
+        print("[TTS] edge-tts returned empty audio")
+    except Exception as e:
+        print(f"[TTS] edge-tts exception: {e!r}")
 
-    # edge-tts — Microsoft Azure neuralni glas, besplatno, bez API ključa
-    edge_voice = voice if "-" in voice else settings.tts_voice
-    buf = io.BytesIO()
-    communicate = edge_tts.Communicate(tts_text, edge_voice, rate=settings.tts_rate)
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            buf.write(chunk["data"])
-    buf.seek(0)
-    return Response(content=buf.read(), media_type="audio/mpeg")
+    raise HTTPException(status_code=503, detail="TTS provideri nedostupni. Pokušaj ponovo.")
 
 
 # ── Audio decoder (WebM/OGG/MP3 → WAV PCM 16kHz mono) ────────

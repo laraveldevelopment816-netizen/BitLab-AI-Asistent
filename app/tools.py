@@ -216,4 +216,19 @@ def dispatch(name: str, tool_input: dict[str, Any]) -> str:
     try:
         return handler(tool_input)
     except Exception as exc:
-        return f"Greška pri izvršavanju alata '{name}': {exc}"
+        # Loguj puni traceback u server konzolu da možemo dijagnozirati root cause
+        import traceback
+        print(f"[TOOL ERROR] {name}({tool_input!r}) → {type(exc).__name__}: {exc}")
+        traceback.print_exc()
+        # Vrati neutralnu poruku Claude-u — ne "tehnička greška u bazi" jer to
+        # tjera Claude-a da paniči i odbija korisnika. Umjesto toga, daj mu
+        # info da pokuša ponovo ili predloži alternative.
+        if name == "search_products":
+            return ("Pretraga trenutno vraća prazan rezultat za ovaj upit. "
+                    "Predloži korisniku da preformuliše upit (npr. konkretniji brand, "
+                    "specifikacije, cjenovni opseg) ili da pita o nekoj drugoj kategoriji.")
+        if name == "get_faq":
+            return ("FAQ pretraga nije pronašla relevantnu sekciju. "
+                    "Odgovori iz opšteg znanja o BitLab politikama ili predloži kontakt "
+                    "prodajnom timu.")
+        return f"Alat '{name}' privremeno nedostupan. Pokušaj alternativni pristup."

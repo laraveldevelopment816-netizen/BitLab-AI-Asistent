@@ -30,13 +30,20 @@
   // ── Voice VAD constants ─────────────────────────────────────────
   // Strategija: kontinuirano snimanje od trenutka otvaranja mikrofona.
   // VAD detektuje samo KRAJ govora (silence) — početak nikad ne propusti.
-  const SPEECH_THRESHOLD    = 0.025;  // RMS prag — niži = osetljiviji
+  const SPEECH_THRESHOLD    = 0.035;  // RMS prag — viši = manje osetljiv na šum
+  const SPEECH_ONSET_MS     = 200;    // koliko sustained signal pred markiranje "speech"
+                                       // (filtrira pucketanje, kucanje, kratke šumove)
   const SILENCE_MS          = 1500;   // koliko tišine = "korisnik je završio"
                                        // (1.5s daje vremena za "razmišljanje" pauzu
                                        // unutar rečenice prije nego što finaliziramo)
   const MIN_SPEECH_MS       = 500;    // minimalna dužina govora — kraće = drop
   const MAX_RECORDING_MS    = 30000;  // safety cap — auto-finalize posle 30s
-  const INTERRUPT_THRESHOLD = 0.10;   // viši prag za prekid AI govora (anti-reverb)
+
+  // Interrupt detection (korisnik prekida AI dok govori)
+  const INTERRUPT_THRESHOLD = 0.18;   // viši prag — samo jak korisnički glas, ne reverb
+  const INTERRUPT_HOLD_MS   = 350;    // mora govoriti 350ms da prekid bude validan
+                                       // (filtrira AI glas iz zvučnika koji curi u mic)
+  const INTERRUPT_GUARD_MS  = 1000;   // ne dozvoli prekid u prvih 1s TTS-a (settle time)
   const TTS_COOLDOWN_MS     = 750;    // pauza nakon TTS da reverb utihne
   const VS = {
     IDLE:'idle', LISTENING:'listening', RECORDING:'recording',
@@ -141,6 +148,7 @@
   display: none; flex-direction: column; overflow: hidden;
   z-index: 9999; font-family: var(--bl-font);
   color: var(--bl-text); border: 1px solid var(--bl-line);
+  overscroll-behavior: contain;
 }
 #bl-window.open { display: flex; }
 
@@ -226,6 +234,7 @@
   background: var(--bl-bg-softer);
   display: flex; flex-direction: column; gap: 10px;
   font-size: 14px;
+  overscroll-behavior: contain;  /* scroll ostaje u widget-u, ne propušta na pozadinsku stranicu */
 }
 #bl-messages::-webkit-scrollbar { width: 6px; }
 #bl-messages::-webkit-scrollbar-thumb {
@@ -992,7 +1001,8 @@ html.bl-scroll-lock body {
   let audioCtx = null, analyser = null, micStream = null;
   let recorder = null, chunks = [], silenceTimer = null;
   let recorderStartTs = 0, speechDetected = false, speechStartTs = 0;
-  let maxRecordingTimer = null;
+  let maxRecordingTimer = null, speechOnsetTimer = null;
+  let interruptTimer = null, speakingStartTs = 0;
   let vadRafId = null, currentAudio = null;
 
   const vEls = {
@@ -1019,7 +1029,14 @@ html.bl-scroll-lock body {
   };
 
   function setVoiceState(s) {
+    const prev = vState;
     vState = s;
+    if (s === VS.SPEAKING && prev !== VS.SPEAKING) {
+      speakingStartTs = Date.now();
+    }
+    if (s !== VS.SPEAKING) {
+      clearTimeout(interruptTimer); interruptTimer = null;
+    }
     const cfg = STATE_MAP[s];
     vEls.orb.className = 'bl-orb' + (cfg.mod ? ' bl-orb--' + cfg.mod : '');
     vEls.panel.className = 'vp-' + s;
@@ -1103,6 +1120,7 @@ html.bl-scroll-lock body {
     }
     clearTimeout(silenceTimer); silenceTimer = null;
     clearTimeout(maxRecordingTimer); maxRecordingTimer = null;
+    clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
     chunks = [];
     speechDetected = false;
     speechStartTs = 0;
@@ -1130,23 +1148,51 @@ html.bl-scroll-lock body {
 
       if (vState === VS.LISTENING || vState === VS.RECORDING) {
         if (rms > SPEECH_THRESHOLD) {
-          // Govor se događa — markiraj detekciju (sticky), reset silence timer
-          if (!speechDetected) {
-            speechDetected = true;
-            speechStartTs = now;
-            if (vState === VS.LISTENING) setVoiceState(VS.RECORDING);
+          if (speechDetected) {
+            // Već detektovan govor — samo poništi silence timer
+            clearTimeout(silenceTimer); silenceTimer = null;
+          } else if (!speechOnsetTimer) {
+            // Sustained-onset filter: signal mora trajati SPEECH_ONSET_MS
+            // pre nego što potvrdimo da je stvarni govor (filtrira tranzijente)
+            speechOnsetTimer = setTimeout(() => {
+              speechOnsetTimer = null;
+              if ((vState === VS.LISTENING || vState === VS.RECORDING) && voiceModeActive) {
+                speechDetected = true;
+                speechStartTs = Date.now();
+                if (vState === VS.LISTENING) setVoiceState(VS.RECORDING);
+              }
+            }, SPEECH_ONSET_MS);
           }
-          clearTimeout(silenceTimer); silenceTimer = null;
-        } else if (speechDetected && !silenceTimer) {
-          // Govor je već bio, sad tišina — počni odbrojavati silence
-          silenceTimer = setTimeout(() => {
-            if ((vState === VS.LISTENING || vState === VS.RECORDING) && voiceModeActive) {
-              finalizeAndSend();
-            }
-          }, SILENCE_MS);
+        } else {
+          // RMS pao ispod praga
+          if (speechOnsetTimer && !speechDetected) {
+            // Onset nije potvrđen — bio je samo tranzijent, otkaži
+            clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
+          }
+          if (speechDetected && !silenceTimer) {
+            silenceTimer = setTimeout(() => {
+              if ((vState === VS.LISTENING || vState === VS.RECORDING) && voiceModeActive) {
+                finalizeAndSend();
+              }
+            }, SILENCE_MS);
+          }
         }
-      } else if (vState === VS.SPEAKING && rms > INTERRUPT_THRESHOLD) {
-        interruptAndListen();
+      } else if (vState === VS.SPEAKING) {
+        // Interrupt detection — viši prag + sustained hold + guard window
+        const sinceSpeaking = now - speakingStartTs;
+        if (sinceSpeaking < INTERRUPT_GUARD_MS) {
+          // Settle period — ignoriši mic dok TTS audio ne stigne do steady state
+          clearTimeout(interruptTimer); interruptTimer = null;
+        } else if (rms > INTERRUPT_THRESHOLD) {
+          if (!interruptTimer) {
+            interruptTimer = setTimeout(() => {
+              interruptTimer = null;
+              if (vState === VS.SPEAKING) interruptAndListen();
+            }, INTERRUPT_HOLD_MS);
+          }
+        } else {
+          clearTimeout(interruptTimer); interruptTimer = null;
+        }
       }
       vadRafId = requestAnimationFrame(tick);
     }
@@ -1162,6 +1208,7 @@ html.bl-scroll-lock body {
   async function finalizeAndSend() {
     clearTimeout(silenceTimer); silenceTimer = null;
     clearTimeout(maxRecordingTimer); maxRecordingTimer = null;
+    clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
     if (!recorder || recorder.state === 'inactive') return;
 
     const speechElapsed = speechDetected ? (Date.now() - speechStartTs) : 0;
@@ -1302,6 +1349,8 @@ html.bl-scroll-lock body {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     clearTimeout(silenceTimer); silenceTimer = null;
     clearTimeout(maxRecordingTimer); maxRecordingTimer = null;
+    clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
+    clearTimeout(interruptTimer); interruptTimer = null;
     cancelAnimationFrame(vadRafId);
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     closeMic();
@@ -1321,6 +1370,8 @@ html.bl-scroll-lock body {
       if (window.speechSynthesis) window.speechSynthesis.cancel();
       clearTimeout(silenceTimer); silenceTimer = null;
       clearTimeout(maxRecordingTimer); maxRecordingTimer = null;
+      clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
+      clearTimeout(interruptTimer); interruptTimer = null;
       if (recorder && recorder.state !== 'inactive') {
         recorder.onstop = null;
         try { recorder.stop(); } catch (e) {}

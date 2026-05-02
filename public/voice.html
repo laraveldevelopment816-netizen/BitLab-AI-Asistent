@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BitLab Voice Asistent</title>
+<link rel="icon" href="/public/assets/favicon.ico" type="image/x-icon">
 <style>
 :root {
   --bl-orange:      #fb6d3b;
@@ -327,12 +328,15 @@ body {
   const TTS_URL  = API_BASE + '/api/tts';
   const STT_URL  = API_BASE + '/api/stt';
 
-  // VAD constants — kontinuirano snimanje, VAD detektuje samo kraj
-  const SPEECH_THRESHOLD    = 0.018;
-  const SILENCE_MS          = 1500;  // 1.5s — daje vremena za "razmišljanje" pauzu
+  // VAD constants — kontinuirano snimanje, sustained-onset filter
+  const SPEECH_THRESHOLD    = 0.025;   // viši = manje osjetljivo na šum
+  const SPEECH_ONSET_MS     = 200;     // sustained signal pred markiranje govora
+  const SILENCE_MS          = 1500;
   const MIN_SPEECH_MS       = 350;
   const MAX_RECORDING_MS    = 30000;
-  const INTERRUPT_THRESHOLD = 0.040;
+  const INTERRUPT_THRESHOLD = 0.10;    // viši — samo jak korisnički glas
+  const INTERRUPT_HOLD_MS   = 350;
+  const INTERRUPT_GUARD_MS  = 1000;
 
   const S = { IDLE:'idle', LISTENING:'listening', RECORDING:'recording', PROCESSING:'processing', SPEAKING:'speaking' };
 
@@ -348,6 +352,7 @@ body {
   let audioCtx = null, analyser = null, micStream = null;
   let recorder = null, chunks = [], silenceTimer = null;
   let speechDetected = false, speechStartTs = 0, maxRecordingTimer = null;
+  let speechOnsetTimer = null, interruptTimer = null, speakingStartTs = 0;
   let vadRafId = null, currentAudio = null;
   let history = [];
 
@@ -376,7 +381,10 @@ body {
   const ORB_LOADER_HTML = '<span class="bl-orb__loader"><span></span><span></span><span></span></span>';
 
   function setState(s) {
+    const prev = state;
     state = s;
+    if (s === S.SPEAKING && prev !== S.SPEAKING) speakingStartTs = Date.now();
+    if (s !== S.SPEAKING) { clearTimeout(interruptTimer); interruptTimer = null; }
     const cfg = STATE_MAP[s];
     els.voice.className = 'bl-voice s-' + s;
     els.orb.className = 'bl-orb s-' + s;
@@ -552,19 +560,42 @@ body {
 
       if (state === S.LISTENING || state === S.RECORDING) {
         if (rms > SPEECH_THRESHOLD) {
-          if (!speechDetected) {
-            speechDetected = true;
-            speechStartTs = now;
-            if (state === S.LISTENING) setState(S.RECORDING);
+          if (speechDetected) {
+            clearTimeout(silenceTimer); silenceTimer = null;
+          } else if (!speechOnsetTimer) {
+            speechOnsetTimer = setTimeout(() => {
+              speechOnsetTimer = null;
+              if (state === S.LISTENING || state === S.RECORDING) {
+                speechDetected = true;
+                speechStartTs = Date.now();
+                if (state === S.LISTENING) setState(S.RECORDING);
+              }
+            }, SPEECH_ONSET_MS);
           }
-          clearTimeout(silenceTimer); silenceTimer = null;
-        } else if (speechDetected && !silenceTimer) {
-          silenceTimer = setTimeout(() => {
-            if (state !== S.IDLE) finalizeAndSend();
-          }, SILENCE_MS);
+        } else {
+          if (speechOnsetTimer && !speechDetected) {
+            clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
+          }
+          if (speechDetected && !silenceTimer) {
+            silenceTimer = setTimeout(() => {
+              if (state !== S.IDLE) finalizeAndSend();
+            }, SILENCE_MS);
+          }
         }
-      } else if (state === S.SPEAKING && rms > INTERRUPT_THRESHOLD) {
-        interruptAndListen();
+      } else if (state === S.SPEAKING) {
+        const sinceSpeaking = now - speakingStartTs;
+        if (sinceSpeaking < INTERRUPT_GUARD_MS) {
+          clearTimeout(interruptTimer); interruptTimer = null;
+        } else if (rms > INTERRUPT_THRESHOLD) {
+          if (!interruptTimer) {
+            interruptTimer = setTimeout(() => {
+              interruptTimer = null;
+              if (state === S.SPEAKING) interruptAndListen();
+            }, INTERRUPT_HOLD_MS);
+          }
+        } else {
+          clearTimeout(interruptTimer); interruptTimer = null;
+        }
       }
       vadRafId = requestAnimationFrame(tick);
     }
