@@ -49,6 +49,16 @@ class Settings(BaseSettings):
     elevenlabs_voice_id: str | None = None
     elevenlabs_model: str = "eleven_multilingual_v2"
 
+    # ── Azure Speech Services — preferirani TTS + STT za bs/hr/sr ───
+    # Free tier (uvijek besplatno): 500K znakova/mjesec Neural TTS,
+    #                                5h/mjesec STT.
+    # Setup: portal.azure.com → "Speech Services" → Keys & Endpoint.
+    # Region npr. "westeurope", "swedencentral", "germanywestcentral".
+    azure_speech_key: str | None = None
+    azure_speech_region: str = "westeurope"
+    # Jezik koji Azure STT očekuje (hr-HR pokriva i bs/sr Latinica dovoljno dobro).
+    azure_stt_language: str = "hr-HR"
+
     # ── Groq Whisper (opcionalno — besplatno 7200s/dan) ───────
     groq_api_key: str | None = None
     groq_whisper_model: str = "whisper-large-v3-turbo"

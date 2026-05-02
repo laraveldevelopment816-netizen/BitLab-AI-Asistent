@@ -5,395 +5,626 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BitLab Voice Asistent</title>
 <style>
+:root {
+  --bl-orange:      #fb6d3b;
+  --bl-orange-600:  #ea5c2a;
+  --bl-orange-700:  #e0511f;
+  --bl-orange-50:   #fff5f0;
+  --bl-orange-100:  #ffe8db;
+  --bl-orange-200:  #fed1bb;
+  --bl-navy:        #1a1a2e;
+  --bl-navy-600:    #2a2a3e;
+  --bl-bg-soft:     #f7f8fa;
+  --bl-bg-softer:   #fafbfc;
+  --bl-line:        #ececf0;
+  --bl-line-strong: #d9d9e0;
+  --bl-text:        #1a1a2e;
+  --bl-text-2:      #565666;
+  --bl-text-3:      #8b8b9a;
+  --bl-success:     #16a34a;
+  --bl-danger:      #dc2626;
+  --bl-danger-bg:   #fef2f2;
+  --bl-shadow-1:    0 1px 2px rgba(26,26,46,.04), 0 1px 1px rgba(26,26,46,.03);
+  --bl-shadow-3:    0 16px 40px rgba(26,26,46,.12), 0 4px 12px rgba(26,26,46,.06);
+  --bl-shadow-orange: 0 8px 24px rgba(251,109,59,.32), 0 2px 6px rgba(251,109,59,.18);
+  --bl-font:        "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: linear-gradient(135deg, #1a1a2e 0%, #2a2a3e 100%);
-  min-height: 100vh; color: #1E293B; padding: 20px;
+  font-family: var(--bl-font);
+  background: linear-gradient(135deg, var(--bl-navy) 0%, var(--bl-navy-600) 100%);
+  min-height: 100vh; color: var(--bl-text); padding: 24px;
+  display: flex; align-items: center; justify-content: center;
 }
-.container {
-  max-width: 620px; margin: 0 auto;
-  background: white; border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.3); overflow: hidden;
-}
-header {
-  background: linear-gradient(135deg, #fb6d3b 0%, #eA5c2a 100%);
-  color: white; padding: 18px 22px; text-align: center;
-}
-header h1 { font-size: 20px; margin-bottom: 3px; }
-header p  { font-size: 12px; opacity: .9; }
-.badge {
-  display: inline-block; background: rgba(255,255,255,.2);
-  padding: 3px 10px; border-radius: 20px;
-  font-size: 11px; margin-top: 6px; font-weight: bold;
+.bl-voice {
+  width: 460px; max-width: 100%;
+  background: #fff; border-radius: 24px;
+  box-shadow: var(--bl-shadow-3);
+  border: 1px solid var(--bl-line);
+  display: flex; flex-direction: column;
+  overflow: hidden;
 }
 
-/* ── Mic strip ── */
-.mic-strip {
-  padding: 20px 24px 14px; text-align: center;
-  border-bottom: 1px solid #E2E8F0;
+/* Header */
+.bl-vhead {
+  background: linear-gradient(135deg, var(--bl-navy) 0%, var(--bl-navy-600) 100%);
+  color: #fff; padding: 16px 18px;
+  display: flex; align-items: center; gap: 12px;
 }
-.mic-btn {
-  width: 90px; height: 90px; border-radius: 50%;
-  border: none; color: white; font-size: 36px;
-  cursor: pointer; display: inline-block;
-  transition: transform .15s;
-  background: linear-gradient(135deg, #fb6d3b, #eA5c2a);
-  box-shadow: 0 6px 20px rgba(251,109,59,.45);
-  margin-bottom: 10px;
+.bl-vhead__avatar {
+  width: 36px; height: 36px; border-radius: 12px;
+  background: rgba(251,109,59,.18);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: var(--bl-orange);
 }
-.mic-btn:hover  { transform: scale(1.05); }
-.mic-btn:active { transform: scale(.95); }
-.mic-btn:disabled { opacity:.35; cursor:default; transform:none!important; }
-
-.mic-btn.state-listening  { background:linear-gradient(135deg,#16a34a,#15803d); box-shadow:0 6px 20px rgba(22,163,74,.4); animation:pulseG 1.8s infinite; }
-.mic-btn.state-recording  { background:linear-gradient(135deg,#dc2626,#991b1b); box-shadow:0 6px 20px rgba(220,38,38,.5); animation:pulseR .6s infinite; }
-.mic-btn.state-processing { background:linear-gradient(135deg,#7c3aed,#6d28d9); animation:spin 1s linear infinite; }
-.mic-btn.state-speaking   { background:linear-gradient(135deg,#2563eb,#1d4ed8); box-shadow:0 6px 20px rgba(37,99,235,.4); animation:pulseB .9s infinite; }
-
-@keyframes pulseG { 0%,100%{box-shadow:0 6px 20px rgba(22,163,74,.4)}  50%{box-shadow:0 6px 28px rgba(22,163,74,.8),0 0 0 14px rgba(22,163,74,.1)} }
-@keyframes pulseR { 0%,100%{transform:scale(1)}  50%{transform:scale(1.04);box-shadow:0 6px 28px rgba(220,38,38,.8),0 0 0 10px rgba(220,38,38,.12)} }
-@keyframes pulseB { 0%,100%{box-shadow:0 6px 20px rgba(37,99,235,.4)} 50%{box-shadow:0 6px 28px rgba(37,99,235,.7),0 0 0 10px rgba(37,99,235,.1)} }
-@keyframes spin   { to{transform:rotate(360deg)} }
-
-.level-wrap { height:5px; background:#E2E8F0; border-radius:3px; margin:0 auto 8px; width:140px; overflow:hidden; }
-.level-bar  { height:100%; width:0%; border-radius:3px; background:linear-gradient(90deg,#22c55e,#fb6d3b); transition:width .05s; }
-.status { color:#475569; font-size:13px; font-style:italic; min-height:20px; }
-.status.active   { color:#16a34a; font-style:normal; font-weight:600; }
-.status.speaking { color:#2563eb; font-style:normal; font-weight:600; }
-.hint { font-size:11px; color:#94a3b8; margin-top:4px; }
-
-/* ── Conversation ── */
-.conversation {
-  padding: 14px 18px; max-height: 440px; overflow-y: auto;
-  background: #F8FAFC;
+.bl-vhead__avatar svg { width: 18px; height: 18px; }
+.bl-vhead__info { flex: 1; min-width: 0; }
+.bl-vhead__title { font-size: 14px; font-weight: 700; }
+.bl-vhead__state {
+  font-size: 11px; opacity: .75; margin-top: 2px;
+  display: flex; align-items: center; gap: 6px; min-height: 14px;
 }
-.message {
-  margin-bottom: 12px; padding: 10px 14px;
-  border-radius: 12px; font-size: 14px; line-height: 1.55;
+.bl-vstate-dot {
+  width: 6px; height: 6px; border-radius: 99px;
+  background: var(--bl-orange);
+  box-shadow: 0 0 0 3px rgba(251,109,59,.25);
 }
-.message.user { background:#DBEAFE; border-left:4px solid #3B82F6; }
-.message.ai   { background:#fff; border:1px solid #E5E7EB; border-left:4px solid #fb6d3b; }
-.message .label { font-weight:700; font-size:11px; text-transform:uppercase; margin-bottom:5px; color:#475569; }
+.bl-voice.s-listening .bl-vstate-dot,
+.bl-voice.s-recording .bl-vstate-dot {
+  background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.25);
+}
 
-/* Markdown inside .ai */
-.message.ai strong { font-weight:700; }
-.message.ai a      { color:#fb6d3b; text-decoration:none; }
-.message.ai a:hover{ text-decoration:underline; }
-.message.ai ul, .message.ai ol { padding-left:18px; margin:4px 0; }
-.message.ai li { margin-bottom:3px; }
-.message.ai img {
-  width:52px; height:52px; object-fit:contain;
-  border-radius:6px; border:1px solid #E5E7EB;
-  background:#F9FAFB; vertical-align:middle;
-  margin-right:7px; flex-shrink:0;
+/* Stage with orb */
+.bl-vstage {
+  padding: 40px 24px 28px;
+  display: flex; flex-direction: column; align-items: center; gap: 22px;
+  background: linear-gradient(180deg, #fff 0%, var(--bl-bg-softer) 100%);
 }
-.product-line { display:flex; align-items:center; margin-bottom:5px; }
+.bl-orb {
+  position: relative; width: 160px; height: 160px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.bl-orb__ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1.5px solid var(--bl-orange-200);
+  opacity: 0;
+}
+.bl-orb__ring:nth-child(1) { animation: bl-orb-ring 3s ease-out infinite; }
+.bl-orb__ring:nth-child(2) { animation: bl-orb-ring 3s ease-out infinite 1s; }
+.bl-orb__ring:nth-child(3) { animation: bl-orb-ring 3s ease-out infinite 2s; }
+@keyframes bl-orb-ring {
+  0%   { transform: scale(.7); opacity: 0; }
+  20%  { opacity: .55; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+.bl-orb__core {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--bl-orange) 0%, var(--bl-orange-600) 100%);
+  box-shadow:
+    0 12px 32px rgba(251,109,59,.45),
+    inset 0 2px 4px rgba(255,255,255,.3),
+    inset 0 -4px 12px rgba(224,81,31,.4);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; cursor: pointer; border: none;
+  position: relative; z-index: 1;
+  transition: background .3s, box-shadow .3s, transform .15s;
+}
+.bl-orb__core:hover { transform: scale(1.04); }
+.bl-orb__core:active { transform: scale(.96); }
+.bl-orb__core svg { width: 38px; height: 38px; }
+.bl-orb.s-listening .bl-orb__core,
+.bl-orb.s-recording .bl-orb__core {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  box-shadow: 0 12px 32px rgba(22,163,74,.42), inset 0 2px 4px rgba(255,255,255,.3);
+}
+.bl-orb.s-listening .bl-orb__ring,
+.bl-orb.s-recording .bl-orb__ring { border-color: rgba(22,163,74,.4); }
+.bl-orb.s-processing .bl-orb__core {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  box-shadow: 0 12px 32px rgba(124,58,237,.4), inset 0 2px 4px rgba(255,255,255,.3);
+}
+.bl-orb.s-processing .bl-orb__ring { border-color: rgba(124,58,237,.4); }
 
-/* ── Error ── */
-.error {
-  background:#FEE2E2; border-left:4px solid #DC2626;
-  color:#7F1D1D; padding:8px 16px; margin:6px 18px;
-  border-radius:8px; font-size:13px; display:none;
+.bl-vtline {
+  font-size: 18px; font-weight: 500;
+  color: var(--bl-text); text-align: center; line-height: 1.4;
+  letter-spacing: -.01em; max-width: 380px; min-height: 50px;
 }
-.error.show { display:block; }
+.bl-vtline em { color: var(--bl-text-3); font-style: normal; font-weight: 400; }
 
-footer {
-  background:#F1F5F9; padding:10px 18px;
-  font-size:11px; color:#64748B; text-align:center;
-  line-height:1.6; border-top:1px solid #E2E8F0;
+.bl-wave {
+  display: flex; align-items: center; gap: 3px;
+  height: 36px; min-height: 36px;
 }
-footer strong { color:#fb6d3b; }
+.bl-wave span {
+  width: 3px; border-radius: 2px;
+  background: var(--bl-orange); opacity: .85;
+  animation: bl-wave 1.2s ease-in-out infinite;
+}
+.bl-voice.s-speaking .bl-wave span { background: #2563eb; }
+@keyframes bl-wave {
+  0%,100% { height: 6px; }
+  50%     { height: 32px; }
+}
+
+.bl-vhint {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--bl-text-3);
+  background: var(--bl-bg-soft);
+  padding: 8px 14px; border-radius: 99px;
+  border: 1px solid var(--bl-line);
+}
+.bl-vhint svg { width: 12px; height: 12px; }
+.bl-hidden { display: none !important; }
+
+/* Transcript */
+.bl-vtranscript {
+  padding: 0 18px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: 240px; overflow-y: auto;
+}
+.bl-vtranscript::-webkit-scrollbar { width: 5px; }
+.bl-vtranscript::-webkit-scrollbar-thumb {
+  background: var(--bl-line-strong); border-radius: 99px;
+}
+.bl-msg {
+  max-width: 86%; padding: 10px 14px; border-radius: 16px;
+  font-size: 13px; line-height: 1.5; word-break: break-word;
+}
+.bl-msg.bot {
+  background: #fff; border: 1px solid var(--bl-line);
+  color: var(--bl-text); box-shadow: var(--bl-shadow-1);
+  border-bottom-left-radius: 6px; align-self: flex-start;
+}
+.bl-msg.user {
+  background: linear-gradient(135deg, var(--bl-orange) 0%, var(--bl-orange-600) 100%);
+  color: #fff; align-self: flex-end;
+  border-bottom-right-radius: 6px;
+  box-shadow: 0 2px 6px rgba(251,109,59,.25);
+}
+.bl-msg.bot a { color: var(--bl-orange-700); font-weight: 600; }
+.bl-msg.bot strong { font-weight: 700; }
+
+/* Product card */
+.bl-prod {
+  display: flex; gap: 12px; padding: 10px;
+  background: var(--bl-bg-soft);
+  border: 1px solid var(--bl-line);
+  border-radius: 12px; margin-top: 8px;
+  text-decoration: none; color: inherit;
+  transition: border-color .15s, transform .15s;
+}
+.bl-prod:hover { border-color: var(--bl-orange-200); transform: translateY(-1px); }
+.bl-prod__img {
+  width: 56px; height: 56px; flex-shrink: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--bl-orange-100), var(--bl-orange-50));
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid #fff; overflow: hidden;
+}
+.bl-prod__img-real { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.bl-prod__body { flex: 1; min-width: 0; }
+.bl-prod__name {
+  font-size: 13px; font-weight: 600; color: var(--bl-text);
+  line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bl-prod__row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 6px; gap: 8px;
+}
+.bl-prod__price {
+  font-size: 14px; font-weight: 700; color: var(--bl-orange);
+  font-variant-numeric: tabular-nums;
+}
+.bl-prod__avail {
+  font-size: 10px; color: var(--bl-success);
+  display: flex; align-items: center; gap: 3px; font-weight: 600;
+}
+.bl-prod__avail svg { width: 11px; height: 11px; }
+.bl-prod__avail--order { color: var(--bl-text-3); }
+
+/* Error */
+.bl-err {
+  background: var(--bl-danger-bg); border: 1px solid #fecaca;
+  color: var(--bl-danger); padding: 8px 14px; margin: 0 18px 12px;
+  border-radius: 8px; font-size: 13px; display: none;
+}
+.bl-err.show { display: block; }
+
+/* Footer */
+.bl-vfooter {
+  padding: 10px 14px 12px; background: #fff;
+  border-top: 1px solid var(--bl-line);
+  font-size: 10px; color: var(--bl-text-3);
+  text-align: center; font-weight: 500; letter-spacing: .04em;
+}
+.bl-vfooter strong { color: var(--bl-orange); font-weight: 700; }
+
+@media (max-width: 480px) {
+  body { padding: 0; align-items: stretch; }
+  .bl-voice { width: 100%; max-width: 100%; min-height: 100vh; border-radius: 0; }
+  .bl-orb { width: 140px; height: 140px; }
+  .bl-orb__core { width: 84px; height: 84px; }
+  .bl-orb__core svg { width: 32px; height: 32px; }
+}
 </style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <h1>&#127908; BitLab Voice Asistent</h1>
-    <p>Pritisni &rarr; govori &rarr; pauziraj &rarr; AI odgovara glasom i tekstom</p>
-    <div class="badge">Whisper (Groq) &middot; Claude Haiku &middot; Vesna bs-BA</div>
-  </header>
 
-  <div class="error" id="error"></div>
-
-  <div class="mic-strip">
-    <button class="mic-btn" id="micBtn">&#127908;</button>
-    <div class="level-wrap"><div class="level-bar" id="levelBar"></div></div>
-    <div class="status" id="status">Pritisni mikrofon da počneš razgovor</div>
-    <div class="hint" id="hint">Govori dok AI govori da ga prekinete</div>
+<div class="bl-voice s-idle" id="voice">
+  <div class="bl-vhead">
+    <div class="bl-vhead__avatar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>
+    </div>
+    <div class="bl-vhead__info">
+      <div class="bl-vhead__title">BitLab Voice Asistent</div>
+      <div class="bl-vhead__state">
+        <span class="bl-vstate-dot"></span><span id="status">Pritisni mikrofon da počneš</span>
+      </div>
+    </div>
   </div>
 
-  <div class="conversation" id="conversation"></div>
+  <div class="bl-err" id="error"></div>
 
-  <footer>
-    <strong>STT:</strong> Groq whisper-large-v3 &middot;
-    <strong>LLM:</strong> Claude Haiku &middot;
-    <strong>TTS:</strong> Microsoft Vesna bs-BA
-  </footer>
+  <div class="bl-vstage">
+    <div class="bl-orb s-idle" id="orb">
+      <span class="bl-orb__ring"></span>
+      <span class="bl-orb__ring"></span>
+      <span class="bl-orb__ring"></span>
+      <button class="bl-orb__core" id="micBtn" aria-label="Mikrofon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>
+      </button>
+    </div>
+
+    <div class="bl-vtline" id="tline">
+      <em>Postavi pitanje glasom.</em><br>
+      <em>Govori bosanski, srpski ili hrvatski.</em>
+    </div>
+
+    <div class="bl-wave bl-hidden" id="wave"></div>
+
+    <div class="bl-vhint" id="hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+      Mikrofon se aktivira tek na klik
+    </div>
+  </div>
+
+  <div class="bl-vtranscript bl-hidden" id="conversation"></div>
+
+  <div class="bl-vfooter">
+    <strong>STT:</strong> Groq whisper-large-v3 ·
+    <strong>LLM:</strong> Claude Haiku ·
+    <strong>TTS:</strong> Microsoft Vesna
+  </div>
 </div>
 
 <script>
-const API_BASE = window.BITLAB_API || '';
-const CHAT_URL = API_BASE + '/api/chat';
-const TTS_URL  = API_BASE + '/api/tts';
-const STT_URL  = API_BASE + '/api/stt';
+(function () {
+  const API_BASE = window.BITLAB_API || '';
+  const CHAT_URL = API_BASE + '/api/chat';
+  const TTS_URL  = API_BASE + '/api/tts';
+  const STT_URL  = API_BASE + '/api/stt';
 
-const SPEECH_THRESHOLD   = 0.013;
-const SILENCE_MS         = 1100;
-const MIN_SPEECH_MS      = 350;
-const INTERRUPT_THRESHOLD = 0.022;  // viši prag za interrupt tokom govora
+  // VAD constants — IDENTICAL to v2 voice.html
+  const SPEECH_THRESHOLD    = 0.013;
+  const SILENCE_MS          = 1100;
+  const MIN_SPEECH_MS       = 350;
+  const INTERRUPT_THRESHOLD = 0.022;
 
-const S = { IDLE:'idle', LISTENING:'listening', RECORDING:'recording', PROCESSING:'processing', SPEAKING:'speaking' };
+  const S = { IDLE:'idle', LISTENING:'listening', RECORDING:'recording', PROCESSING:'processing', SPEAKING:'speaking' };
 
-let state = S.IDLE;
-let audioCtx=null, analyser=null, micStream=null;
-let recorder=null, chunks=[], silenceTimer=null, speechStart=0;
-let vadRafId=null, currentAudio=null;
-let history = [];
-
-const els = {
-  micBtn: document.getElementById('micBtn'),
-  status: document.getElementById('status'),
-  hint:   document.getElementById('hint'),
-  conv:   document.getElementById('conversation'),
-  error:  document.getElementById('error'),
-  level:  document.getElementById('levelBar'),
-};
-
-// ── UI ─────────────────────────────────────────────────────────
-function setState(s) {
-  state = s;
-  els.micBtn.className = 'mic-btn state-' + s;
-  const map = {
-    [S.IDLE]:       ['🎤', 'Pritisni mikrofon da počneš razgovor', ''],
-    [S.LISTENING]:  ['👂', 'Slušam...', 'Govori, pauza će automatski poslati', 'active'],
-    [S.RECORDING]:  ['⏺',  'Snimam govor...', '', 'active'],
-    [S.PROCESSING]: ['⏳', 'Razmišljam...', '', ''],
-    [S.SPEAKING]:   ['🔊', 'Gabriela govori...', 'Počni govoriti da je prekinete', 'speaking'],
-  };
-  const [icon, status, hint, cls=''] = map[s];
-  els.micBtn.textContent = icon;
-  els.status.textContent = status;
-  els.status.className   = 'status ' + cls;
-  els.hint.textContent   = hint;
-  if (s !== S.RECORDING && s !== S.LISTENING) els.level.style.width = '0%';
-}
-
-function showError(msg) {
-  els.error.textContent = '⚠ ' + msg;
-  els.error.classList.add('show');
-  setTimeout(() => els.error.classList.remove('show'), 7000);
-}
-
-// ── Markdown renderer ──────────────────────────────────────────
-function renderMarkdown(text) {
-  return text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    // Slike — inline, bez wrappera
-    .replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g,
-      '<img src="$2" alt="$1" loading="lazy" onerror="this.style.display=\'none\'">')
-    // Linkovi — http/https i mailto:
-    .replace(/\[([^\]]+)\]\(((?:https?|mailto):[^)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener">$1</a>')
-    // Liste
-    .replace(/^[ \t]*[-*]\s+(.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>[\s\S]*<\/li>)/g, '<ul>$1</ul>')
-    .replace(/\n/g,'<br>');
-}
-
-function addMsg(role, content) {
-  const div = document.createElement('div');
-  div.className = 'message ' + role;
-  const lbl = document.createElement('div');
-  lbl.className = 'label';
-  lbl.textContent = role === 'user' ? 'Vi' : 'BitLab AI';
-  const cnt = document.createElement('div');
-  if (role === 'ai') {
-    cnt.innerHTML = renderMarkdown(content);
-  } else {
-    cnt.textContent = content;
+  // Build wave bars
+  const waveEl = document.getElementById('wave');
+  for (let i = 0; i < 15; i++) {
+    const b = document.createElement('span');
+    b.style.animationDelay = (i * 0.08).toFixed(2) + 's';
+    waveEl.appendChild(b);
   }
-  div.appendChild(lbl); div.appendChild(cnt);
-  els.conv.appendChild(div);
-  els.conv.scrollTop = els.conv.scrollHeight;
-}
 
-// ── Audio ──────────────────────────────────────────────────────
-async function openMic() {
-  micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
-  analyser  = audioCtx.createAnalyser();
-  analyser.fftSize = 512;
-  audioCtx.createMediaStreamSource(micStream).connect(analyser);
-}
+  let state = S.IDLE;
+  let audioCtx = null, analyser = null, micStream = null;
+  let recorder = null, chunks = [], silenceTimer = null, speechStart = 0;
+  let vadRafId = null, currentAudio = null;
+  let history = [];
 
-function closeMic() {
-  cancelAnimationFrame(vadRafId);
-  micStream?.getTracks().forEach(t => t.stop()); micStream = null;
-  audioCtx?.close(); audioCtx = null; analyser = null;
-}
+  const els = {
+    voice:   document.getElementById('voice'),
+    orb:     document.getElementById('orb'),
+    micBtn:  document.getElementById('micBtn'),
+    status:  document.getElementById('status'),
+    tline:   document.getElementById('tline'),
+    wave:    document.getElementById('wave'),
+    hint:    document.getElementById('hint'),
+    conv:    document.getElementById('conversation'),
+    error:   document.getElementById('error'),
+  };
 
-function getRms() {
-  if (!analyser) return 0;
-  const buf = new Float32Array(analyser.fftSize);
-  analyser.getFloatTimeDomainData(buf);
-  let sum = 0; for (const v of buf) sum += v * v;
-  return Math.sqrt(sum / buf.length);
-}
+  const STATE_MAP = {
+    [S.IDLE]:       { status: 'Pritisni mikrofon da počneš',  tline: '<em>Postavi pitanje glasom.</em><br><em>Govori bosanski, srpski ili hrvatski.</em>', wave: false, hint: true },
+    [S.LISTENING]:  { status: 'Slušam...',                    tline: '<em>Govori — pauza će automatski poslati</em>',                                       wave: false, hint: true },
+    [S.RECORDING]:  { status: 'Snimam govor...',              tline: '<em>Govori...</em>',                                                                  wave: true,  hint: false },
+    [S.PROCESSING]: { status: 'Razmišljam...',                tline: '<em>Tražim odgovor...</em>',                                                          wave: false, hint: false },
+    [S.SPEAKING]:   { status: 'Asistent govori...',           tline: '<em>Govori da prekineš</em>',                                                         wave: true,  hint: false },
+  };
 
-// ── VAD ────────────────────────────────────────────────────────
-function startVad() {
-  function tick() {
-    const rms = getRms();
+  function setState(s) {
+    state = s;
+    const cfg = STATE_MAP[s];
+    els.voice.className = 'bl-voice s-' + s;
+    els.orb.className = 'bl-orb s-' + s;
+    els.status.textContent = cfg.status;
+    els.tline.innerHTML = cfg.tline;
+    els.wave.classList.toggle('bl-hidden', !cfg.wave);
+    els.hint.classList.toggle('bl-hidden', !cfg.hint);
+  }
 
-    // Level bar — prikaži samo kad slušamo/snimamo
-    if (state === S.LISTENING || state === S.RECORDING)
-      els.level.style.width = Math.min(rms / 0.08 * 100, 100) + '%';
+  function showError(msg) {
+    els.error.textContent = '⚠ ' + msg;
+    els.error.classList.add('show');
+    setTimeout(() => els.error.classList.remove('show'), 7000);
+  }
 
-    if (state === S.LISTENING && rms > SPEECH_THRESHOLD) {
-      startCapture();
-    } else if (state === S.RECORDING) {
-      if (rms > SPEECH_THRESHOLD) {
-        clearTimeout(silenceTimer); silenceTimer = null;
-      } else if (!silenceTimer) {
-        silenceTimer = setTimeout(() => { if (state === S.RECORDING) finishCapture(); }, SILENCE_MS);
+  // ── Markdown + product card post-processor ───────────────────────
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function stripQty(s) {
+    return String(s)
+      .replace(/\s*\(\s*\d+\s*kom(?:ada)?\.?\s*\)/gi, '')
+      .replace(/\s*[—–-]\s*\d+\s*kom(?:ada)?\.?(?=\s|$)/gi, '')
+      .replace(/\s*\b\d+\s*kom(?:ada)?\.?(?=\s|$)/gi, '')
+      .trim();
+  }
+
+  const PROD_RE = new RegExp(
+    '^\\s*(?:[-*]\\s+)?' +
+    '(?:!\\[[^\\]]*\\]\\((https?:\\/\\/[^)]+)\\)\\s+)?' +
+    '\\*\\*([^*]+?)\\*\\*' +
+    '\\s*[—–-]\\s*' +
+    '([0-9][\\d.,]*)\\s*KM' +
+    '(?:\\s*[—–-]\\s*([^\\n[]+?))?' +
+    '(?:\\s*[—–-]\\s*\\[([^\\]]+)\\]\\((https?:\\/\\/[^)]+)\\))?' +
+    '\\s*$',
+    'i'
+  );
+
+  const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+  const LAPTOP_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#fb6d3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M2 20h20"/></svg>';
+
+  function renderProductCard({ img, name, price, avail, href }) {
+    const isAvail = /lager|stanj|dostup/i.test(avail || '');
+    const availClass = isAvail ? 'bl-prod__avail' : 'bl-prod__avail bl-prod__avail--order';
+    const availIcon  = isAvail ? CHECK_SVG : '';
+    const availText  = stripQty(avail || (isAvail ? 'Na lageru' : ''));
+    const tag        = href ? 'a' : 'div';
+    const hrefAttr   = href ? ' href="' + escHtml(href) + '" target="_blank" rel="noopener"' : '';
+    const imgInner   = img
+      ? '<img class="bl-prod__img-real" src="' + escHtml(img) + '" alt="" loading="lazy" onerror="this.remove()">'
+      : LAPTOP_SVG;
+    return (
+      '<' + tag + ' class="bl-prod"' + hrefAttr + '>' +
+        '<div class="bl-prod__img">' + imgInner + '</div>' +
+        '<div class="bl-prod__body">' +
+          '<div class="bl-prod__name">' + escHtml(name.trim()) + '</div>' +
+          '<div class="bl-prod__row">' +
+            '<div class="bl-prod__price">' + escHtml(price) + ' KM</div>' +
+            (availText ? '<div class="' + availClass + '">' + availIcon + escHtml(availText) + '</div>' : '') +
+          '</div>' +
+        '</div>' +
+      '</' + tag + '>'
+    );
+  }
+
+  function renderMarkdown(text) {
+    // Globally strip "(N kom)" / "(N komada)" anywhere — defensive
+    text = String(text).replace(/\s*\(\s*\d+\s*kom(?:ada)?\.?\s*\)/gi, '');
+
+    const cards = [];
+    const lines = text.split('\n');
+    const processed = lines.map((line) => {
+      const m = line.match(PROD_RE);
+      if (m) {
+        cards.push({ img: m[1], name: m[2], price: m[3], avail: m[4], href: m[6] });
+        return 'BLPRODCARD-' + (cards.length - 1) + '-BLEND';
       }
-    } else if (state === S.SPEAKING && rms > INTERRUPT_THRESHOLD) {
-      // Interrupt — korisnik počeo govoriti dok AI govori
-      interruptAndListen();
-    }
+      return line;
+    });
+    let html = processed.join('\n')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g,
+        '<img src="$2" alt="$1" loading="lazy" onerror="this.style.display=\'none\'">')
+      .replace(/\[([^\]]+)\]\(((?:https?|mailto):[^)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/^[ \t]*[-*]\s+(.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>[\s\S]*<\/li>)/g, '<ul>$1</ul>')
+      .replace(/\n/g, '<br>');
+    html = html.replace(/BLPRODCARD-(\d+)-BLEND/g, function (_, i) { return renderProductCard(cards[+i]); });
+    return html;
+  }
 
+  function addMsg(role, content) {
+    els.conv.classList.remove('bl-hidden');
+    const div = document.createElement('div');
+    div.className = 'bl-msg ' + role;
+    div.innerHTML = role === 'user' ? escHtml(content) : renderMarkdown(content);
+    els.conv.appendChild(div);
+    els.conv.scrollTop = els.conv.scrollHeight;
+  }
+
+  // ── Audio ──────────────────────────────────────────────────────
+  async function openMic() {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+    analyser  = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    audioCtx.createMediaStreamSource(micStream).connect(analyser);
+  }
+
+  function closeMic() {
+    cancelAnimationFrame(vadRafId);
+    if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+    if (audioCtx)  { audioCtx.close(); audioCtx = null; }
+    analyser = null;
+  }
+
+  function getRms() {
+    if (!analyser) return 0;
+    const buf = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(buf);
+    let sum = 0; for (const v of buf) sum += v * v;
+    return Math.sqrt(sum / buf.length);
+  }
+
+  // ── VAD ────────────────────────────────────────────────────────
+  function startVad() {
+    function tick() {
+      const rms = getRms();
+      if (state === S.LISTENING && rms > SPEECH_THRESHOLD) {
+        startCapture();
+      } else if (state === S.RECORDING) {
+        if (rms > SPEECH_THRESHOLD) {
+          clearTimeout(silenceTimer); silenceTimer = null;
+        } else if (!silenceTimer) {
+          silenceTimer = setTimeout(() => { if (state === S.RECORDING) finishCapture(); }, SILENCE_MS);
+        }
+      } else if (state === S.SPEAKING && rms > INTERRUPT_THRESHOLD) {
+        interruptAndListen();
+      }
+      vadRafId = requestAnimationFrame(tick);
+    }
     vadRafId = requestAnimationFrame(tick);
   }
-  vadRafId = requestAnimationFrame(tick);
-}
 
-function interruptAndListen() {
-  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-  window.speechSynthesis?.cancel();
-  clearTimeout(silenceTimer); silenceTimer = null;
-  startCapture();
-}
+  function interruptAndListen() {
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    clearTimeout(silenceTimer); silenceTimer = null;
+    startCapture();
+  }
 
-// ── Recording ──────────────────────────────────────────────────
-function startCapture() {
-  const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-    ? 'audio/webm;codecs=opus' : 'audio/ogg;codecs=opus';
-  recorder = new MediaRecorder(micStream, { mimeType: mime });
-  chunks = []; speechStart = Date.now();
-  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-  recorder.start(100);
-  setState(S.RECORDING);
-}
+  function startCapture() {
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus' : 'audio/ogg;codecs=opus';
+    recorder = new MediaRecorder(micStream, { mimeType: mime });
+    chunks = []; speechStart = Date.now();
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.start(100);
+    setState(S.RECORDING);
+  }
 
-async function finishCapture() {
-  clearTimeout(silenceTimer); silenceTimer = null;
-  if (!recorder || recorder.state === 'inactive') return;
-  const elapsed = Date.now() - speechStart;
+  async function finishCapture() {
+    clearTimeout(silenceTimer); silenceTimer = null;
+    if (!recorder || recorder.state === 'inactive') return;
+    const elapsed = Date.now() - speechStart;
 
-  if (elapsed < MIN_SPEECH_MS) {
-    recorder.stop(); chunks = [];
+    if (elapsed < MIN_SPEECH_MS) {
+      recorder.stop(); chunks = [];
+      setState(S.LISTENING);
+      return;
+    }
+
+    setState(S.PROCESSING);
+
+    await new Promise(resolve => { recorder.onstop = resolve; recorder.stop(); });
+    const blob = new Blob(chunks, { type: recorder.mimeType });
+    chunks = [];
+
+    try {
+      const transcript = await transcribe(blob);
+      if (!transcript.trim()) { rearm(); return; }
+
+      addMsg('user', transcript);
+      history.push({ role: 'user', content: transcript });
+
+      const { replyText, replyVoice } = await chatVoice(transcript);
+      addMsg('bot', replyText);
+      history.push({ role: 'assistant', content: replyText });
+
+      setState(S.SPEAKING);
+      await speak(replyVoice || replyText);
+    } catch (err) {
+      showError(err.message);
+    }
+    rearm();
+  }
+
+  function rearm() {
+    if (state === S.IDLE) return;
     setState(S.LISTENING);
-    return;
   }
 
-  setState(S.PROCESSING);
-
-  await new Promise(resolve => { recorder.onstop = resolve; recorder.stop(); });
-  const blob = new Blob(chunks, { type: recorder.mimeType });
-  chunks = [];
-
-  try {
-    const transcript = await transcribe(blob);
-    if (!transcript.trim()) { rearm(); return; }
-
-    addMsg('user', transcript);
-    history.push({ role: 'user', content: transcript });
-
-    const { replyText, replyVoice } = await chatVoice(transcript);
-    addMsg('ai', replyText);
-    history.push({ role: 'assistant', content: replyText });
-
-    setState(S.SPEAKING);
-    await speak(replyVoice || replyText);
-  } catch (err) {
-    showError(err.message);
+  // ── API ────────────────────────────────────────────────────────
+  async function transcribe(blob) {
+    const form = new FormData();
+    form.append('audio', blob, 'rec.webm');
+    const resp = await fetch(STT_URL, { method: 'POST', body: form });
+    if (!resp.ok) throw new Error('STT greška ' + resp.status);
+    return (await resp.json()).text || '';
   }
-  rearm();
-}
 
-function rearm() {
-  if (state === S.IDLE) return;
-  setState(S.LISTENING);
-}
-
-// ── API ────────────────────────────────────────────────────────
-async function transcribe(blob) {
-  const form = new FormData();
-  form.append('audio', blob, 'rec.webm');
-  const resp = await fetch(STT_URL, { method: 'POST', body: form });
-  if (!resp.ok) throw new Error('STT greška ' + resp.status);
-  return (await resp.json()).text || '';
-}
-
-async function chatVoice(message) {
-  const resp = await fetch(CHAT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history: history.slice(0, -1), channel: 'voice' }),
-  });
-  if (!resp.ok) throw new Error('Chat greška ' + resp.status);
-  const data = await resp.json();
-  return { replyText: data.reply || '', replyVoice: data.reply_voice || '' };
-}
-
-async function speak(text) {
-  try {
-    const resp = await fetch(TTS_URL, {
+  async function chatVoice(message) {
+    const resp = await fetch(CHAT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ message, history: history.slice(0, -1), channel: 'voice' }),
     });
-    if (!resp.ok) throw new Error();
-    const url = URL.createObjectURL(await resp.blob());
-    currentAudio = new Audio(url);
-    await new Promise((res, rej) => {
-      currentAudio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; res(); };
-      currentAudio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; rej(); };
-      currentAudio.play().catch(rej);
-    });
-  } catch {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    const v = window.speechSynthesis.getVoices().find(v => /hr|bs|sr/i.test(v.lang));
-    if (v) u.voice = v; u.lang = 'hr-HR'; u.rate = 0.95;
-    await new Promise(r => { u.onend = r; u.onerror = r; window.speechSynthesis.speak(u); });
+    if (!resp.ok) throw new Error('Chat greška ' + resp.status);
+    const data = await resp.json();
+    return { replyText: data.reply || '', replyVoice: data.reply_voice || '' };
   }
-}
 
-// ── Mic button ─────────────────────────────────────────────────
-els.micBtn.addEventListener('click', async () => {
-  if (state === S.IDLE) {
+  async function speak(text) {
     try {
-      await openMic();
-      setState(S.LISTENING);
-      startVad();
-    } catch (err) {
-      showError('Mikrofon nedostupan: ' + err.message);
+      const resp = await fetch(TTS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!resp.ok) throw new Error();
+      const url = URL.createObjectURL(await resp.blob());
+      currentAudio = new Audio(url);
+      await new Promise((res, rej) => {
+        currentAudio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; res(); };
+        currentAudio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; rej(); };
+        currentAudio.play().catch(rej);
+      });
+    } catch {
+      if (!window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      const v = window.speechSynthesis.getVoices().find(v => /hr|bs|sr/i.test(v.lang));
+      if (v) u.voice = v; u.lang = 'hr-HR'; u.rate = 0.95;
+      await new Promise(r => { u.onend = r; u.onerror = r; window.speechSynthesis.speak(u); });
     }
-    return;
   }
-  // Stop sve
-  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-  window.speechSynthesis?.cancel();
-  clearTimeout(silenceTimer);
-  cancelAnimationFrame(vadRafId);
-  if (recorder?.state !== 'inactive') recorder?.stop();
-  closeMic();
-  setState(S.IDLE);
-});
+
+  // ── Mic button ─────────────────────────────────────────────────
+  els.micBtn.addEventListener('click', async () => {
+    if (state === S.IDLE) {
+      try {
+        await openMic();
+        setState(S.LISTENING);
+        startVad();
+      } catch (err) {
+        showError('Mikrofon nedostupan: ' + err.message);
+      }
+      return;
+    }
+    // Stop sve
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    clearTimeout(silenceTimer);
+    cancelAnimationFrame(vadRafId);
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+    closeMic();
+    setState(S.IDLE);
+  });
+})();
 </script>
 </body>
 </html>

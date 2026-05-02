@@ -1,8 +1,11 @@
 /**
- * BitLab AI Chat Widget v2 — embeddable
+ * BitLab AI Chat Widget v3 — embeddable, hi-fi redesign
  * Integracija: <script src="http://localhost:8000/public/widget.js"></script>
  *
  * Opciono: window.BITLAB_API = 'https://moj-server.ngrok.io' (default: isto origin)
+ *
+ * Backend (FastAPI /api/chat, /api/stt, /api/tts) NIJE mijenjan u v3 —
+ * samo CSS, HTML markup i markdown post-processor za product card-ove.
  */
 (function () {
   'use strict';
@@ -13,278 +16,646 @@
   const TTS_URL  = API_BASE + '/api/tts';
 
   const QUICK_REPLIES = [
-    { label: 'Laptopi i računari',  q: 'Koji laptopi su trenutno na lageru?' },
-    { label: 'Gaming oprema',       q: 'Šta imate od gaming opreme?' },
-    { label: 'Dostava i plaćanje',  q: 'Kakve su opcije dostave i načini plaćanja?' },
-    { label: 'Garancija i servis',  q: 'Kakva je politika garancije i povraćaja robe?' },
+    { label: 'Dostava',   icon: 'truck',  q: 'Kakve su opcije dostave i načini plaćanja?' },
+    { label: 'Garancija', icon: 'shield', q: 'Kakva je politika garancije i povraćaja robe?' },
+    { label: 'B2B / JIB', icon: '',       q: 'Kako naručujemo kao firma sa JIB-om?' },
   ];
 
-  // ── Voice VAD constants ──────────────────────────────────────────
+  const SUGGESTIONS = [
+    { icon: 'laptop', title: 'Laptopi i računari', desc: 'Pretraga po cijeni i specifikaciji', q: 'Koji laptopi su trenutno na lageru?' },
+    { icon: 'game',   title: 'Gaming oprema',      desc: 'Mišovi, tastature, slušalice',       q: 'Šta imate od gaming opreme?' },
+    { icon: 'truck',  title: 'Dostava i plaćanje', desc: 'Cijene, rokovi, MKD rate',           q: 'Kakve su opcije dostave i načini plaćanja?' },
+  ];
+
+  // ── Voice VAD constants — IDENTICAL to v2 ───────────────────────
   const SPEECH_THRESHOLD    = 0.038;
   const SPEECH_ONSET_MS     = 400;
   const ONSET_GAP_MS        = 75;
   const SILENCE_MS          = 1100;
   const MIN_SPEECH_MS       = 500;
-  const INTERRUPT_THRESHOLD = 0.10;   // visoko — samo jak glas prekida, ne zvučnik
-  const TTS_COOLDOWN_MS     = 750;    // pauza nakon TTS da reverb utihne
+  const INTERRUPT_THRESHOLD = 0.10;
+  const TTS_COOLDOWN_MS     = 750;
   const VS = {
     IDLE:'idle', LISTENING:'listening', RECORDING:'recording',
     PROCESSING:'processing', SPEAKING:'speaking',
   };
 
+  // ── Inline SVG icons ─────────────────────────────────────────────
+  const I = {
+    chat:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
+    spark:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6z"/><path d="M5 17l.9 2.7L8 20l-2.1.3L5 23l-.9-2.7L2 20l2.1-.3z"/></svg>',
+    bot:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="3"/><path d="M12 2v4M8 14h.01M16 14h.01M9 18h6"/></svg>',
+    mic:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>',
+    send:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.45-7.48a1 1 0 0 0 0-1.84L3.4 3.6a1 1 0 0 0-1.4.92V9.5L15 12 2 14.5v4.98a1 1 0 0 0 1.4.92z"/></svg>',
+    close:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    minus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+    attach: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.38a2 2 0 0 1-2.83-2.83l8.49-8.49"/></svg>',
+    laptop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M2 20h20"/></svg>',
+    truck:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="13" height="11" rx="1"/><path d="M14 9h4l3 4v4h-7V9zM6 21a2 2 0 100-4 2 2 0 000 4zM18 21a2 2 0 100-4 2 2 0 000 4z"/></svg>',
+    shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 9.5-8 10-4.5-.5-8-5-8-10V6z"/></svg>',
+    game:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h4M8 10v4M15 13h.01M18 11h.01"/><rect x="2" y="6" width="20" height="12" rx="6"/></svg>',
+    arrow:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+    check:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+    lock:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+    stop:   '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+    pause:  '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+    play:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  };
+
   // ── CSS ─────────────────────────────────────────────────────────
   const css = `
+:root {
+  --bl-orange:      #fb6d3b;
+  --bl-orange-600:  #ea5c2a;
+  --bl-orange-700:  #e0511f;
+  --bl-orange-50:   #fff5f0;
+  --bl-orange-100:  #ffe8db;
+  --bl-orange-200:  #fed1bb;
+  --bl-navy:        #1a1a2e;
+  --bl-navy-600:    #2a2a3e;
+  --bl-bg-soft:     #f7f8fa;
+  --bl-bg-softer:   #fafbfc;
+  --bl-line:        #ececf0;
+  --bl-line-strong: #d9d9e0;
+  --bl-text:        #1a1a2e;
+  --bl-text-2:      #565666;
+  --bl-text-3:      #8b8b9a;
+  --bl-success:     #16a34a;
+  --bl-success-bg:  #ecfdf3;
+  --bl-danger:      #dc2626;
+  --bl-danger-bg:   #fef2f2;
+  --bl-shadow-1:    0 1px 2px rgba(26,26,46,.04), 0 1px 1px rgba(26,26,46,.03);
+  --bl-shadow-2:    0 4px 12px rgba(26,26,46,.06), 0 2px 4px rgba(26,26,46,.04);
+  --bl-shadow-3:    0 16px 40px rgba(26,26,46,.12), 0 4px 12px rgba(26,26,46,.06);
+  --bl-shadow-orange: 0 8px 24px rgba(251,109,59,.32), 0 2px 6px rgba(251,109,59,.18);
+  --bl-font:        "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ───── Launcher ───── */
 #bl-launcher {
-  position:fixed; bottom:24px; right:24px;
-  width:62px; height:62px; border-radius:50%;
-  background:linear-gradient(135deg,#fb6d3b,#eA5c2a);
-  color:white; border:none; font-size:28px;
-  cursor:pointer; z-index:9999;
-  box-shadow:0 6px 20px rgba(251,109,59,.45);
-  transition:transform .2s;
+  position: fixed; bottom: 24px; right: 24px;
+  width: 64px; height: 64px; border-radius: 50%;
+  border: none; cursor: pointer; z-index: 9999;
+  background: linear-gradient(135deg, var(--bl-orange) 0%, var(--bl-orange-600) 100%);
+  box-shadow: var(--bl-shadow-orange);
+  color: #fff; font-family: var(--bl-font);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
 }
-#bl-launcher:hover { transform:scale(1.08); }
+#bl-launcher:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 12px 32px rgba(251,109,59,.42), 0 4px 8px rgba(251,109,59,.22);
+}
+#bl-launcher svg { width: 28px; height: 28px; }
+#bl-launcher::before {
+  content: ""; position: absolute; inset: -6px;
+  border-radius: 50%; border: 2px solid var(--bl-orange);
+  opacity: 0; pointer-events: none;
+  animation: bl-launcher-ring 2.4s ease-out infinite;
+}
+@keyframes bl-launcher-ring {
+  0%   { transform: scale(.85); opacity: 0; }
+  40%  { opacity: .4; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+#bl-launcher .bl-launcher__badge {
+  position: absolute; top: -2px; right: -2px;
+  min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: 99px; background: var(--bl-navy);
+  color: #fff; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #fff;
+}
+#bl-launcher.bl-open::before { display: none; }
+#bl-launcher.bl-open .bl-launcher__badge { display: none; }
 
+/* ───── Window ───── */
 #bl-window {
-  position:fixed; bottom:100px; right:24px;
-  width:400px; max-height:640px;
-  background:#fff; border-radius:18px;
-  box-shadow:0 20px 60px rgba(0,0,0,.18);
-  display:none; flex-direction:column; overflow:hidden;
-  z-index:9999; font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
+  position: fixed; bottom: 100px; right: 24px;
+  width: 408px; height: 620px; max-height: calc(100vh - 120px);
+  background: #fff; border-radius: 24px;
+  box-shadow: var(--bl-shadow-3);
+  display: none; flex-direction: column; overflow: hidden;
+  z-index: 9999; font-family: var(--bl-font);
+  color: var(--bl-text); border: 1px solid var(--bl-line);
 }
-#bl-window.open { display:flex; }
+#bl-window.open { display: flex; }
 
+/* ───── Header ───── */
 #bl-header {
-  background:linear-gradient(135deg,#1a1a2e,#2a2a3e);
-  color:#fff; padding:14px 18px;
-  display:flex; justify-content:space-between; align-items:center;
-  flex-shrink:0;
+  background: linear-gradient(135deg, var(--bl-navy) 0%, var(--bl-navy-600) 100%);
+  color: #fff; padding: 18px 18px 16px;
+  position: relative; overflow: hidden; flex-shrink: 0;
 }
-.bl-header-left { display:flex; align-items:center; gap:10px; }
-.bl-avatar {
-  width:38px; height:38px; border-radius:50%;
-  background:linear-gradient(135deg,#fb6d3b,#eA5c2a);
-  display:flex; align-items:center; justify-content:center;
-  font-size:19px; flex-shrink:0;
+#bl-header::after {
+  content: ""; position: absolute; right: -40px; top: -40px;
+  width: 140px; height: 140px;
+  background: radial-gradient(circle, rgba(251,109,59,.22) 0%, rgba(251,109,59,0) 70%);
+  pointer-events: none;
 }
-.bl-hinfo .bl-title { font-weight:700; font-size:15px; }
-.bl-hinfo .bl-sub {
-  font-size:11px; opacity:.8; margin-top:2px;
-  display:flex; align-items:center; gap:5px;
+.bl-header__row {
+  display: flex; align-items: center; gap: 12px;
+  position: relative; z-index: 1;
+}
+.bl-header__avatar {
+  width: 44px; height: 44px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--bl-orange) 0%, var(--bl-orange-600) 100%);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(251,109,59,.4), inset 0 1px 0 rgba(255,255,255,.2);
+  position: relative; color: #fff;
+}
+.bl-header__avatar svg { width: 22px; height: 22px; }
+.bl-header__avatar::after {
+  content: ""; position: absolute; bottom: -2px; right: -2px;
+  width: 12px; height: 12px; border-radius: 99px;
+  background: var(--bl-success); border: 2px solid var(--bl-navy);
+}
+.bl-header__info { flex: 1; min-width: 0; }
+.bl-header__title {
+  font-size: 15px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2;
+}
+.bl-header__sub {
+  margin-top: 2px; font-size: 12px; opacity: .7;
+  display: flex; align-items: center; gap: 8px;
 }
 .bl-dot {
-  width:6px; height:6px; border-radius:50%; background:#4ade80;
-  display:inline-block; animation:blBlink 2s infinite;
+  width: 6px; height: 6px; border-radius: 99px;
+  background: var(--bl-success);
+  box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+  animation: bl-pulse 2.4s ease-in-out infinite;
+  display: inline-block;
 }
-@keyframes blBlink { 0%,100%{opacity:1} 50%{opacity:.35} }
-#bl-close {
-  background:rgba(255,255,255,.15); border:none; color:#fff;
-  width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:16px;
-  display:flex; align-items:center; justify-content:center;
+@keyframes bl-pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%     { opacity: .6; transform: scale(.85); }
 }
-#bl-close:hover { background:rgba(255,255,255,.25); }
+.bl-header__actions { display: flex; gap: 6px; }
+.bl-icon-btn {
+  width: 32px; height: 32px; border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.06);
+  color: rgba(255,255,255,.85);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+  padding: 0;
+}
+.bl-icon-btn:hover { background: rgba(255,255,255,.18); }
+.bl-icon-btn svg { width: 14px; height: 14px; }
+.bl-header__chips {
+  display: flex; gap: 6px; margin-top: 12px;
+  position: relative; z-index: 1;
+}
+.bl-header__chip {
+  font-size: 11px; padding: 5px 10px; border-radius: 99px;
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.85);
+  border: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: 5px;
+  font-weight: 500;
+}
+.bl-header__chip svg { width: 11px; height: 11px; }
 
+/* ───── Messages ───── */
 #bl-messages {
-  flex:1; overflow-y:auto; padding:14px;
-  background:#F9FAFB; font-size:14px;
+  flex: 1; overflow-y: auto; padding: 18px 16px 8px;
+  background: var(--bl-bg-softer);
+  display: flex; flex-direction: column; gap: 10px;
+  font-size: 14px;
 }
-#bl-messages::-webkit-scrollbar { width:5px; }
-#bl-messages::-webkit-scrollbar-track { background:#EFF2F5; }
-#bl-messages::-webkit-scrollbar-thumb { background:#fed1bb; border-radius:3px; }
-#bl-messages::-webkit-scrollbar-thumb:hover { background:#fb6d3b; }
+#bl-messages::-webkit-scrollbar { width: 6px; }
+#bl-messages::-webkit-scrollbar-thumb {
+  background: var(--bl-line-strong); border-radius: 99px;
+}
 .bl-msg {
-  margin-bottom:10px; padding:10px 13px; border-radius:12px;
-  max-width:88%; line-height:1.5; word-break:break-word;
-}
-.bl-msg.user {
-  background:#fb6d3b; color:#fff;
-  margin-left:auto; border-bottom-right-radius:4px;
+  max-width: 86%; padding: 10px 14px; border-radius: 16px;
+  font-size: 14px; line-height: 1.5; word-break: break-word;
 }
 .bl-msg.bot {
-  background:#fff; border:1px solid #E5E7EB;
-  color:#1F2937; border-bottom-left-radius:4px;
+  background: #fff; border: 1px solid var(--bl-line);
+  color: var(--bl-text); box-shadow: var(--bl-shadow-1);
+  border-bottom-left-radius: 6px; align-self: flex-start;
 }
-.bl-msg.bot a { color:#fb6d3b; }
-.bl-msg.bot img {
-  width:64px; height:64px; object-fit:contain;
-  border-radius:6px; border:1px solid #E5E7EB;
-  background:#F9FAFB; vertical-align:middle; margin-right:8px;
+.bl-msg.user {
+  background: linear-gradient(135deg, var(--bl-orange) 0%, var(--bl-orange-600) 100%);
+  color: #fff; align-self: flex-end;
+  border-bottom-right-radius: 6px;
+  box-shadow: 0 2px 6px rgba(251,109,59,.25);
 }
-.bl-typing { display:flex; gap:4px; align-items:center; padding:8px 0; }
+.bl-msg.bot a { color: var(--bl-orange-700); font-weight: 600; }
+.bl-msg.bot strong { font-weight: 700; }
+.bl-msg.bot img:not(.bl-prod__img-real) {
+  width: 64px; height: 64px; object-fit: contain;
+  border-radius: 6px; border: 1px solid var(--bl-line);
+  background: var(--bl-bg-soft); vertical-align: middle; margin-right: 8px;
+}
+
+/* Product card (rendered from markdown) */
+.bl-prod {
+  display: flex; gap: 12px; padding: 10px;
+  background: var(--bl-bg-soft);
+  border: 1px solid var(--bl-line);
+  border-radius: 12px; margin-top: 8px;
+  text-decoration: none; color: inherit;
+  transition: border-color .15s, transform .15s;
+}
+.bl-prod:hover { border-color: var(--bl-orange-200); transform: translateY(-1px); }
+.bl-prod__img {
+  width: 56px; height: 56px; flex-shrink: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--bl-orange-100), var(--bl-orange-50));
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid #fff; overflow: hidden;
+  position: relative;
+}
+.bl-prod__img-real {
+  width: 100%; height: 100%; object-fit: contain;
+  background: #fff;
+}
+.bl-prod__body { flex: 1; min-width: 0; }
+.bl-prod__name {
+  font-size: 13px; font-weight: 600; color: var(--bl-text);
+  line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bl-prod__row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 6px; gap: 8px;
+}
+.bl-prod__price {
+  font-size: 14px; font-weight: 700; color: var(--bl-orange);
+  font-variant-numeric: tabular-nums;
+}
+.bl-prod__avail {
+  font-size: 10px; color: var(--bl-success);
+  display: flex; align-items: center; gap: 3px; font-weight: 600;
+}
+.bl-prod__avail svg { width: 11px; height: 11px; }
+.bl-prod__avail--order {
+  color: var(--bl-text-3);
+}
+
+/* Typing indicator */
+.bl-msg.bot.bl-typing {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 12px 14px;
+}
 .bl-typing span {
-  width:7px; height:7px; border-radius:50%; background:#CBD5E1;
-  animation:blDot 1.2s infinite ease-in-out;
+  width: 7px; height: 7px; border-radius: 99px;
+  background: var(--bl-orange);
+  animation: bl-typing 1.2s infinite ease-in-out;
+  opacity: .4;
 }
-.bl-typing span:nth-child(2) { animation-delay:.2s; }
-.bl-typing span:nth-child(3) { animation-delay:.4s; }
-@keyframes blDot {
-  0%,80%,100%{ transform:scale(.7); opacity:.5; }
-  40%{ transform:scale(1); opacity:1; }
+.bl-typing span:nth-child(2) { animation-delay: .15s; }
+.bl-typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes bl-typing {
+  0%,80%,100% { transform: translateY(0); opacity: .4; }
+  40%         { transform: translateY(-4px); opacity: 1; }
 }
 
+/* ───── Welcome screen ───── */
+.bl-welcome {
+  padding: 28px 20px 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  text-align: center;
+}
+.bl-welcome__avatar {
+  width: 64px; height: 64px; border-radius: 18px;
+  background: linear-gradient(135deg, var(--bl-orange), var(--bl-orange-600));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--bl-shadow-orange); color: #fff;
+}
+.bl-welcome__avatar svg { width: 30px; height: 30px; }
+.bl-welcome__title {
+  font-size: 18px; font-weight: 700; color: var(--bl-text);
+  letter-spacing: -.015em;
+}
+.bl-welcome__title span { color: var(--bl-orange); }
+.bl-welcome__sub {
+  font-size: 13px; color: var(--bl-text-2);
+  line-height: 1.45; max-width: 300px;
+}
+.bl-welcome__suggest {
+  width: 100%; display: flex; flex-direction: column;
+  gap: 8px; margin-top: 8px;
+}
+.bl-suggest {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; background: #fff;
+  border: 1px solid var(--bl-line); border-radius: 12px;
+  cursor: pointer; text-align: left;
+  font-family: inherit; transition: all .15s;
+}
+.bl-suggest:hover {
+  border-color: var(--bl-orange-200);
+  background: var(--bl-orange-50);
+  transform: translateY(-1px);
+}
+.bl-suggest__icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--bl-orange-50); color: var(--bl-orange);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.bl-suggest__icon svg { width: 18px; height: 18px; }
+.bl-suggest__body { flex: 1; min-width: 0; }
+.bl-suggest__t { font-size: 13px; font-weight: 600; color: var(--bl-text); line-height: 1.2; }
+.bl-suggest__d { font-size: 11px; color: var(--bl-text-3); margin-top: 2px; }
+.bl-suggest__arrow { color: var(--bl-text-3); flex-shrink: 0; }
+.bl-suggest__arrow svg { width: 14px; height: 14px; }
+
+/* ───── Quick replies ───── */
 #bl-quick-wrap {
-  padding:4px 14px 10px; background:#F9FAFB;
-  border-bottom:1px solid #EFF2F5; flex-shrink:0;
+  padding: 10px 14px 12px; background: var(--bl-bg-softer);
+  border-top: 1px solid var(--bl-line); flex-shrink: 0;
 }
-#bl-quick-wrap.hidden { display:none; }
-.bl-qr-label { font-size:11px; color:#94A3B8; margin-bottom:6px; padding-top:4px; }
-.bl-quick-chips { display:flex; flex-wrap:wrap; gap:6px; }
+#bl-quick-wrap.hidden { display: none; }
+.bl-qr-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--bl-text-3); font-weight: 600; margin-bottom: 8px;
+}
+.bl-quick-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .bl-chip {
-  background:#FFF7ED; border:1px solid #fed1bb;
-  color:#eA5c2a; border-radius:16px;
-  padding:5px 12px; font-size:12px; cursor:pointer;
-  transition:background .15s; white-space:nowrap; line-height:1.3;
+  padding: 7px 12px; border-radius: 99px;
+  background: #fff; border: 1px solid var(--bl-line);
+  color: var(--bl-text); font-size: 12px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 5px;
+  transition: all .15s; line-height: 1.3;
 }
-.bl-chip:hover { background:#FED7AA; }
+.bl-chip:hover {
+  border-color: var(--bl-orange);
+  color: var(--bl-orange-700);
+  background: var(--bl-orange-50);
+}
+.bl-chip svg { width: 12px; height: 12px; opacity: .7; }
 
+/* ───── Input ───── */
 #bl-input-area {
-  padding:10px; border-top:1px solid #E5E7EB;
-  background:#fff; display:flex; gap:6px; align-items:center; flex-shrink:0;
+  padding: 12px 14px; background: #fff;
+  border-top: 1px solid var(--bl-line);
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.bl-input-wrap {
+  flex: 1; display: flex; align-items: center;
+  background: var(--bl-bg-soft);
+  border: 1px solid var(--bl-line);
+  border-radius: 99px;
+  padding: 0 4px 0 14px; height: 42px;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.bl-input-wrap:focus-within {
+  border-color: var(--bl-orange);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--bl-orange-50);
 }
 #bl-input {
-  flex:1; padding:9px 13px; border:1px solid #E5E7EB;
-  border-radius:20px; outline:none; font-size:14px; font-family:inherit;
+  flex: 1; border: none; background: transparent;
+  outline: none; font-family: inherit;
+  font-size: 14px; color: var(--bl-text);
+  height: 100%; min-width: 0;
 }
-#bl-input:focus { border-color:#fb6d3b; }
-#bl-send {
-  background:#fb6d3b; color:#fff; border:none;
-  border-radius:50%; width:38px; height:38px;
-  cursor:pointer; font-size:16px; flex-shrink:0;
-  display:flex; align-items:center; justify-content:center;
+#bl-input::placeholder { color: var(--bl-text-3); }
+.bl-attach {
+  width: 32px; height: 32px; background: transparent;
+  border: none; border-radius: 99px;
+  color: var(--bl-text-3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; padding: 0;
 }
-#bl-send:disabled { opacity:.5; cursor:default; }
+.bl-attach:hover { color: var(--bl-text); background: var(--bl-line); }
+.bl-attach svg { width: 18px; height: 18px; }
 #bl-voice-btn {
-  background:#F1F5F9; color:#475569; border:1px solid #E2E8F0;
-  border-radius:50%; width:38px; height:38px;
-  cursor:pointer; font-size:18px; flex-shrink:0;
-  display:flex; align-items:center; justify-content:center;
-  transition:background .15s;
+  width: 42px; height: 42px; border-radius: 99px;
+  background: var(--bl-bg-soft);
+  border: 1px solid var(--bl-line);
+  color: var(--bl-navy); cursor: pointer;
+  flex-shrink: 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; font-family: inherit;
 }
-#bl-voice-btn:hover { background:#E2E8F0; }
+#bl-voice-btn:hover {
+  background: var(--bl-orange-50);
+  border-color: var(--bl-orange-200);
+  color: var(--bl-orange-700);
+}
+#bl-voice-btn svg { width: 18px; height: 18px; }
+#bl-send {
+  width: 42px; height: 42px; border-radius: 99px;
+  border: none; cursor: pointer; flex-shrink: 0; padding: 0;
+  background: linear-gradient(135deg, var(--bl-orange), var(--bl-orange-600));
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(251,109,59,.32);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; font-family: inherit;
+}
+#bl-send:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(251,109,59,.44);
+}
+#bl-send:disabled { opacity: .5; cursor: default; transform: none; }
+#bl-send svg { width: 18px; height: 18px; }
 
-@media (max-width:440px) {
-  #bl-window { right:8px; left:8px; width:auto; bottom:88px; }
+/* ───── Footer ───── */
+.bl-footer {
+  padding: 8px 14px 10px; background: #fff;
+  border-top: 1px solid var(--bl-line);
+  font-size: 10px; color: var(--bl-text-3);
+  text-align: center; font-weight: 500;
+  letter-spacing: .04em; flex-shrink: 0;
+}
+.bl-footer strong { color: var(--bl-orange); font-weight: 700; }
+
+/* ───── Mobile ───── */
+@media (max-width: 440px) {
+  #bl-window {
+    right: 8px; left: 8px; bottom: 88px;
+    width: auto; height: auto; max-height: calc(100vh - 100px);
+  }
+  #bl-launcher { right: 16px; bottom: 16px; }
 }
 
-/* ── Voice overlay — samo tamna pozadina, klik na pozadinu NE zatvara ── */
+/* ───── Voice modal ───── */
 #bl-voice-overlay {
-  position:fixed; inset:0;
-  background:rgba(0,0,0,0.55);
-  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
-  display:none; align-items:center; justify-content:center;
-  z-index:10001;
+  position: fixed; inset: 0;
+  background: rgba(26,26,46,.55);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+  z-index: 10001; padding: 16px;
 }
-#bl-voice-overlay.open { display:flex; }
-
-/* Panel — bijeli, identičan widgetu */
+#bl-voice-overlay.open { display: flex; }
 #bl-voice-panel {
-  width:min(460px, 96vw); max-height:88vh;
-  background:#fff; border-radius:18px;
-  display:flex; flex-direction:column; overflow:hidden;
-  box-shadow:0 24px 80px rgba(0,0,0,.35); color:#1F2937;
+  width: 460px; max-width: 100%; max-height: 92vh;
+  background: #fff; border-radius: 24px;
+  box-shadow: var(--bl-shadow-3);
+  display: flex; flex-direction: column; overflow: hidden;
+  font-family: var(--bl-font); color: var(--bl-text);
+  border: 1px solid var(--bl-line);
 }
 
-/* Header — isti gradijent kao chat */
 #bl-vheader {
-  background:linear-gradient(135deg,#1a1a2e,#2a2a3e);
-  color:#fff; padding:14px 18px;
-  display:flex; align-items:center; gap:12px; flex-shrink:0;
+  background: linear-gradient(135deg, var(--bl-navy) 0%, var(--bl-navy-600) 100%);
+  color: #fff; padding: 16px 18px;
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
 }
-#bl-voice-orb {
-  width:42px; height:42px; border-radius:50%; flex-shrink:0;
-  display:flex; align-items:center; justify-content:center;
-  font-size:20px; transition:background .35s;
+#bl-vheader-avatar {
+  width: 36px; height: 36px; border-radius: 12px;
+  background: rgba(251,109,59,.18);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: var(--bl-orange);
 }
-#bl-voice-orb.orb-idle       { background:rgba(255,255,255,.15); }
-#bl-voice-orb.orb-listening  { background:radial-gradient(circle,#16a34a,#15803d); animation:vOrbG 2s infinite; }
-#bl-voice-orb.orb-recording  { background:radial-gradient(circle,#dc2626,#991b1b); animation:vOrbR .65s infinite; }
-#bl-voice-orb.orb-processing { background:radial-gradient(circle,#7c3aed,#6d28d9); animation:vSpin 1s linear infinite; }
-#bl-voice-orb.orb-speaking   { background:radial-gradient(circle,#fb6d3b,#eA5c2a); animation:vOrbO .9s infinite; }
-
-@keyframes vOrbG {
-  0%,100%{ box-shadow:0 0 0 0 rgba(22,163,74,0); }
-  50%{ box-shadow:0 0 0 10px rgba(22,163,74,.3); transform:scale(1.06); }
+#bl-vheader-avatar svg { width: 18px; height: 18px; }
+#bl-vheader-info { flex: 1; min-width: 0; }
+.bl-vtitle { font-size: 14px; font-weight: 700; }
+#bl-vstate {
+  font-size: 11px; opacity: .75; margin-top: 2px;
+  display: flex; align-items: center; gap: 6px; min-height: 14px;
 }
-@keyframes vOrbR {
-  0%,100%{ transform:scale(1); }
-  50%{ transform:scale(1.1); box-shadow:0 0 0 8px rgba(220,38,38,.22); }
+#bl-vstate-dot {
+  width: 6px; height: 6px; border-radius: 99px;
+  background: var(--bl-orange);
+  box-shadow: 0 0 0 3px rgba(251,109,59,.25);
 }
-@keyframes vOrbO {
-  0%,100%{ box-shadow:0 0 0 0 rgba(251,109,59,0); }
-  50%{ box-shadow:0 0 0 9px rgba(251,109,59,.28); transform:scale(1.06); }
-}
-@keyframes vSpin { to{ transform:rotate(360deg); } }
-
-#bl-vheader-info { flex:1; }
-.bl-vtitle { font-weight:700; font-size:15px; }
-#bl-vstate { font-size:11px; opacity:.8; margin-top:2px; min-height:16px; }
-
-#bl-voice-close-btn {
-  background:rgba(255,255,255,.15); border:none; color:#fff;
-  width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:16px;
-  display:flex; align-items:center; justify-content:center;
-}
-#bl-voice-close-btn:hover { background:rgba(255,255,255,.28); }
-
-/* Level bar — tanki strip ispod headera */
-#bl-vlevel-wrap { height:3px; background:#EFF2F5; flex-shrink:0; }
-#bl-vlevel-bar  {
-  height:100%; width:0%;
-  background:linear-gradient(90deg,#4ade80,#fb6d3b);
-  transition:width .05s;
+#bl-voice-panel.vp-listening #bl-vstate-dot,
+#bl-voice-panel.vp-recording #bl-vstate-dot {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34,197,94,.25);
 }
 
-/* Transcript — isti kao chat messages area */
+/* Stage with orb */
+#bl-vstage {
+  padding: 36px 24px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 22px;
+  background: linear-gradient(180deg, #fff 0%, var(--bl-bg-softer) 100%);
+}
+.bl-orb {
+  position: relative; width: 160px; height: 160px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.bl-orb__ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1.5px solid var(--bl-orange-200);
+  opacity: 0;
+}
+.bl-orb__ring:nth-child(1) { animation: bl-orb-ring 3s ease-out infinite; }
+.bl-orb__ring:nth-child(2) { animation: bl-orb-ring 3s ease-out infinite 1s; }
+.bl-orb__ring:nth-child(3) { animation: bl-orb-ring 3s ease-out infinite 2s; }
+@keyframes bl-orb-ring {
+  0%   { transform: scale(.7); opacity: 0; }
+  20%  { opacity: .55; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+.bl-orb__core {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--bl-orange) 0%, var(--bl-orange-600) 100%);
+  box-shadow:
+    0 12px 32px rgba(251,109,59,.45),
+    inset 0 2px 4px rgba(255,255,255,.3),
+    inset 0 -4px 12px rgba(224,81,31,.4);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; position: relative; z-index: 1;
+  transition: background .3s, box-shadow .3s;
+}
+.bl-orb__core svg { width: 38px; height: 38px; }
+.bl-orb--listening .bl-orb__core,
+.bl-orb--recording .bl-orb__core {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  box-shadow: 0 12px 32px rgba(22,163,74,.42), inset 0 2px 4px rgba(255,255,255,.3);
+}
+.bl-orb--listening .bl-orb__ring,
+.bl-orb--recording .bl-orb__ring { border-color: rgba(22,163,74,.4); }
+.bl-orb--processing .bl-orb__core {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  box-shadow: 0 12px 32px rgba(124,58,237,.4), inset 0 2px 4px rgba(255,255,255,.3);
+}
+.bl-orb--processing .bl-orb__ring { border-color: rgba(124,58,237,.4); }
+.bl-orb--paused .bl-orb__core {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+  box-shadow: 0 8px 20px rgba(100,116,139,.3);
+}
+.bl-orb--paused .bl-orb__ring { animation: none; opacity: 0; }
+
+#bl-vtline {
+  font-size: 18px; font-weight: 500;
+  color: var(--bl-text); text-align: center; line-height: 1.4;
+  letter-spacing: -.01em; max-width: 380px; min-height: 50px;
+}
+#bl-vtline em { color: var(--bl-text-3); font-style: normal; font-weight: 400; }
+
+.bl-wave {
+  display: flex; align-items: center; gap: 3px;
+  height: 36px; min-height: 36px;
+}
+.bl-wave span {
+  width: 3px; border-radius: 2px;
+  background: var(--bl-orange); opacity: .85;
+  animation: bl-wave 1.2s ease-in-out infinite;
+}
+#bl-voice-panel.vp-speaking .bl-wave span { background: #2563eb; }
+@keyframes bl-wave {
+  0%,100% { height: 6px; }
+  50%     { height: 32px; }
+}
+#bl-vwave.bl-hidden, #bl-vhint.bl-hidden, #bl-vtranscript.bl-hidden,
+.bl-orb__ring.bl-hidden { display: none !important; }
+
+#bl-vhint {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--bl-text-3);
+  background: var(--bl-bg-soft);
+  padding: 8px 14px; border-radius: 99px;
+  border: 1px solid var(--bl-line);
+}
+#bl-vhint svg { width: 12px; height: 12px; }
+
+/* Transcript bubbles below stage */
 #bl-vtranscript {
-  flex:1; overflow-y:auto; padding:14px;
-  background:#F9FAFB; font-size:14px; min-height:260px;
+  padding: 0 18px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: 220px; overflow-y: auto;
 }
-#bl-vtranscript::-webkit-scrollbar { width:5px; }
-#bl-vtranscript::-webkit-scrollbar-track { background:#EFF2F5; }
-#bl-vtranscript::-webkit-scrollbar-thumb { background:#fed1bb; border-radius:3px; }
-#bl-vtranscript::-webkit-scrollbar-thumb:hover { background:#fb6d3b; }
+#bl-vtranscript::-webkit-scrollbar { width: 5px; }
+#bl-vtranscript::-webkit-scrollbar-thumb {
+  background: var(--bl-line-strong); border-radius: 99px;
+}
+#bl-vtranscript .bl-msg { font-size: 13px; }
 
-/* Veliki centralni orb (vidljiv samo u vp-idle stanju) */
-#bl-vorb-center {
-  display:flex; flex-direction:column; align-items:center;
-  padding:32px 0 22px; flex-shrink:0;
+#bl-vcontrols {
+  padding: 14px 18px; background: #fff;
+  border-top: 1px solid var(--bl-line);
+  display: flex; gap: 8px; flex-shrink: 0;
 }
-#bl-vorb-large {
-  width:88px; height:88px; border-radius:50%; flex-shrink:0;
-  display:flex; align-items:center; justify-content:center;
-  font-size:40px; margin-bottom:12px; transition:background .35s;
+.bl-vbtn {
+  flex: 1; height: 44px; border-radius: 12px;
+  border: 1px solid var(--bl-line);
+  background: #fff; color: var(--bl-text);
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .15s; padding: 0 16px;
 }
-#bl-vorb-large.orb-idle {
-  background:linear-gradient(135deg,#fb6d3b,#eA5c2a);
-  box-shadow:0 8px 24px rgba(251,109,59,.5);
+.bl-vbtn:hover { background: var(--bl-bg-soft); }
+.bl-vbtn--danger {
+  background: var(--bl-danger-bg);
+  color: var(--bl-danger);
+  border-color: #fecaca;
 }
-#bl-vorb-large.orb-listening {
-  background:radial-gradient(circle,#16a34a,#15803d);
-  animation:vOrbG 2s infinite;
-}
-#bl-vorb-label {
-  font-size:13px; color:#64748B; text-align:center; line-height:1.5;
-}
+.bl-vbtn--danger:hover { background: #fee2e2; }
+.bl-vbtn svg { width: 14px; height: 14px; }
 
-/* Panel stanje — toggle orba između centra i headera */
-#bl-voice-panel.vp-idle   #bl-voice-orb   { display:none !important; }
-#bl-voice-panel.vp-active #bl-voice-orb   { display:flex; }
-#bl-voice-panel.vp-idle   #bl-vorb-center { display:flex; }
-#bl-voice-panel.vp-active #bl-vorb-center { display:none; }
-
-/* Stop dugme — donje, crveno, čisto */
-#bl-vstop-wrap {
-  padding:12px; border-top:1px solid #E5E7EB;
-  background:#fff; display:flex; justify-content:center; flex-shrink:0;
+@media (max-width: 480px) {
+  #bl-voice-overlay { padding: 0; align-items: stretch; }
+  #bl-voice-panel {
+    width: 100%; max-height: 100vh; height: 100vh;
+    border-radius: 0;
+  }
+  .bl-orb { width: 140px; height: 140px; }
+  .bl-orb__core { width: 84px; height: 84px; }
+  .bl-orb__core svg { width: 32px; height: 32px; }
 }
-#bl-vstop {
-  background:#FEF2F2; border:1.5px solid #FECACA;
-  color:#DC2626; border-radius:8px;
-  padding:8px 32px; font-size:14px; font-weight:600;
-  cursor:pointer; transition:background .15s, border-color .15s;
-}
-#bl-vstop:hover { background:#FEE2E2; border-color:#FCA5A5; }
 `;
 
   // ── Inject CSS & HTML ────────────────────────────────────────────
@@ -293,79 +664,232 @@
   document.head.appendChild(styleEl);
 
   document.body.insertAdjacentHTML('beforeend', `
-<button id="bl-launcher" aria-label="Otvori chat">💬</button>
+<button id="bl-launcher" aria-label="Otvori chat">
+  ${I.chat}
+  <span class="bl-launcher__badge">1</span>
+</button>
 
 <div id="bl-window" role="dialog" aria-label="BitLab AI Chat">
   <div id="bl-header">
-    <div class="bl-header-left">
-      <div class="bl-avatar">🤖</div>
-      <div class="bl-hinfo">
-        <div class="bl-title">BitLab Asistent</div>
-        <div class="bl-sub"><span class="bl-dot"></span>Online &middot; Odgovara odmah</div>
+    <div class="bl-header__row">
+      <div class="bl-header__avatar">${I.bot}</div>
+      <div class="bl-header__info">
+        <div class="bl-header__title">BitLab Asistent</div>
+        <div class="bl-header__sub">
+          <span class="bl-dot"></span>Online · Odgovara odmah
+        </div>
+      </div>
+      <div class="bl-header__actions">
+        <button class="bl-icon-btn" id="bl-min" title="Minimize" aria-label="Minimize">${I.minus}</button>
+        <button class="bl-icon-btn" id="bl-close" title="Zatvori" aria-label="Zatvori">${I.close}</button>
       </div>
     </div>
-    <button id="bl-close" aria-label="Zatvori">&times;</button>
+    <div class="bl-header__chips">
+      <span class="bl-header__chip">${I.shield} Sigurno</span>
+      <span class="bl-header__chip">${I.spark} AI</span>
+      <span class="bl-header__chip">5.278 proizvoda</span>
+    </div>
   </div>
+
   <div id="bl-messages"></div>
-  <div id="bl-quick-wrap">
-    <div class="bl-qr-label">Česta pitanja:</div>
+
+  <div id="bl-quick-wrap" class="hidden">
+    <div class="bl-qr-label">Brza pitanja</div>
     <div class="bl-quick-chips" id="bl-chips"></div>
   </div>
+
   <div id="bl-input-area">
-    <input id="bl-input" type="text" placeholder="Postavi pitanje..." autocomplete="off">
-    <button id="bl-voice-btn" title="Voice mode — razgovaraj glasom">🎤</button>
-    <button id="bl-send">&#10148;</button>
+    <div class="bl-input-wrap">
+      <input id="bl-input" type="text" placeholder="Postavi pitanje..." autocomplete="off">
+      <button class="bl-attach" title="Priloži" aria-label="Priloži">${I.attach}</button>
+    </div>
+    <button id="bl-voice-btn" title="Voice mode" aria-label="Voice mode">${I.mic}</button>
+    <button id="bl-send" aria-label="Pošalji">${I.send}</button>
+  </div>
+
+  <div class="bl-footer">
+    Pokreće <strong>BitLab AI</strong> · Šifrovano · webshop.bitlab.rs
   </div>
 </div>
 
 <div id="bl-voice-overlay" role="dialog" aria-label="Voice Mode">
   <div id="bl-voice-panel" class="vp-idle">
     <div id="bl-vheader">
-      <div id="bl-voice-orb" class="orb-idle">🎤</div>
+      <div id="bl-vheader-avatar">${I.mic}</div>
       <div id="bl-vheader-info">
-        <div class="bl-vtitle">BitLab Voice Asistent</div>
-        <div id="bl-vstate">Inicijalizacija...</div>
+        <div class="bl-vtitle">Voice Asistent</div>
+        <div id="bl-vstate"><span id="bl-vstate-dot"></span><span id="bl-vstate-text">Inicijalizacija...</span></div>
       </div>
-      <button id="bl-voice-close-btn" aria-label="Zatvori voice mode">&times;</button>
+      <button id="bl-voice-close-btn" class="bl-icon-btn" aria-label="Zatvori">${I.close}</button>
     </div>
-    <div id="bl-vorb-center">
-      <div id="bl-vorb-large" class="orb-idle">🎤</div>
-      <div id="bl-vorb-label">Inicijalizacija mikrofona...</div>
+
+    <div id="bl-vstage">
+      <div id="bl-voice-orb" class="bl-orb">
+        <span class="bl-orb__ring"></span>
+        <span class="bl-orb__ring"></span>
+        <span class="bl-orb__ring"></span>
+        <div id="bl-vorb-large" class="bl-orb__core">${I.mic}</div>
+      </div>
+      <div id="bl-vtline"><em>Spremno za razgovor...</em></div>
+      <div id="bl-vwave" class="bl-wave bl-hidden">
+        ${Array.from({ length: 15 }, (_, i) =>
+          `<span style="animation-delay:${(i * 0.08).toFixed(2)}s"></span>`
+        ).join('')}
+      </div>
+      <div id="bl-vhint">${I.lock} Mikrofon se aktivira tek na klik</div>
     </div>
-    <div id="bl-vlevel-wrap"><div id="bl-vlevel-bar"></div></div>
-    <div id="bl-vtranscript"></div>
-    <div id="bl-vstop-wrap">
-      <button id="bl-vstop">&#9632;&nbsp; Zaustavi</button>
+
+    <div id="bl-vtranscript" class="bl-hidden"></div>
+
+    <div id="bl-vcontrols">
+      <button class="bl-vbtn" id="bl-vpause">${I.pause}<span id="bl-vpause-label">Pauziraj</span></button>
+      <button class="bl-vbtn bl-vbtn--danger" id="bl-vstop">${I.stop} Zaustavi</button>
     </div>
+
+    <!-- Hidden legacy element for VAD level (kept to avoid null refs) -->
+    <div id="bl-vlevel-bar" style="display:none"></div>
   </div>
 </div>
 `);
 
+  // ── Element refs ─────────────────────────────────────────────────
+  const $ = (id) => document.getElementById(id);
+  const messagesEl = $('bl-messages');
+  const chipsEl    = $('bl-chips');
+  const quickWrap  = $('bl-quick-wrap');
+
   // ── Quick reply chips ────────────────────────────────────────────
-  const chipsEl = document.getElementById('bl-chips');
-  QUICK_REPLIES.forEach(({ label, q }) => {
+  QUICK_REPLIES.forEach(({ label, icon, q }) => {
     const btn = document.createElement('button');
     btn.className = 'bl-chip';
-    btn.textContent = label;
+    btn.innerHTML = (icon ? I[icon] + ' ' : '') + label;
     btn.onclick = () => {
-      hideQuickReplies();
       addMsg(label, 'user');
       sendMessage(q);
     };
     chipsEl.appendChild(btn);
   });
 
-  function hideQuickReplies() {
-    document.getElementById('bl-quick-wrap').classList.add('hidden');
+  // ── Welcome screen ───────────────────────────────────────────────
+  function renderWelcome() {
+    const wrap = document.createElement('div');
+    wrap.className = 'bl-welcome';
+    wrap.id = 'bl-welcome';
+    wrap.innerHTML = `
+      <div class="bl-welcome__avatar">${I.spark}</div>
+      <div>
+        <div class="bl-welcome__title">Pozdrav<span>.</span></div>
+        <div class="bl-welcome__sub">Pitaj me bilo šta o našim proizvodima, dostavi ili garanciji.</div>
+      </div>
+      <div class="bl-welcome__suggest"></div>
+    `;
+    const suggestWrap = wrap.querySelector('.bl-welcome__suggest');
+    SUGGESTIONS.forEach(({ icon, title, desc, q }) => {
+      const btn = document.createElement('button');
+      btn.className = 'bl-suggest';
+      btn.innerHTML = `
+        <div class="bl-suggest__icon">${I[icon]}</div>
+        <div class="bl-suggest__body">
+          <div class="bl-suggest__t">${title}</div>
+          <div class="bl-suggest__d">${desc}</div>
+        </div>
+        <div class="bl-suggest__arrow">${I.arrow}</div>
+      `;
+      btn.onclick = () => {
+        addMsg(title, 'user');
+        sendMessage(q);
+      };
+      suggestWrap.appendChild(btn);
+    });
+    messagesEl.appendChild(wrap);
+  }
+
+  function clearWelcome() {
+    const w = $('bl-welcome');
+    if (w) w.remove();
+  }
+
+  function showQuickReplies() {
+    quickWrap.classList.remove('hidden');
   }
 
   // ── Shared history (chat + voice) ────────────────────────────────
   const history = [];
   let chatOpened = false;
 
-  // ── Markdown renderer ────────────────────────────────────────────
+  // ── Markdown + product card post-processor ───────────────────────
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Strip "X kom" / "X komada" / "(X kom.)" — defensive
+  function stripQty(s) {
+    return String(s)
+      .replace(/\s*\(\s*\d+\s*kom(?:ada)?\.?\s*\)/gi, '')
+      .replace(/\s*[—–-]\s*\d+\s*kom(?:ada)?\.?(?=\s|$)/gi, '')
+      .replace(/\s*\b\d+\s*kom(?:ada)?\.?(?=\s|$)/gi, '')
+      .trim();
+  }
+
+  // Match a product line in markdown:
+  //   - ![](image_url) **Name** — 389 KM — Na lageru — [Pogledaj](url)
+  // Leading "- " bullet, image, availability, and link are all optional.
+  const PROD_RE = new RegExp(
+    '^\\s*(?:[-*]\\s+)?' +                                    // optional list bullet
+    '(?:!\\[[^\\]]*\\]\\((https?:\\/\\/[^)]+)\\)\\s+)?' +     // 1: image url (optional)
+    '\\*\\*([^*]+?)\\*\\*' +                                  // 2: name
+    '\\s*[—–-]\\s*' +
+    '([0-9][\\d.,]*)\\s*KM' +                                 // 3: price
+    '(?:\\s*[—–-]\\s*([^\\n[]+?))?' +                         // 4: availability (optional, greedy)
+    '(?:\\s*[—–-]\\s*\\[([^\\]]+)\\]\\((https?:\\/\\/[^)]+)\\))?' + // 5,6: link
+    '\\s*$',
+    'i'
+  );
+
+  function renderProductCard({ img, name, price, avail, href }) {
+    const isAvail = /lager|stanj|dostup/i.test(avail || '');
+    const availClass = isAvail ? 'bl-prod__avail' : 'bl-prod__avail bl-prod__avail--order';
+    const availIcon  = isAvail ? I.check : '';
+    const availText  = stripQty(avail || (isAvail ? 'Na lageru' : ''));
+    const tag        = href ? 'a' : 'div';
+    const hrefAttr   = href ? ` href="${escHtml(href)}" target="_blank" rel="noopener"` : '';
+    const imgInner   = img
+      ? `<img class="bl-prod__img-real" src="${escHtml(img)}" alt="" loading="lazy" onerror="this.remove()">`
+      : I.laptop;
+    return (
+      `<${tag} class="bl-prod"${hrefAttr}>` +
+        `<div class="bl-prod__img">${imgInner}</div>` +
+        `<div class="bl-prod__body">` +
+          `<div class="bl-prod__name">${escHtml(name.trim())}</div>` +
+          `<div class="bl-prod__row">` +
+            `<div class="bl-prod__price">${escHtml(price)} KM</div>` +
+            (availText ? `<div class="${availClass}">${availIcon}${escHtml(availText)}</div>` : '') +
+          `</div>` +
+        `</div>` +
+      `</${tag}>`
+    );
+  }
+
   function renderMarkdown(text) {
-    return text
+    // 0) Globally strip "(N kom)" / "(N komada)" anywhere — defensive
+    text = String(text).replace(/\s*\(\s*\d+\s*kom(?:ada)?\.?\s*\)/gi, '');
+
+    // 1) Extract product card lines first → placeholder tokens
+    const cards = [];
+    const TOKEN = (i) => `BLPRODCARD-${i}-BLEND`;
+    const lines = text.split('\n');
+    const processed = lines.map((line) => {
+      const m = line.match(PROD_RE);
+      if (m) {
+        cards.push({ img: m[1], name: m[2], price: m[3], avail: m[4], href: m[6] });
+        return TOKEN(cards.length - 1);
+      }
+      return line;
+    });
+    let html = processed.join('\n');
+
+    // 2) Standard markdown
+    html = html
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g,
@@ -373,17 +897,19 @@
       .replace(/\[([^\]]+)\]\(((?:https?|mailto):[^)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener">$1</a>')
       .replace(/\n/g, '<br>');
-  }
 
-  function escHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // 3) Restore cards (HTML-encoded tokens preserved through escaping)
+    html = html.replace(/BLPRODCARD-(\d+)-BLEND/g, (_, i) => renderProductCard(cards[+i]));
+    return html;
   }
 
   function addMsg(text, role) {
+    clearWelcome();
+    showQuickReplies();
     const div = document.createElement('div');
     div.className = 'bl-msg ' + role;
     div.innerHTML = role === 'bot' ? renderMarkdown(text) : escHtml(text);
-    document.getElementById('bl-messages').appendChild(div);
+    messagesEl.appendChild(div);
     scrollBottom();
     return div;
   }
@@ -392,22 +918,20 @@
     const div = document.createElement('div');
     div.className = 'bl-msg bot bl-typing';
     div.innerHTML = '<span></span><span></span><span></span>';
-    document.getElementById('bl-messages').appendChild(div);
+    messagesEl.appendChild(div);
     scrollBottom();
     return div;
   }
 
   function scrollBottom() {
-    const m = document.getElementById('bl-messages');
-    m.scrollTop = m.scrollHeight;
+    messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
   // ── Chat API ─────────────────────────────────────────────────────
   async function sendMessage(text) {
-    hideQuickReplies();
     history.push({ role: 'user', content: text });
     const typing = addTyping();
-    document.getElementById('bl-send').disabled = true;
+    $('bl-send').disabled = true;
 
     try {
       const resp = await fetch(CHAT_URL, {
@@ -425,15 +949,15 @@
       typing.remove();
       addMsg('Greška mreže: ' + err.message, 'bot');
     } finally {
-      document.getElementById('bl-send').disabled = false;
-      document.getElementById('bl-input').focus();
+      $('bl-send').disabled = false;
+      $('bl-input').focus();
     }
   }
 
   // ── Voice state ──────────────────────────────────────────────────
   let vState = VS.IDLE;
   let voiceModeActive = false;
-  let conversationStarted = false;
+  let voicePaused = false;
   let audioCtx = null, analyser = null, micStream = null;
   let recorder = null, chunks = [], silenceTimer = null, speechStart = 0;
   let speechOnsetTimer = null;
@@ -441,44 +965,47 @@
   let vadRafId = null, currentAudio = null;
 
   const vEls = {
-    orb:      document.getElementById('bl-voice-orb'),
-    largOrb:  document.getElementById('bl-vorb-large'),
-    orbLabel: document.getElementById('bl-vorb-label'),
-    panel:    document.getElementById('bl-voice-panel'),
-    status:   document.getElementById('bl-vstate'),
-    level:    document.getElementById('bl-vlevel-bar'),
-    trans:    document.getElementById('bl-vtranscript'),
+    panel:    $('bl-voice-panel'),
+    orb:      $('bl-voice-orb'),
+    statusTxt:$('bl-vstate-text'),
+    tline:    $('bl-vtline'),
+    wave:     $('bl-vwave'),
+    hint:     $('bl-vhint'),
+    trans:    $('bl-vtranscript'),
+    pauseBtn: $('bl-vpause'),
+    pauseLbl: $('bl-vpause-label'),
+  };
+
+  const STATE_MAP = {
+    [VS.IDLE]:       { mod: '',           status: 'Spremno · pritisni mikrofon', tline: '<em>Postavi pitanje glasom.</em><br><em>Govori bosanski, srpski ili hrvatski.</em>', wave: false, hint: true },
+    [VS.LISTENING]:  { mod: 'listening',  status: 'Slušam...',                   tline: '<em>Govori — pauzom šalješ poruku</em>',                                            wave: false, hint: true },
+    [VS.RECORDING]:  { mod: 'recording',  status: 'Snimam...',                   tline: '<em>Govori...</em>',                                                                wave: true,  hint: false },
+    [VS.PROCESSING]: { mod: 'processing', status: 'Razmišljam...',               tline: '<em>Tražim odgovor...</em>',                                                        wave: false, hint: false },
+    [VS.SPEAKING]:   { mod: '',           status: 'Govorim...',                  tline: '<em>Asistent govori...</em>',                                                       wave: true,  hint: false },
   };
 
   function setVoiceState(s) {
     vState = s;
+    const cfg = STATE_MAP[s];
+    vEls.orb.className = 'bl-orb' + (cfg.mod ? ' bl-orb--' + cfg.mod : '');
+    vEls.panel.className = 'vp-' + s;
+    vEls.statusTxt.textContent = cfg.status;
+    vEls.tline.innerHTML = cfg.tline;
+    vEls.wave.classList.toggle('bl-hidden', !cfg.wave);
+    vEls.hint.classList.toggle('bl-hidden', !cfg.hint);
+  }
 
-    // Kad počne snimanje → permanentno pređi na mali header orb
-    if (s === VS.RECORDING || s === VS.PROCESSING || s === VS.SPEAKING) {
-      conversationStarted = true;
-    }
-    vEls.panel.className = conversationStarted ? 'vp-active' : 'vp-idle';
-
-    const stateClass = 'orb-' + s;
-    vEls.orb.className = stateClass;
-    vEls.largOrb.className = stateClass;
-
-    const map = {
-      [VS.IDLE]:       ['🎤', 'Čeka...', 'Inicijalizacija mikrofona...'],
-      [VS.LISTENING]:  ['👂', 'Slušam...', 'Govori — pauzom šalješ poruku'],
-      [VS.RECORDING]:  ['⏺',  'Snimam...', ''],
-      [VS.PROCESSING]: ['⏳', 'Razmišljam...', ''],
-      [VS.SPEAKING]:   ['🔊', 'Govorim...', ''],
-    };
-    const [icon, statusTxt, labelTxt] = map[s];
-    vEls.orb.textContent = icon;
-    vEls.largOrb.textContent = icon;
-    vEls.status.textContent = statusTxt;
-    if (labelTxt !== '') vEls.orbLabel.textContent = labelTxt;
-    if (s !== VS.RECORDING && s !== VS.LISTENING) vEls.level.style.width = '0%';
+  function setPausedState() {
+    vEls.orb.className = 'bl-orb bl-orb--paused';
+    vEls.panel.className = 'vp-paused';
+    vEls.statusTxt.textContent = 'Pauzirano';
+    vEls.tline.innerHTML = '<em>Pauzirano — klikni "Nastavi" da nastaviš razgovor.</em>';
+    vEls.wave.classList.add('bl-hidden');
+    vEls.hint.classList.add('bl-hidden');
   }
 
   function addVoiceMsg(role, content) {
+    vEls.trans.classList.remove('bl-hidden');
     const div = document.createElement('div');
     div.className = 'bl-msg ' + (role === 'user' ? 'user' : 'bot');
     div.innerHTML = role === 'user' ? escHtml(content) : renderMarkdown(content);
@@ -489,9 +1016,7 @@
   // ── Mic open/close ───────────────────────────────────────────────
   async function openMic() {
     if (!window.isSecureContext || !navigator.mediaDevices) {
-      throw new Error(
-        'NIJE_SECURE_CONTEXT'
-      );
+      throw new Error('NIJE_SECURE_CONTEXT');
     }
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
@@ -518,13 +1043,11 @@
   // ── VAD loop ─────────────────────────────────────────────────────
   function startVad() {
     function tick() {
+      if (voicePaused) { vadRafId = requestAnimationFrame(tick); return; }
       const rms = getRms();
-      if (vState === VS.LISTENING || vState === VS.RECORDING)
-        vEls.level.style.width = Math.min(rms / 0.08 * 100, 100) + '%';
 
       if (vState === VS.LISTENING) {
         if (rms > SPEECH_THRESHOLD) {
-          // RMS iznad praga — poništi gap timer, pokreni onset ako već ne teče
           clearTimeout(onsetGapTimer); onsetGapTimer = null;
           if (!speechOnsetTimer) {
             speechOnsetTimer = setTimeout(() => {
@@ -533,8 +1056,6 @@
             }, SPEECH_ONSET_MS);
           }
         } else if (speechOnsetTimer) {
-          // Kratka pauza unutar onset prozora — dozvoli do ONSET_GAP_MS
-          // (inter-fonemski razmaci u govoru su <50ms, tastatura pravi pauze >100ms)
           if (!onsetGapTimer) {
             onsetGapTimer = setTimeout(() => {
               onsetGapTimer = null;
@@ -615,7 +1136,7 @@
       setVoiceState(VS.SPEAKING);
       await speakText(replyVoice || replyText);
     } catch (err) {
-      if (voiceModeActive) vEls.status.textContent = 'Greška: ' + err.message;
+      if (voiceModeActive) vEls.statusTxt.textContent = 'Greška: ' + err.message;
     }
     if (voiceModeActive) rearmVoice(true);  // cool-down nakon TTS
   }
@@ -623,7 +1144,6 @@
   async function rearmVoice(afterTts = false) {
     if (!voiceModeActive) return;
     if (afterTts) {
-      // Čekaj da reverb zvučnika utihne prije nego se ponovo sluša
       clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
       clearTimeout(onsetGapTimer);    onsetGapTimer = null;
       await new Promise(r => setTimeout(r, TTS_COOLDOWN_MS));
@@ -668,7 +1188,6 @@
         currentAudio.play().catch(rej);
       });
     } catch {
-      // Fallback na browser TTS
       if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
@@ -680,48 +1199,45 @@
 
   // ── Voice overlay open / close ───────────────────────────────────
   async function openVoiceMode() {
-    const overlay = document.getElementById('bl-voice-overlay');
+    const overlay = $('bl-voice-overlay');
     overlay.classList.add('open');
-    conversationStarted = false;
-    vEls.panel.className = 'vp-idle';
-    vEls.trans.innerHTML = '';
-    vEls.status.textContent = 'Zahtijevam pristup mikrofonu...';
-    vEls.orb.className = 'orb-idle';
-    vEls.orb.textContent = '🎤';
-    vEls.largOrb.className = 'orb-idle';
-    vEls.largOrb.textContent = '🎤';
-    vEls.orbLabel.textContent = 'Inicijalizacija mikrofona...';
+    voicePaused = false;
+    vEls.pauseLbl.textContent = 'Pauziraj';
+    vEls.pauseBtn.querySelector('svg')?.replaceWith(
+      Object.assign(document.createElement('span'), { innerHTML: I.pause }).firstChild
+    );
 
+    setVoiceState(VS.IDLE);
+    vEls.statusTxt.textContent = 'Zahtijevam pristup mikrofonu...';
     voiceModeActive = true;
+
     try {
       await openMic();
       setVoiceState(VS.LISTENING);
       startVad();
     } catch (err) {
-      vEls.orb.textContent = '⚠';
-      vEls.orb.className = 'orb-idle';
-
+      vEls.orb.className = 'bl-orb bl-orb--paused';
       if (err.message === 'NIJE_SECURE_CONTEXT') {
-        vEls.status.textContent = 'Browser blokira mikrofon';
-        vEls.trans.innerHTML =
-          '<div class="bl-vt-msg bl-vt-ai" style="font-size:12px;line-height:1.7">' +
+        vEls.statusTxt.textContent = 'Browser blokira mikrofon';
+        vEls.tline.innerHTML =
+          '<div style="font-size:12px;line-height:1.7;text-align:left">' +
           '<strong>Chrome fix:</strong><br>' +
-          'Otvori <code style="background:rgba(255,255,255,.15);padding:1px 5px;border-radius:3px">chrome://flags/#unsafely-treat-insecure-origin-as-secure</code><br>' +
-          'Dodaj <code style="background:rgba(255,255,255,.15);padding:1px 5px;border-radius:3px">' + location.origin + '</code> → Relaunch<br><br>' +
+          'Otvori <code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px">chrome://flags/#unsafely-treat-insecure-origin-as-secure</code><br>' +
+          'Dodaj <code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px">' + escHtml(location.origin) + '</code> → Relaunch<br><br>' +
           '<strong>Firefox:</strong> localhost radi bez izmjena.<br><br>' +
-          'Ili koristi <a href="/public/voice.html" target="_blank" ' +
-          'style="color:#fed1bb;font-weight:700">Voice Asistent (novi tab)</a>' +
+          'Ili koristi <a href="/public/voice.html" target="_blank" style="color:var(--bl-orange);font-weight:700">Voice Asistent (novi tab)</a>' +
           '</div>';
       } else if (err.name === 'NotAllowedError') {
-        vEls.status.textContent = 'Dozvola odbijena — odobri mikrofon u browseru';
+        vEls.statusTxt.textContent = 'Dozvola odbijena — odobri mikrofon u browseru';
       } else {
-        vEls.status.textContent = 'Mikrofon nedostupan: ' + err.message;
+        vEls.statusTxt.textContent = 'Mikrofon nedostupan: ' + err.message;
       }
     }
   }
 
   function closeVoiceMode() {
     voiceModeActive = false;
+    voicePaused = false;
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     clearTimeout(silenceTimer); silenceTimer = null;
@@ -731,28 +1247,60 @@
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     closeMic();
     setVoiceState(VS.IDLE);
-    document.getElementById('bl-voice-overlay').classList.remove('open');
+    $('bl-voice-overlay').classList.remove('open');
+    vEls.trans.innerHTML = '';
+    vEls.trans.classList.add('bl-hidden');
+  }
+
+  function togglePause() {
+    if (!voiceModeActive) return;
+    voicePaused = !voicePaused;
+    if (voicePaused) {
+      // Halt all active recording / playback but keep mic stream open
+      if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      clearTimeout(silenceTimer); silenceTimer = null;
+      clearTimeout(speechOnsetTimer); speechOnsetTimer = null;
+      clearTimeout(onsetGapTimer); onsetGapTimer = null;
+      if (recorder && recorder.state !== 'inactive') recorder.stop();
+      setPausedState();
+      vEls.pauseLbl.textContent = 'Nastavi';
+      vEls.pauseBtn.querySelector('svg')?.replaceWith(
+        Object.assign(document.createElement('span'), { innerHTML: I.play }).firstChild
+      );
+    } else {
+      vEls.pauseLbl.textContent = 'Pauziraj';
+      vEls.pauseBtn.querySelector('svg')?.replaceWith(
+        Object.assign(document.createElement('span'), { innerHTML: I.pause }).firstChild
+      );
+      setVoiceState(VS.LISTENING);
+    }
   }
 
   // ── Widget events ────────────────────────────────────────────────
-  document.getElementById('bl-launcher').addEventListener('click', function () {
-    const win = document.getElementById('bl-window');
+  $('bl-launcher').addEventListener('click', function () {
+    const win = $('bl-window');
     const isOpen = win.classList.toggle('open');
-    this.textContent = isOpen ? '✕' : '💬';
+    this.classList.toggle('bl-open', isOpen);
     if (isOpen && !chatOpened) {
       chatOpened = true;
-      addMsg('Pozdrav! Ja sam BitLab AI Asistent. Tu sam za bilo koju temu vezanu za naš webshop — proizvodi, dostava, garancija ili kontakt.', 'bot');
+      renderWelcome();
     }
-    if (isOpen) document.getElementById('bl-input').focus();
+    if (isOpen) $('bl-input').focus();
   });
 
-  document.getElementById('bl-close').addEventListener('click', function () {
-    document.getElementById('bl-window').classList.remove('open');
-    document.getElementById('bl-launcher').textContent = '💬';
+  $('bl-close').addEventListener('click', () => {
+    $('bl-window').classList.remove('open');
+    $('bl-launcher').classList.remove('bl-open');
   });
 
-  document.getElementById('bl-send').addEventListener('click', function () {
-    const inp = document.getElementById('bl-input');
+  $('bl-min').addEventListener('click', () => {
+    $('bl-window').classList.remove('open');
+    $('bl-launcher').classList.remove('bl-open');
+  });
+
+  $('bl-send').addEventListener('click', () => {
+    const inp = $('bl-input');
     const text = inp.value.trim();
     if (!text) return;
     inp.value = '';
@@ -760,16 +1308,16 @@
     sendMessage(text);
   });
 
-  document.getElementById('bl-input').addEventListener('keypress', function (e) {
+  $('bl-input').addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      document.getElementById('bl-send').click();
+      $('bl-send').click();
     }
   });
 
-  document.getElementById('bl-voice-btn').addEventListener('click', () => openVoiceMode());
-
-  document.getElementById('bl-voice-close-btn').addEventListener('click', () => closeVoiceMode());
-  document.getElementById('bl-vstop').addEventListener('click', () => closeVoiceMode());
+  $('bl-voice-btn').addEventListener('click', () => openVoiceMode());
+  $('bl-voice-close-btn').addEventListener('click', () => closeVoiceMode());
+  $('bl-vstop').addEventListener('click', () => closeVoiceMode());
+  $('bl-vpause').addEventListener('click', () => togglePause());
 
 })();
