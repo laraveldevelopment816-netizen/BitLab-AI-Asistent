@@ -1,19 +1,60 @@
 # Deploy
 
+Server konvencije: [`DEPLOY_GUIDE.md`](./DEPLOY_GUIDE.md).
+Sledeći korak: automatizacija kroz `scripts/deploy.sh` + CI git runner.
+
 ```bash
+# Release folder + clone
 RELEASE=$(date +%Y%m%d_%H%M)
+
 mkdir -p /home/ai/aiasistent-staging/releases/$RELEASE
+
 git clone -b production-prep git@github.com:laraveldevelopment816-netizen/BitLab-AI-Asistent.git /home/ai/aiasistent-staging/releases/$RELEASE
+
 cd /home/ai/aiasistent-staging/releases/$RELEASE
-python3 -m venv .venv && source .venv/bin/activate
+
+# Python venv + deps (CPU torch obavezan)
+python3 -m venv .venv
+
+source .venv/bin/activate
+
 pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu
-ln -sfn /home/ai/aiasistent-staging/shared/.env .env && ln -sfn /home/ai/aiasistent-staging/shared/var var
-[ -f var/products.index.npz ] || { python scripts/embed_products.py; mv data/products.index.npz data/products.meta.json var/; }
-ln -sfn $(pwd)/var/products.index.npz data/products.index.npz && ln -sfn $(pwd)/var/products.meta.json data/products.meta.json
-python scripts/build_categories.py && python scripts/init_db.py
-cd dashboard && pnpm install --frozen-lockfile && pnpm build && cd ..
+
+# Symlinks na shared resources (preživljavaju releaseve)
+ln -sfn /home/ai/aiasistent-staging/shared/.env .env
+
+ln -sfn /home/ai/aiasistent-staging/shared/var var
+
+# Index — SAMO prvi put (~5min CPU, ~5GB temp diska); preskoči ako postoji
+python scripts/embed_products.py
+
+mv data/products.index.npz data/products.meta.json var/
+
+# Symlinkuj index iz shared/var u release data/
+ln -sfn $(pwd)/var/products.index.npz data/products.index.npz
+
+ln -sfn $(pwd)/var/products.meta.json data/products.meta.json
+
+# Kategorije + DB schema (deterministički, brzo)
+python scripts/build_categories.py
+
+python scripts/init_db.py
+
+# Dashboard SPA build (Vite → dashboard/dist/)
+cd dashboard
+
+pnpm install --frozen-lockfile
+
+pnpm build
+
+cd ..
+
+# Atomic switch
 ln -sfn /home/ai/aiasistent-staging/releases/$RELEASE /home/ai/aiasistent-staging/current
+
+# Restart
 sudo systemctl restart aiasistent-staging
 ```
 
-Server konvencije: [`DEPLOY_GUIDE.md`](./DEPLOY_GUIDE.md). Prvi put: kopiraj `deploy/bitlab-ai.service` i `deploy/nginx-site.conf`, popuni `shared/.env`, Node 22, certbot. Rollback: `ln -sfn` na stari release + `systemctl restart`.
+Prvi put: kopiraj `deploy/bitlab-ai.service` i `deploy/nginx-site.conf`, popuni `shared/.env`, Node 22, certbot.
+Rollback: `ln -sfn` na stari release + `sudo systemctl restart aiasistent-staging`.
