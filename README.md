@@ -2,6 +2,53 @@
 
 > Multi-channel AI prodajni asistent za **webshop.bitlab.rs** sa fine-grained logging dashboard-om za optimizaciju AI workflow-a.
 
+---
+
+## 🟢 Aktivne rezolucije (čitaj prije svega)
+
+| # | Plan | Šta radi |
+|---|---|---|
+| 8 | [`PRODUCTION-PREP-PLAN.md`](./PRODUCTION-PREP-PLAN.md) | Production-readiness: AI klasifikacija namjere + logging dashboard + voice UX + deploy artefakti (čeka server-side install) |
+| 9 | [`MODEL-EVAL-PLAN.md`](./MODEL-EVAL-PLAN.md) | Multi-provider eval (Claude / GPT / Llama / DeepSeek) sa tehničkim pragom ≥99% i ekonomskom odlukom kraj sedmice |
+| 10 | [`GROWTH-PLAN.md`](./GROWTH-PLAN.md) | SEO audit + content production + link building + paid ads + AI asistent kao growth tool (organic +50% za 90 dana) |
+
+
+> **✅ Sesija 8 — Production prep (završeno, čeka deploy):**
+> Chat + voice + email + logging dashboard production-ready. AI
+> klasifikacija namjere sa hard category filter (eval **100%** na
+> Sonnet 4.6, 41/41), typo robustnost regression set, dashboard sa
+> fine-grained tool call timeline, compare endpoint (haiku ↔ sonnet
+> paralelno), voice UX redesign, deploy artefakti. Server-side install
+> je sledeći korak (vidi `deploy/README.md`, **TAČKA 0**: server hostuje
+> 4 druge aplikacije, deploy se prilagođava njihovim konvencijama).
+> Plan: **`PRODUCTION-PREP-PLAN.md`**. Detaljnu listu izmjena vidi u
+> *Šta je novo (Sesija 8)* sekciji niže.
+
+> **🔬 Sesija 9 — Multi-provider model eval (sedmica 2026-05-05 → 11):**
+> Sonnet 4.6 je *trenutni* default, ne *konačna* odluka. Ova sedmica
+> je dedikovana eval-u kandidata (Claude Haiku/Sonnet/Opus, GPT-4o-mini,
+> Llama 3.x, DeepSeek-V3) sa tehničkim pragom **≥99% accuracy + 0%
+> halucinacija** i ekonomskom odlukom kraj sedmice. Subjektivna
+> hipoteza Ivana ("GPT mini će završiti priču sa potrošnjom kao Haiku")
+> eksplicitno odvojena od rezultata — testiramo, pa odlučujemo. Plan,
+> kandidati, metodologija, schedule: **`MODEL-EVAL-PLAN.md`**.
+
+> **📈 Sesija 10 — Growth (kontinuirano od 2026-W19):**
+> Iskorišćavamo Claude Max plan za **dubinski tehnički + kompetitivni
+> SEO audit, content production, link building outreach, paid ads
+> automatizaciju** i AI asistent kao growth tool (email capture,
+> newsletter, cart recovery, review requests, log insights → content
+> backlog). Cilj: +50% organic / +20 referring domains u 90 dana,
+> +150% / +60 u 180. Sve human-in-the-loop, bez black-hat / spam /
+> fake reviews. Plan, faze, KPI-jevi: **`GROWTH-PLAN.md`**.
+
+> **Trenutni branch:** `production-prep` (PR otvoren prema `main`).
+> Default model za chat: `claude-sonnet-4-6` (vidi *Modelska odluka*).
+
+---
+
+## Pregled
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  FastAPI backend (Python 3.11+, async)                          │
@@ -51,25 +98,7 @@ Knowledge base + storage:
 | **Deploy artefakti** (`scripts/deploy.sh`, `deploy/*.service`, nginx, README) | ✅ |
 | Server-side install na produkciju (zasebna sesija, vidi `deploy/README.md`) | 🟡 čeka |
 
-PR: `production-prep` → `main`. Detalji u `PRODUCTION-PREP-PLAN.md`.
-
-> **🔬 Otvorena rezolucija (Sesija 9, sedmica 2026-05-05 → 2026-05-11):**
-> Sonnet 4.6 je *trenutni* default, ne *konačna* odluka. Ova sedmica je
-> dedikovana **multi-provider eval-u** (Claude Haiku/Sonnet/Opus, GPT-4o-mini,
-> Llama 3.x, DeepSeek-V3) sa target-om ≥99% pass rate i ekonomskom odlukom
-> kraj sedmice. Plan, kandidati, metodologija i timeline u
-> **`MODEL-EVAL-PLAN.md`**. Ivanova subjektivna hipoteza ("GPT mini će
-> završiti priču sa potrošnjom kao Haiku") tu je eksplicitno odvojena od
-> stvarnog rezultata — testiramo, pa odlučujemo.
-
-> **📈 Otvorena rezolucija (Sesija 10, kontinuirano od 2026-W19):**
-> Iskorišćavamo Claude Max plan za **growth automatizaciju** —
-> dubinski tehnički + kompetitivni SEO audit, content production,
-> link building outreach, paid ads automatizaciju i AI asistent kao
-> growth tool (newsletter, cart recovery, review requests). Cilj:
-> +50% organic / +20 referring domains u 90 dana, +150% / +60 u 180.
-> Plan, faze, KPI-jevi i schedule u **`GROWTH-PLAN.md`**. Ne radimo
-> black-hat / spam / fake reviews — sve je human-in-the-loop.
+PR: `production-prep` → `main`. Detalji u [`PRODUCTION-PREP-PLAN.md`](./PRODUCTION-PREP-PLAN.md). Sesije 9 i 10 su pokrivene callout tabelom na vrhu README-a.
 
 ### Modelska odluka — zašto Sonnet 4.6 za chat (a ne Haiku)
 
