@@ -37,7 +37,7 @@ export function Tag({ children, color = C.textDim, subtle }: { children: ReactNo
     <span style={{
       display: 'inline-flex', alignItems: 'center',
       fontFamily: 'JetBrains Mono, monospace',
-      fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em',
+      fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em',
       padding: '2px 6px', borderRadius: 3,
       background: color + (subtle ? '10' : '20'),
       border: `1px solid ${color}40`,
@@ -99,7 +99,7 @@ export function Btn({
   const base: CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '6px 12px', borderRadius: 4,
-    fontSize: 12, fontFamily: 'Inter, sans-serif', cursor: disabled ? 'not-allowed' : 'pointer',
+    fontSize: 13, fontFamily: 'Inter, sans-serif', cursor: disabled ? 'not-allowed' : 'pointer',
     transition: 'background 0.12s ease, color 0.12s ease',
     opacity: disabled ? 0.4 : 1,
     outline: 'none',
@@ -122,14 +122,14 @@ export function Btn({
 export function Metric({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
   return (
     <div style={{ background: C.panelLo, border: `1px solid ${C.border}`, borderRadius: 4, padding: '10px 12px' }}>
-      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMute, marginBottom: 4 }}>
+      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMute, marginBottom: 4 }}>
         {label}
       </div>
       <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 18, color: accent ? C.accent : C.text, lineHeight: 1 }}>
         {value}
       </div>
       {sub && (
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: C.textDim, marginTop: 3 }}>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5, color: C.textDim, marginTop: 3 }}>
           {sub}
         </div>
       )}
@@ -142,7 +142,7 @@ export function Metric({ label, value, sub, accent }: { label: string; value: st
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <div style={{
-      fontFamily: 'JetBrains Mono, monospace', fontSize: 10,
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 11,
       textTransform: 'uppercase', letterSpacing: '0.08em',
       color: C.textMute, marginBottom: 8,
     }}>
@@ -166,7 +166,7 @@ export function TopBar({ title, subtitle, right }: { title: string; subtitle?: R
           {title}
         </h1>
         {subtitle && (
-          <div style={{ fontSize: 13, color: C.textDim, marginTop: 4 }}>{subtitle}</div>
+          <div style={{ fontSize: 14, color: C.textDim, marginTop: 4 }}>{subtitle}</div>
         )}
       </div>
       {right && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{right}</div>}

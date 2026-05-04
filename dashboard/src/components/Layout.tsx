@@ -38,7 +38,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 bitlab-ai
               </div>
               <div style={{
-                fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: C.textMute,
+                fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textMute,
                 letterSpacing: '0.05em', marginTop: 1,
               }}>
                 v0.8 · pregled rada
@@ -61,12 +61,12 @@ export function Layout({ children }: { children: ReactNode }) {
               {({ isActive }) => (
                 <>
                   <div style={{
-                    fontSize: 13, fontWeight: isActive ? 500 : 400,
+                    fontSize: 14, fontWeight: isActive ? 500 : 400,
                     color: isActive ? C.text : C.textDim,
                   }}>
                     {label}
                   </div>
-                  <div style={{ fontSize: 10.5, color: C.textMute }}>{hint}</div>
+                  <div style={{ fontSize: 11.5, color: C.textMute }}>{hint}</div>
                 </>
               )}
             </NavLink>
@@ -99,7 +99,7 @@ function SidebarFooter() {
     <div style={{
       padding: '12px 16px',
       borderTop: `1px solid ${C.border}`,
-      fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5,
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5,
       color: C.textMute,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>

@@ -24,7 +24,7 @@ export function Settings() {
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', maxWidth: 720 }}>
         <div style={{ marginBottom: 24 }}>
           <SectionLabel>API ključ (Bearer)</SectionLabel>
-          <div style={{ fontSize: 12, color: C.textDim, marginBottom: 8, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: C.textDim, marginBottom: 8, lineHeight: 1.5 }}>
             Unesi <code style={{ background: C.panelLo, padding: '1px 6px', borderRadius: 3, fontFamily: 'JetBrains Mono, monospace' }}>DASHBOARD_API_KEY</code> iz tvog
             <code style={{ background: C.panelLo, padding: '1px 6px', borderRadius: 3, fontFamily: 'JetBrains Mono, monospace', marginLeft: 4 }}>.env</code> fajla.
             Čuva se lokalno u browser-u (localStorage); backend prima kao Bearer header.
@@ -36,7 +36,7 @@ export function Settings() {
               onChange={e => setKey(e.target.value)}
               placeholder="zaljepi API ključ…"
               style={{
-                flex: 1, padding: '8px 12px', borderRadius: 4, fontSize: 12,
+                flex: 1, padding: '8px 12px', borderRadius: 4, fontSize: 13,
                 fontFamily: 'JetBrains Mono, monospace',
                 background: C.panelLo, color: C.text, border: `1px solid ${C.border}`,
                 outline: 'none',
@@ -48,7 +48,7 @@ export function Settings() {
 
         <div style={{ marginBottom: 24 }}>
           <SectionLabel>okruženje</SectionLabel>
-          <table style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+          <table style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>
             <tbody>
               <Row k="API ruta"             v="/api/dashboard" />
               <Row k="proxy u dev modu"     v="http://localhost:8000" />

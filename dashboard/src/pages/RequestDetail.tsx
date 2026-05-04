@@ -18,10 +18,10 @@ export function RequestDetail() {
   })
 
   if (isLoading) {
-    return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>
+    return <div style={{ padding: 28, color: C.textMute, fontSize: 13 }}>⠋ učitavam…</div>
   }
   if (error || !r) {
-    return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Poruka #{id} nije pronađena.</div>
+    return <div style={{ padding: 28, color: C.err, fontSize: 13 }}>Poruka #{id} nije pronađena.</div>
   }
 
   const ch = channelColor(r.channel)
@@ -73,7 +73,7 @@ export function RequestDetail() {
           <pre style={{
             background: C.panelLo, border: `1px solid ${C.border}`, borderRadius: 4,
             padding: 12, color: C.text, fontFamily: 'JetBrains Mono, monospace',
-            fontSize: 12, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
+            fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
           }}>{r.prompt}</pre>
         </div>
 
@@ -83,7 +83,7 @@ export function RequestDetail() {
             <pre style={{
               background: `${C.err}10`, border: `1px solid ${C.err}40`, borderRadius: 4,
               padding: 12, color: C.err, fontFamily: 'JetBrains Mono, monospace',
-              fontSize: 12, whiteSpace: 'pre-wrap', margin: 0,
+              fontSize: 13, whiteSpace: 'pre-wrap', margin: 0,
             }}>{r.error}</pre>
           </div>
         )}
@@ -91,7 +91,7 @@ export function RequestDetail() {
         <div>
           <SectionLabel>pozivi alata, hronološki ({r.tool_calls.length})</SectionLabel>
           {r.tool_calls.length === 0 && (
-            <div style={{ color: C.textMute, fontSize: 12 }}>Bez poziva alata.</div>
+            <div style={{ color: C.textMute, fontSize: 13 }}>Bez poziva alata.</div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {r.tool_calls.map((tc, i) => <ToolCallRow key={i} tc={tc} />)}
@@ -103,7 +103,7 @@ export function RequestDetail() {
           <pre style={{
             background: C.panelLo, border: `1px solid ${C.border}`, borderRadius: 4,
             padding: 12, color: C.text, fontFamily: 'JetBrains Mono, monospace',
-            fontSize: 12, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
+            fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
           }}>{r.response || '—'}</pre>
         </div>
       </div>
@@ -125,7 +125,7 @@ function ToolCallRow({ tc }: { tc: ToolCall }) {
         onClick={() => setOpen(!open)}
         style={{
           padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
-          fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
         }}
       >
         <span style={{ color: C.textMute, width: 28 }}>{open ? '▼' : '▶'}</span>
@@ -134,7 +134,7 @@ function ToolCallRow({ tc }: { tc: ToolCall }) {
         <span style={{ color: C.textDim, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {typeof parsedInput === 'object' ? JSON.stringify(parsedInput).slice(0, 80) : String(parsedInput).slice(0, 80)}
         </span>
-        <span style={{ color: C.textMute, fontSize: 10.5 }}>{tc.latency_ms}ms</span>
+        <span style={{ color: C.textMute, fontSize: 11.5 }}>{tc.latency_ms}ms</span>
       </div>
       {open && (
         <div style={{ padding: '0 12px 12px 48px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -142,7 +142,7 @@ function ToolCallRow({ tc }: { tc: ToolCall }) {
             <SectionLabel>parametri (ulaz)</SectionLabel>
             <pre style={{
               background: C.bg, border: `1px solid ${C.border}`, borderRadius: 3, padding: 8,
-              color: C.text, fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5,
+              color: C.text, fontFamily: 'JetBrains Mono, monospace', fontSize: 12.5,
               whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
             }}>{typeof parsedInput === 'object' ? JSON.stringify(parsedInput, null, 2) : String(parsedInput)}</pre>
           </div>
@@ -150,7 +150,7 @@ function ToolCallRow({ tc }: { tc: ToolCall }) {
             <SectionLabel>rezultat (izlaz)</SectionLabel>
             <pre style={{
               background: C.bg, border: `1px solid ${C.border}`, borderRadius: 3, padding: 8,
-              color: C.textDim, fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5,
+              color: C.textDim, fontFamily: 'JetBrains Mono, monospace', fontSize: 12.5,
               whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
               maxHeight: 300, overflow: 'auto',
             }}>{tc.output_text}</pre>

@@ -11,10 +11,10 @@ export function Stats() {
   })
 
   if (isLoading) {
-    return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>
+    return <div style={{ padding: 28, color: C.textMute, fontSize: 13 }}>⠋ učitavam…</div>
   }
   if (!data) {
-    return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Statistika nije dostupna (provjeri API ključ u Podešavanjima).</div>
+    return <div style={{ padding: 28, color: C.err, fontSize: 13 }}>Statistika nije dostupna (provjeri API ključ u Podešavanjima).</div>
   }
 
   return (
@@ -32,14 +32,14 @@ export function Stats() {
         <div>
           <SectionLabel>po kanalu × modelu</SectionLabel>
           {data.by_adapter.length === 0 ? (
-            <div style={{ color: C.textMute, fontSize: 12 }}>Nema podataka.</div>
+            <div style={{ color: C.textMute, fontSize: 13 }}>Nema podataka.</div>
           ) : (
             <table style={{
               width: '100%', borderCollapse: 'collapse',
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
             }}>
               <thead>
-                <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   <Th>kanal</Th><Th>model</Th>
                   <Th right>poruka</Th><Th right>ok</Th><Th right>greške</Th>
                   <Th right>tokeni ↓</Th><Th right>tokeni ↑</Th>

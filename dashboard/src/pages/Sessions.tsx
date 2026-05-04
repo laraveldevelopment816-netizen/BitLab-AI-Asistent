@@ -33,7 +33,7 @@ export function Sessions() {
           <button
             onClick={() => setPause(p => !p)}
             style={{
-              padding: '6px 12px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+              padding: '6px 12px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
               fontFamily: 'JetBrains Mono, monospace',
               background: pause ? C.warn + '20' : C.panelHi,
               color: pause ? C.warn : C.textDim,
@@ -49,9 +49,9 @@ export function Sessions() {
 
         <SectionLabel>razgovori (sortirani po poslednjoj poruci)</SectionLabel>
 
-        {isLoading && <div style={{ color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>}
+        {isLoading && <div style={{ color: C.textMute, fontSize: 13 }}>⠋ učitavam…</div>}
         {!isLoading && items.length === 0 && (
-          <div style={{ color: C.textMute, fontSize: 12 }}>
+          <div style={{ color: C.textMute, fontSize: 13 }}>
             Nema razgovora. Pošalji par poruka kroz widget — pojaviće se za 5s.
           </div>
         )}
@@ -59,10 +59,10 @@ export function Sessions() {
         {items.length > 0 && (
           <table style={{
             width: '100%', borderCollapse: 'collapse',
-            fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
           }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <Th>razgovor</Th>
                 <Th>kanal</Th>
                 <Th>model</Th>
@@ -93,11 +93,11 @@ function Filter({ label, value, options, onChange }: {
   label: string; value: string; options: string[]; onChange: (v: string) => void
 }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
       <span style={{ color: C.textMute, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
       <select value={value} onChange={e => onChange(e.target.value)} style={{
         background: C.panelLo, color: C.text, border: `1px solid ${C.border}`,
-        borderRadius: 3, padding: '4px 8px', fontFamily: 'inherit', fontSize: 12,
+        borderRadius: 3, padding: '4px 8px', fontFamily: 'inherit', fontSize: 13,
       }}>
         {options.map(o => <option key={o} value={o}>{o || '— svi —'}</option>)}
       </select>
@@ -149,7 +149,7 @@ function Row({ s, onClick }: { s: SessionRow; onClick: () => void }) {
     </tr>
     {hover.render(
       <div>
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: C.textMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
           <span style={{ color: ch }}>● {s.channel}</span>
           <span>·</span>
           <span style={{ color: md }}>{_modelKey(s.model)}</span>
@@ -159,7 +159,7 @@ function Row({ s, onClick }: { s: SessionRow; onClick: () => void }) {
         <div style={{ color: C.text, fontWeight: 500, marginBottom: 8 }}>
           {s.first_prompt_preview || <em style={{ color: C.textMute }}>(prazno)</em>}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textDim }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: C.textDim }}>
           <div><span style={{ color: C.textMute }}>poruka:</span> <strong style={{ color: C.text }}>{s.msg_count}</strong></div>
           <div><span style={{ color: C.textMute }}>greške:</span> <strong style={{ color: s.error_count > 0 ? C.err : C.text }}>{s.error_count}</strong></div>
           <div><span style={{ color: C.textMute }}>tokeni:</span> <strong style={{ color: C.text }}>↓{s.total_tokens_in.toLocaleString()} ↑{s.total_tokens_out.toLocaleString()}</strong></div>
@@ -167,7 +167,7 @@ function Row({ s, onClick }: { s: SessionRow; onClick: () => void }) {
           <div><span style={{ color: C.textMute }}>razgovor:</span> <strong style={{ color: C.text }}>{duration > 60 ? `${Math.round(duration/60)}min` : `${Math.round(duration)}s`}</strong></div>
           <div><span style={{ color: C.textMute }}>trošak:</span> <strong style={{ color: C.text }}>{s.total_cost_usd != null ? `$${s.total_cost_usd.toFixed(4)}` : '—'}</strong></div>
         </div>
-        <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 10.5, color: C.textMute }}>
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 11.5, color: C.textMute }}>
           klikni za cijeli razgovor →
         </div>
       </div>

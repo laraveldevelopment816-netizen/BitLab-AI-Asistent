@@ -96,7 +96,7 @@ function HoverPopover({ x, y, children }: { x: number; y: number; children: Reac
     borderRadius: 6,
     boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
     padding: '12px 14px',
-    fontSize: 12.5, lineHeight: 1.5,
+    fontSize: 13.5, lineHeight: 1.5,
     color: C.text,
     opacity: adjusted ? 1 : 0,  // sakrij dok ne računamo poziciju (sprečava flicker)
     transition: 'opacity 0.12s ease',

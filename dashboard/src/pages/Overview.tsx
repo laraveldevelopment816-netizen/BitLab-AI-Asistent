@@ -13,7 +13,7 @@ export function Overview() {
     retry: false,  // ne retry-uj 401/404 — odmah pokaži pravi razlog
   })
 
-  if (isLoading) return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>
+  if (isLoading) return <div style={{ padding: 28, color: C.textMute, fontSize: 13 }}>⠋ učitavam…</div>
   if (error || !data) return <ErrorPanel error={error} />
 
   return (
@@ -60,11 +60,11 @@ function ErrorPanel({ error }: { error: unknown }) {
         <div style={{ color: C.err, fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
           {title}
         </div>
-        <div style={{ color: C.text, fontSize: 13, lineHeight: 1.5, marginBottom: hint ? 10 : 0 }}>
+        <div style={{ color: C.text, fontSize: 14, lineHeight: 1.5, marginBottom: hint ? 10 : 0 }}>
           {body}
         </div>
         {hint && (
-          <div style={{ color: C.textDim, fontSize: 12.5, lineHeight: 1.5, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+          <div style={{ color: C.textDim, fontSize: 13.5, lineHeight: 1.5, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
             {hint}
           </div>
         )}
@@ -75,7 +75,7 @@ function ErrorPanel({ error }: { error: unknown }) {
 
 const codeStyle: React.CSSProperties = {
   background: C.panelLo, padding: '1px 6px', borderRadius: 3,
-  fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
+  fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
 }
 
 function OverviewContent({ data }: { data: import('../api').OverviewResponse }) {
@@ -126,7 +126,7 @@ function OverviewContent({ data }: { data: import('../api').OverviewResponse }) 
         <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
             <SectionLabel>aktivnost — poslednjih 14 dana</SectionLabel>
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: C.textMute }}>
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5, color: C.textMute }}>
               poruke · razgovori · greške
             </span>
           </div>
@@ -154,12 +154,12 @@ function OverviewContent({ data }: { data: import('../api').OverviewResponse }) 
         <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
             <SectionLabel>posljednji razgovori</SectionLabel>
-            <Link to="/sessions" style={{ fontSize: 11, color: C.textDim, textDecoration: 'none', fontFamily: 'JetBrains Mono, monospace' }}>
+            <Link to="/sessions" style={{ fontSize: 12, color: C.textDim, textDecoration: 'none', fontFamily: 'JetBrains Mono, monospace' }}>
               vidi sve →
             </Link>
           </div>
           {data.recent_sessions.length === 0 ? (
-            <div style={{ color: C.textMute, fontSize: 12, padding: '12px 0' }}>Nema razgovora još. Pošalji poruku kroz widget.</div>
+            <div style={{ color: C.textMute, fontSize: 13, padding: '12px 0' }}>Nema razgovora još. Pošalji poruku kroz widget.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {data.recent_sessions.map(s => <RecentSessionRow key={s.session_id} s={s} />)}
@@ -170,7 +170,7 @@ function OverviewContent({ data }: { data: import('../api').OverviewResponse }) 
         {data.error_count > 0 && (
           <Card style={{ borderLeft: `3px solid ${C.err}` }}>
             <SectionLabel>greške ({data.error_count})</SectionLabel>
-            <div style={{ marginTop: 8, fontSize: 12.5, color: C.textDim }}>
+            <div style={{ marginTop: 8, fontSize: 13.5, color: C.textDim }}>
               Ima zabilježenih grešaka u sistemu. Pogledaj{' '}
               <Link to="/history?status=error" style={{ color: C.accent }}>
                 Istoriju sa filterom 'error'
@@ -211,7 +211,7 @@ function HeroCard({ label, value, sub, accent }: {
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
       <div style={{
-        fontFamily: 'JetBrains Mono, monospace', fontSize: 10,
+        fontFamily: 'JetBrains Mono, monospace', fontSize: 11,
         textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMute,
       }}>{label}</div>
       <div style={{
@@ -220,7 +220,7 @@ function HeroCard({ label, value, sub, accent }: {
       }}>{value}</div>
       {sub && (
         <div style={{
-          fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: C.textDim,
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5, color: C.textDim,
         }}>{sub}</div>
       )}
     </div>
@@ -266,7 +266,7 @@ function DailyBarChart({ data }: { data: DailyCount[] }) {
               stroke={C.border} strokeWidth="1" strokeDasharray="2,3"
             />
             <text x={padL - 6} y={height - height * p + 3}
-              fontSize="9" fill={C.textMute} textAnchor="end"
+              fontSize="10" fill={C.textMute} textAnchor="end"
               fontFamily="JetBrains Mono, monospace">
               {Math.round(maxR * p)}
             </text>
@@ -297,14 +297,14 @@ function DailyBarChart({ data }: { data: DailyCount[] }) {
               )}
               {/* dnevni label */}
               <text x={x + w / 2} y={height + 14}
-                fontSize="9" fill={C.textMute} textAnchor="middle"
+                fontSize="10" fill={C.textMute} textAnchor="middle"
                 fontFamily="JetBrains Mono, monospace">
                 {dayLbl}
               </text>
               {/* req number na vrhu (ako bar je dovoljno visok) */}
               {d.requests > 0 && reqH > 14 && (
                 <text x={x + w / 2} y={height - reqH - 4}
-                  fontSize="9" fill={C.textDim} textAnchor="middle"
+                  fontSize="10" fill={C.textDim} textAnchor="middle"
                   fontFamily="JetBrains Mono, monospace">
                   {d.requests}
                 </text>
@@ -318,13 +318,13 @@ function DailyBarChart({ data }: { data: DailyCount[] }) {
 }
 
 function ChannelBars({ data, total }: { data: ChannelBreakdown[]; total: number }) {
-  if (data.length === 0) return <div style={{ color: C.textMute, fontSize: 12 }}>Nema podataka.</div>
+  if (data.length === 0) return <div style={{ color: C.textMute, fontSize: 13 }}>Nema podataka.</div>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {data.map(c => {
         const pct = total > 0 ? (c.requests / total) * 100 : 0
         return (
-          <div key={c.channel} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5 }}>
+          <div key={c.channel} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'JetBrains Mono, monospace', fontSize: 12.5 }}>
             <div style={{ width: 70, color: C.textDim }}>
               <Tag color={channelColor(c.channel)}>{c.channel}</Tag>
             </div>
@@ -334,7 +334,7 @@ function ChannelBars({ data, total }: { data: ChannelBreakdown[]; total: number 
                 background: channelColor(c.channel), opacity: 0.7,
                 transition: 'width 0.4s ease',
               }} />
-              <div style={{ position: 'absolute', top: 0, left: 8, right: 8, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10.5, color: C.text }}>
+              <div style={{ position: 'absolute', top: 0, left: 8, right: 8, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5, color: C.text }}>
                 <span>{c.requests.toLocaleString()}</span>
                 <span style={{ color: C.textDim }}>{pct.toFixed(0)}%</span>
               </div>
@@ -350,14 +350,14 @@ function ChannelBars({ data, total }: { data: ChannelBreakdown[]; total: number 
 }
 
 function ModelBars({ data, total }: { data: ModelBreakdown[]; total: number }) {
-  if (data.length === 0) return <div style={{ color: C.textMute, fontSize: 12 }}>Nema podataka.</div>
+  if (data.length === 0) return <div style={{ color: C.textMute, fontSize: 13 }}>Nema podataka.</div>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {data.map(m => {
         const pct = total > 0 ? (m.requests / total) * 100 : 0
         const col = modelColor(m.model_key)
         return (
-          <div key={m.model_key} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5 }}>
+          <div key={m.model_key} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'JetBrains Mono, monospace', fontSize: 12.5 }}>
             <div style={{ width: 70, color: C.textDim }}>
               <Tag color={col}>{m.model_key}</Tag>
             </div>
@@ -367,7 +367,7 @@ function ModelBars({ data, total }: { data: ModelBreakdown[]; total: number }) {
                 background: col, opacity: 0.7,
                 transition: 'width 0.4s ease',
               }} />
-              <div style={{ position: 'absolute', top: 0, left: 8, right: 8, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10.5, color: C.text }}>
+              <div style={{ position: 'absolute', top: 0, left: 8, right: 8, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5, color: C.text }}>
                 <span>{m.requests.toLocaleString()}</span>
                 <span style={{ color: C.textDim }}>{pct.toFixed(0)}%</span>
               </div>
@@ -397,13 +397,13 @@ function RecentSessionRow({ s }: { s: RecentSession }) {
     >
       <Tag color={channelColor(s.channel)}>{s.channel}</Tag>
       <Tag color={modelColor(_modelKey(s.model))}>{_modelKey(s.model)}</Tag>
-      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: C.textMute, whiteSpace: 'nowrap' }}>
+      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5, color: C.textMute, whiteSpace: 'nowrap' }}>
         {s.msg_count} {s.msg_count === 1 ? 'poruka' : 'poruka'} · {time}
       </span>
-      <span style={{ flex: 1, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5 }}>
+      <span style={{ flex: 1, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13.5 }}>
         {s.first_prompt || <em style={{ color: C.textMute }}>(prazno)</em>}
       </span>
-      <span style={{ color: C.textMute, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>→</span>
+      <span style={{ color: C.textMute, fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>→</span>
     </Link>
   )
 }

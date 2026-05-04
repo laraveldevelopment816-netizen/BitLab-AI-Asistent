@@ -52,7 +52,7 @@ export function Compare() {
             placeholder='npr. "imate li gaming miš", "trebam laptop do 1500 KM"…'
             style={{
               width: '100%', resize: 'vertical',
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 12.5, lineHeight: 1.6,
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 13.5, lineHeight: 1.6,
               background: C.panelLo, border: `1px solid ${C.border}`, borderRadius: 4,
               padding: 12, color: C.text,
             }}
@@ -70,7 +70,7 @@ export function Compare() {
                   <button key={c} onClick={() => setChannel(c)}
                     style={{
                       padding: '5px 12px', borderRadius: 4, cursor: 'pointer',
-                      fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
+                      fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
                       background: on ? col + '22' : C.panelLo,
                       border: `1px solid ${on ? col + '80' : C.border}`,
                       color: on ? col : C.textDim,
@@ -89,7 +89,7 @@ export function Compare() {
                   <button key={m} onClick={() => toggleModel(m)}
                     style={{
                       padding: '5px 12px', borderRadius: 4, cursor: 'pointer',
-                      fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
+                      fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
                       background: on ? col + '22' : C.panelLo,
                       border: `1px solid ${on ? col + '80' : C.border}`,
                       color: on ? col : C.textDim,
@@ -105,7 +105,7 @@ export function Compare() {
         </Btn>
 
         {err && (
-          <div style={{ marginTop: 16, padding: 12, background: `${C.err}10`, border: `1px solid ${C.err}40`, borderRadius: 4, color: C.err, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+          <div style={{ marginTop: 16, padding: 12, background: `${C.err}10`, border: `1px solid ${C.err}40`, borderRadius: 4, color: C.err, fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>
             {err}
           </div>
         )}
@@ -130,11 +130,11 @@ function ResultCard({ r }: { r: CompareResultItem }) {
       <div style={{ height: 2, background: col }} />
       <div style={{ padding: '10px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Tag color={col}>{r.model_key}</Tag>
-        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: C.textMute }}>
+        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5, color: C.textMute }}>
           {r.latency_ms ? `${r.latency_ms}ms` : '—'} · {r.cost_usd != null ? `$${r.cost_usd.toFixed(4)}` : '—'}
         </span>
       </div>
-      <div style={{ padding: 14, minHeight: 120, fontFamily: 'JetBrains Mono, monospace', fontSize: 12, lineHeight: 1.6, color: C.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+      <div style={{ padding: 14, minHeight: 120, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, lineHeight: 1.6, color: C.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
         {r.status === 'error' ? (
           <span style={{ color: C.err }}>{r.error || 'Zahtjev nije uspio'}</span>
         ) : (
@@ -142,14 +142,14 @@ function ResultCard({ r }: { r: CompareResultItem }) {
         )}
       </div>
       {r.tool_calls.length > 0 && (
-        <div style={{ padding: '8px 14px', borderTop: `1px solid ${C.border}`, fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: C.textMute }}>
+        <div style={{ padding: '8px 14px', borderTop: `1px solid ${C.border}`, fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5, color: C.textMute }}>
           {r.tool_calls.length} {r.tool_calls.length === 1 ? 'poziv alata' : 'poziva alata'}: {' '}
           {r.tool_calls.map((tc, i) => (
             <span key={i}>{i > 0 && ' · '}{tc.tool_name} ({tc.latency_ms}ms)</span>
           ))}
         </div>
       )}
-      <div style={{ padding: '8px 14px', borderTop: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: C.textMute }}>
+      <div style={{ padding: '8px 14px', borderTop: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5, color: C.textMute }}>
         <span>{r.tokens_in != null ? `↓${r.tokens_in} ↑${r.tokens_out}` : ''}</span>
         {r.request_id && (
           <Link to={`/requests/${r.request_id}`} style={{ color: C.textDim, textDecoration: 'none' }}>

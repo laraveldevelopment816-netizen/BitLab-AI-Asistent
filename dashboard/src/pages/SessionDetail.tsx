@@ -51,8 +51,8 @@ export function SessionDetailPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [prevSession, nextSession, nav])
 
-  if (isLoading) return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>
-  if (error || !data) return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Razgovor nije pronađen.</div>
+  if (isLoading) return <div style={{ padding: 28, color: C.textMute, fontSize: 13 }}>⠋ učitavam…</div>
+  if (error || !data) return <div style={{ padding: 28, color: C.err, fontSize: 13 }}>Razgovor nije pronađen.</div>
 
   const reqs = data.requests
   const totalTokensIn = reqs.reduce((s, r) => s + (r.tokens_in ?? 0), 0)
@@ -123,7 +123,7 @@ export function SessionDetailPage() {
         <div style={{ display: 'flex', gap: 8 }}>
           <Tag color={channelColor(firstChannel)}>{firstChannel}</Tag>
           <Tag color={modelColor(_modelKey(firstModel))}>{_modelKey(firstModel)}</Tag>
-          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textMute }}>
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: C.textMute }}>
             session_id: {data.session_id}
           </span>
         </div>
@@ -151,15 +151,15 @@ function Turn({ r, index }: { r: RequestDetail; index: number }) {
           borderBottom: open ? `1px solid ${C.border}` : 0,
         }}
       >
-        <span style={{ color: C.textMute, fontFamily: 'JetBrains Mono, monospace', fontSize: 11, width: 40 }}>
+        <span style={{ color: C.textMute, fontFamily: 'JetBrains Mono, monospace', fontSize: 12, width: 40 }}>
           #{index}
         </span>
-        <span style={{ color: C.textDim, fontFamily: 'JetBrains Mono, monospace', fontSize: 11, width: 80 }}>{time}</span>
+        <span style={{ color: C.textDim, fontFamily: 'JetBrains Mono, monospace', fontSize: 12, width: 80 }}>{time}</span>
         <StatusBadge status={r.status} />
-        <span style={{ flex: 1, color: C.text, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ flex: 1, color: C.text, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {r.prompt.slice(0, 120)}
         </span>
-        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: C.textMute, whiteSpace: 'nowrap' }}>
+        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5, color: C.textMute, whiteSpace: 'nowrap' }}>
           {r.tool_calls.length > 0 && `${r.tool_calls.length} tools · `}
           {r.latency_ms}ms · {r.cost_usd != null ? `$${r.cost_usd.toFixed(4)}` : '—'}
         </span>
@@ -195,7 +195,7 @@ function Turn({ r, index }: { r: RequestDetail; index: number }) {
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Link to={`/requests/${r.id}`} style={{ color: C.textDim, fontSize: 11, textDecoration: 'none', fontFamily: 'JetBrains Mono, monospace' }}>
+            <Link to={`/requests/${r.id}`} style={{ color: C.textDim, fontSize: 12, textDecoration: 'none', fontFamily: 'JetBrains Mono, monospace' }}>
               cijela poruka #{r.id} →
             </Link>
           </div>
@@ -206,7 +206,7 @@ function Turn({ r, index }: { r: RequestDetail; index: number }) {
 }
 
 const bubblePre: React.CSSProperties = {
-  margin: 0, fontFamily: 'JetBrains Mono, monospace', fontSize: 12, lineHeight: 1.55,
+  margin: 0, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, lineHeight: 1.55,
   whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: C.text,
 }
 
@@ -224,7 +224,7 @@ function Bubble({ role, children }: { role: 'user' | 'assistant' | 'error'; chil
       marginRight: role === 'user' ? 32 : 0,
     }}>
       <div style={{
-        fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, letterSpacing: '0.08em',
+        fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, letterSpacing: '0.08em',
         color: C.textMute, marginBottom: 6,
       }}>{colors.label}</div>
       {children}
@@ -237,7 +237,7 @@ function ToolCallRow({ tc }: { tc: ToolCall }) {
   let parsed: any = tc.input_json
   try { parsed = JSON.parse(tc.input_json) } catch { /* keep raw */ }
   return (
-    <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4, marginBottom: 4, fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
+    <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4, marginBottom: 4, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
       <div onClick={() => setOpen(!open)} style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center' }}>
         <span style={{ color: C.textMute, width: 18 }}>{open ? '▼' : '▶'}</span>
         <span style={{ color: C.accent, fontWeight: 500, width: 140 }}>{tc.tool_name}</span>
@@ -248,7 +248,7 @@ function ToolCallRow({ tc }: { tc: ToolCall }) {
       </div>
       {open && (
         <div style={{ padding: '6px 10px 10px 36px', borderTop: `1px solid ${C.border}` }}>
-          <pre style={{ color: C.textDim, fontSize: 11, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
+          <pre style={{ color: C.textDim, fontSize: 12, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
             {tc.output_text}
           </pre>
         </div>

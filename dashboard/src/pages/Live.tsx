@@ -48,7 +48,7 @@ export function Live() {
           <button
             onClick={() => setPause(p => !p)}
             style={{
-              padding: '6px 12px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+              padding: '6px 12px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
               fontFamily: 'JetBrains Mono, monospace',
               background: pause ? C.warn + '20' : C.panelHi,
               color: pause ? C.warn : C.textDim,
@@ -62,22 +62,22 @@ export function Live() {
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
         <SectionLabel>poslednjih 50 poruka</SectionLabel>
         {isLoading && (
-          <div style={{ color: C.textMute, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+          <div style={{ color: C.textMute, fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>
             ⠋ učitavam…
           </div>
         )}
         {!isLoading && items.length === 0 && (
-          <div style={{ color: C.textMute, fontSize: 12 }}>
+          <div style={{ color: C.textMute, fontSize: 13 }}>
             Nema zabilježenih poruka. Pošalji nešto kroz chat ili glas widget.
           </div>
         )}
         {items.length > 0 && (
           <table style={{
             width: '100%', borderCollapse: 'collapse',
-            fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
           }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <Th>id</Th>
                 <Th>kanal</Th>
                 <Th>model</Th>
@@ -149,7 +149,7 @@ function RequestPopover({ r }: { r: RequestRow }) {
   const md = modelColor(_modelKey(r.model))
   return (
     <div>
-      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: C.textMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
+      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
         <span style={{ color: ch }}>● {r.channel}</span>
         <span>·</span>
         <span style={{ color: md }}>{_modelKey(r.model)}</span>
@@ -161,13 +161,13 @@ function RequestPopover({ r }: { r: RequestRow }) {
       <div style={{ color: C.text, fontWeight: 500, marginBottom: 8 }}>
         {r.prompt_preview || <em style={{ color: C.textMute }}>(prazno)</em>}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textDim }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: C.textDim }}>
         <div><span style={{ color: C.textMute }}>tokeni:</span> <strong style={{ color: C.text }}>↓{r.tokens_in ?? '—'} ↑{r.tokens_out ?? '—'}</strong></div>
         <div><span style={{ color: C.textMute }}>iter:</span> <strong style={{ color: C.text }}>{r.iterations ?? '—'}</strong></div>
         <div><span style={{ color: C.textMute }}>trajanje:</span> <strong style={{ color: C.text }}>{r.latency_ms != null ? `${r.latency_ms}ms` : '—'}</strong></div>
         <div><span style={{ color: C.textMute }}>trošak:</span> <strong style={{ color: C.text }}>{r.cost_usd != null ? `$${r.cost_usd.toFixed(4)}` : '—'}</strong></div>
       </div>
-      <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 10.5, color: C.textMute }}>
+      <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 11.5, color: C.textMute }}>
         klikni za cijelu poruku + pozive alata →
       </div>
     </div>

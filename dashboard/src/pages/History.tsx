@@ -40,18 +40,18 @@ export function History() {
 
         <SectionLabel>stranica {page} / {totalPages}</SectionLabel>
         {isLoading && (
-          <div style={{ color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>
+          <div style={{ color: C.textMute, fontSize: 13 }}>⠋ učitavam…</div>
         )}
         {!isLoading && items.length === 0 && (
-          <div style={{ color: C.textMute, fontSize: 12 }}>Nema rezultata za ove filtere.</div>
+          <div style={{ color: C.textMute, fontSize: 13 }}>Nema rezultata za ove filtere.</div>
         )}
         {items.length > 0 && (
           <table style={{
             width: '100%', borderCollapse: 'collapse',
-            fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
           }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <Th>id</Th><Th>vrijeme</Th><Th>kanal</Th><Th>model</Th><Th>status</Th>
                 <Th right>tokeni</Th><Th right>trajanje</Th><Th right>trošak</Th><Th>poruka</Th>
               </tr>
@@ -78,11 +78,11 @@ function Filter({ label, value, options, onChange }: {
   label: string; value: string; options: string[]; onChange: (v: string) => void
 }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
       <span style={{ color: C.textMute, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
       <select value={value} onChange={e => onChange(e.target.value)} style={{
         background: C.panelLo, color: C.text, border: `1px solid ${C.border}`,
-        borderRadius: 3, padding: '4px 8px', fontFamily: 'inherit', fontSize: 12,
+        borderRadius: 3, padding: '4px 8px', fontFamily: 'inherit', fontSize: 13,
       }}>
         {options.map(o => <option key={o} value={o}>{o || '— svi —'}</option>)}
       </select>
@@ -128,7 +128,7 @@ function Row({ r, onClick }: { r: RequestRow; onClick: () => void }) {
     </tr>
     {hover.render(
       <div>
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: C.textMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
           <span style={{ color: ch }}>● {r.channel}</span>
           <span>·</span>
           <span style={{ color: md }}>{_modelKey(r.model)}</span>
@@ -140,13 +140,13 @@ function Row({ r, onClick }: { r: RequestRow; onClick: () => void }) {
         <div style={{ color: C.text, fontWeight: 500, marginBottom: 8 }}>
           {r.prompt_preview || <em style={{ color: C.textMute }}>(prazno)</em>}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textDim }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: C.textDim }}>
           <div><span style={{ color: C.textMute }}>tokeni:</span> <strong style={{ color: C.text }}>↓{r.tokens_in ?? '—'} ↑{r.tokens_out ?? '—'}</strong></div>
           <div><span style={{ color: C.textMute }}>iter:</span> <strong style={{ color: C.text }}>{r.iterations ?? '—'}</strong></div>
           <div><span style={{ color: C.textMute }}>trajanje:</span> <strong style={{ color: C.text }}>{r.latency_ms != null ? `${r.latency_ms}ms` : '—'}</strong></div>
           <div><span style={{ color: C.textMute }}>trošak:</span> <strong style={{ color: C.text }}>{r.cost_usd != null ? `$${r.cost_usd.toFixed(4)}` : '—'}</strong></div>
         </div>
-        <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 10.5, color: C.textMute }}>
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 11.5, color: C.textMute }}>
           klikni za cijelu poruku + pozive alata →
         </div>
       </div>
@@ -157,7 +157,7 @@ function Row({ r, onClick }: { r: RequestRow; onClick: () => void }) {
 function PageBtn({ children, disabled, onClick }: { children: React.ReactNode; disabled?: boolean; onClick: () => void }) {
   return (
     <button disabled={disabled} onClick={onClick} style={{
-      padding: '6px 12px', borderRadius: 4, fontSize: 12, fontFamily: 'JetBrains Mono, monospace',
+      padding: '6px 12px', borderRadius: 4, fontSize: 13, fontFamily: 'JetBrains Mono, monospace',
       background: C.panelHi, color: disabled ? C.textMute : C.text,
       border: `1px solid ${C.border}`, cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.5 : 1,
