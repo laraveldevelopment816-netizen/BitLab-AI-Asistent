@@ -1,3 +1,15 @@
+# ⚠️ DEPRECATED — ovaj plan je napušten
+
+> **Ovaj fajl opisuje prvobitnu Node.js / Express verziju plana iz aprila 2026** koja nikad nije implementirana. Stvarni MVP je Python/FastAPI.
+>
+> **Aktuelni dokumenti:**
+> - **`BITLAB-MVP-PLAN.md`** — važeći MVP plan (Python/FastAPI, sesije 0–7)
+> - **`PRODUCTION-PREP-PLAN.md`** — plan za produkciju (Sesija 8)
+>
+> Sve niže je istorijski referent — **ne pratiti**.
+
+---
+
 # BitLab AI Asistent — Plan za prolazak u drugi krug
 
 > **Cilj:** Izdvojiti se od ~10 učesnika i ući u uži izbor za angažman.
