@@ -46,6 +46,7 @@ export function History() {
           <div style={{ color: C.textMute, fontSize: 13 }}>Nema rezultata za ove filtere.</div>
         )}
         {items.length > 0 && (
+          <div className="dash-table-wrap">
           <table style={{
             width: '100%', borderCollapse: 'collapse',
             fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
@@ -63,6 +64,7 @@ export function History() {
               }} />)}
             </tbody>
           </table>
+          </div>
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>

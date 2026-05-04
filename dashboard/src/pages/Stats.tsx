@@ -21,8 +21,8 @@ export function Stats() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TopBar title="Statistika" subtitle="Tokeni · trošak · trajanje po kanalu i modelu" />
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+      <div className="dash-content" style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
           <Metric label="ukupno poruka" value={data.total_requests.toLocaleString()} accent />
           <Metric label="tokeni unos"   value={data.total_tokens_in.toLocaleString()} />
           <Metric label="tokeni izlaz"  value={data.total_tokens_out.toLocaleString()} />
@@ -34,6 +34,7 @@ export function Stats() {
           {data.by_adapter.length === 0 ? (
             <div style={{ color: C.textMute, fontSize: 13 }}>Nema podataka.</div>
           ) : (
+            <div className="dash-table-wrap">
             <table style={{
               width: '100%', borderCollapse: 'collapse',
               fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
@@ -62,6 +63,7 @@ export function Stats() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

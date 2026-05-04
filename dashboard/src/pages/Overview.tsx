@@ -92,10 +92,10 @@ function OverviewContent({ data }: { data: import('../api').OverviewResponse }) 
         }
       />
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="dash-content" style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* HERO METRICS */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           <HeroCard
             label="Razgovori"
             value={data.total_sessions.toLocaleString()}
@@ -134,7 +134,7 @@ function OverviewContent({ data }: { data: import('../api').OverviewResponse }) 
         </Card>
 
         {/* DVA STUPCA — channel + model */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="dash-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Card>
             <SectionLabel>distribucija po kanalu</SectionLabel>
             <div style={{ marginTop: 10 }}>

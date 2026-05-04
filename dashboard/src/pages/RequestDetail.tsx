@@ -49,9 +49,9 @@ export function RequestDetail() {
         right={<Btn variant="ghost" onClick={() => nav(-1)}>← nazad</Btn>}
       />
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="dash-content" style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Top metrics */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
           <Metric label="status" value={r.status} accent={r.status === 'ok'} />
           <Metric label="iteracije" value={String(r.iterations ?? '—')} />
           <Metric label="tokeni" value={`↓${r.tokens_in ?? '—'} ↑${r.tokens_out ?? '—'}`} />

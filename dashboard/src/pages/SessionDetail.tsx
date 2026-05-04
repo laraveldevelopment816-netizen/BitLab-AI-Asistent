@@ -111,8 +111,8 @@ export function SessionDetailPage() {
         }
       />
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+      <div className="dash-content" style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
           <Metric label="poruka" value={String(reqs.length)} accent />
           <Metric label="tokeni" value={`↓${totalTokensIn.toLocaleString()} ↑${totalTokensOut.toLocaleString()}`} />
           <Metric label="trajanje" value={`${(totalLatency / 1000).toFixed(1)}s`} />

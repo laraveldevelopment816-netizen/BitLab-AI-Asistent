@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { NavLink, Link } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from 'react'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 import { C } from '../tokens'
 
 const NAV = [
@@ -13,15 +13,39 @@ const NAV = [
 ]
 
 export function Layout({ children }: { children: ReactNode }) {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const location = useLocation()
+
+  // Zatvori drawer kad se promijeni ruta (mobilni — klik na nav link)
+  useEffect(() => { setDrawerOpen(false) }, [location.pathname])
+
+  // Escape key zatvara drawer
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && drawerOpen) setDrawerOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
+
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: C.bg }}>
-      <aside style={{
-        width: 232, flexShrink: 0,
-        background: C.panelLo,
-        borderRight: `1px solid ${C.border}`,
-        display: 'flex', flexDirection: 'column',
-        overflow: 'hidden',
-      }}>
+    <div className="dash-shell">
+      {/* Hamburger — vidljiv samo na mobilnom (CSS controlled) */}
+      <button
+        className="dash-hamburger"
+        aria-label="Otvori meni"
+        onClick={() => setDrawerOpen(o => !o)}
+      >
+        {drawerOpen ? '✕' : '☰'}
+      </button>
+
+      {/* Overlay — zatamnjenje pozadine na mobilnom kad je drawer otvoren */}
+      <div
+        className={drawerOpen ? 'dash-overlay open' : 'dash-overlay'}
+        onClick={() => setDrawerOpen(false)}
+      />
+
+      <aside className={drawerOpen ? 'dash-sidebar open' : 'dash-sidebar'}>
         <div style={{ padding: '20px 18px 18px', borderBottom: `1px solid ${C.border}` }}>
           <Link to="/overview" style={{
             display: 'flex', alignItems: 'center', gap: 10,
@@ -76,7 +100,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <SidebarFooter />
       </aside>
 
-      <main style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <main className="dash-main">
         {children}
       </main>
     </div>

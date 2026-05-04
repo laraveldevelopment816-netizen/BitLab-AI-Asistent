@@ -72,6 +72,7 @@ export function Live() {
           </div>
         )}
         {items.length > 0 && (
+          <div className="dash-table-wrap">
           <table style={{
             width: '100%', borderCollapse: 'collapse',
             fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
@@ -97,6 +98,7 @@ export function Live() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

@@ -111,7 +111,7 @@ export function Compare() {
         )}
 
         {results.length > 0 && (
-          <div style={{
+          <div className="dash-grid-2" style={{
             display: 'grid', gridTemplateColumns: `repeat(${results.length}, 1fr)`,
             gap: 12, marginTop: 20,
           }}>
