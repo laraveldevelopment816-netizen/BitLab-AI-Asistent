@@ -57,7 +57,7 @@ export ADMIN_EMAIL="bjovkovic@gmail.com"
 
 | Stavka | Generic Pattern A | Naš slučaj |
 |---|---|---|
-| Sistem deps | nginx, certbot, python | + **node 20+ i pnpm** za dashboard build |
+| Sistem deps | nginx, certbot, python | + **Node 22 LTS i pnpm** za dashboard build |
 | Repo install | `pip install -r requirements.txt` | `pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu` (CPU torch ~200MB) |
 | Statički fajlovi | App ih servira | **Dashboard SPA** (`dashboard/dist/`) servira nginx pod `/admin/` |
 | Veliki gitignore artifacts | — | `data/products.index.npz` (7.2MB) i `data/products.meta.json` (5.1MB) — generišu se **na serveru** prvi put (~5min CPU) |
@@ -85,10 +85,14 @@ git --version
 node --version 2>/dev/null || echo "⚠️ Node nije instaliran"
 pnpm --version 2>/dev/null || echo "⚠️ pnpm nije instaliran"
 
-# Ako fali, instaliraj:
-# curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Ako fali / pogrešna verzija, instaliraj Node 22 LTS:
+# Ako već imaš stari Node (npr. v20), prvo očisti repo:
+#   sudo rm -f /etc/apt/sources.list.d/nodesource.list /etc/apt/keyrings/nodesource.gpg
+# Pa setup novog:
+# curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 # sudo apt-get install -y nodejs
 # sudo npm i -g pnpm
+# node -v   # mora v22.x
 
 # 3.4 Port slobodan (samo za STAGING; prod 8000 je trenutno zauzet legacy-jem)
 sudo ss -tlnp | grep ":$PORT " && echo "❌ PORT zauzet" || echo "✅ PORT slobodan"

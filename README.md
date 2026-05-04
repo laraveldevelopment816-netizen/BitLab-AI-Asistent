@@ -199,7 +199,7 @@ bitlab-ai-asistent/
 |---|---|---|
 | Python | 3.11+ | FastAPI lifespan + async SQLAlchemy |
 | pip | bilo koja | install -e . |
-| Node.js + pnpm | 20+ | **samo za dashboard build** (nema Node u runtime-u) |
+| Node.js + pnpm | **22 LTS** | **samo za dashboard build** (nema Node u runtime-u) |
 | nginx + certbot | bilo koja | server-side deploy |
 
 Rad na **WSL2** (Windows), Linux ili macOS.
@@ -254,11 +254,26 @@ python -c "import torch; print('CUDA:', torch.cuda.is_available())"  # False ✓
 ### Node + pnpm (za dashboard)
 
 ```bash
-# Ubuntu/WSL2
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+# Ubuntu/WSL2 — Node 22 LTS (current LTS na 2026-05)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 sudo npm i -g pnpm
+
+# Verifikacija — mora biti v22.x
+node -v
 ```
+
+> **Ako već imaš Node 20 instaliran** i `node -v` pokazuje `v20.x`,
+> upgrade na 22:
+> ```bash
+> # Skini stari NodeSource repo + lock fajl
+> sudo rm -f /etc/apt/sources.list.d/nodesource.list
+> sudo rm -f /etc/apt/keyrings/nodesource.gpg
+> # Setup v22 repo (overwrite-uje postojeće)
+> curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+> sudo apt-get install -y nodejs
+> node -v   # treba v22.x
+> ```
 
 ---
 
@@ -586,7 +601,7 @@ Stvarni troškovi po requestu su vidljivi u **Stats** tab-u dashboard-a (cumulat
 | `ModuleNotFoundError` | Aktiviraj venv: `source .venv/bin/activate` |
 | Port 8000 zauzet | `fuser -k 8000/tcp` (Linux) ili `netstat -ano \| findstr :8000` (Windows) |
 | `/admin/*` vraća 401 | Unesi `DASHBOARD_API_KEY` u Settings tab → save → reload |
-| Dashboard build pada | Provjeri Node 20+ i pnpm; obriši `node_modules/` + `pnpm-lock.yaml` i `pnpm install` |
+| Dashboard build pada | Provjeri Node 22 (`node -v`) + pnpm; obriši `node_modules/` + `pnpm-lock.yaml` i `pnpm install` |
 | Prvi chat poziv vraća error | sentence-transformers preload na WSL2 traje 30–50s; sledeći ide normalno |
 
 ---

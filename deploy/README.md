@@ -54,12 +54,18 @@ tek onda raspravljamo.
 
 1. VPS sa **Ubuntu 22.04+** ili Debian 12+
 2. **Python 3.11+** instaliran (`python3 --version`)
-3. **Node.js 20+ i pnpm** instalirani (za dashboard build):
+3. **Node 22 LTS i pnpm** instalirani (za dashboard build):
    ```bash
-   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
    sudo apt-get install -y nodejs
    sudo npm i -g pnpm
+   node -v   # mora v22.x
    ```
+   Ako već imaš stari Node (v20), prvo očisti repo:
+   ```bash
+   sudo rm -f /etc/apt/sources.list.d/nodesource.list /etc/apt/keyrings/nodesource.gpg
+   ```
+   pa onda gornji setup_22 komandu.
 4. **nginx i certbot**:
    ```bash
    sudo apt install -y nginx certbot python3-certbot-nginx rsync
