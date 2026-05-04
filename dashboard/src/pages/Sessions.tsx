@@ -5,6 +5,7 @@ import { api } from '../api'
 import type { SessionRow } from '../api'
 import { C, channelColor, modelColor } from '../tokens'
 import { TopBar, SectionLabel, Tag } from '../components/atoms'
+import { useHoverPreview } from '../components/HoverPreview'
 import { isSelected, setLastSelected } from '../lastSelected'
 
 const CHANNELS = ['', 'chat', 'voice', 'email']
@@ -119,11 +120,15 @@ function Row({ s, onClick }: { s: SessionRow; onClick: () => void }) {
   const lastDate = new Date(s.last_message_at)
   const last = lastDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const selected = isSelected('sessions', s.session_id)
-  return (
+  const hover = useHoverPreview()
+  const duration = Math.max(0, (lastDate.getTime() - new Date(s.first_message_at).getTime()) / 1000)
+
+  return (<>
     <tr
       className="dash-row"
       data-selected={selected || undefined}
       onClick={onClick}
+      {...hover.handlers}
       style={{ borderBottom: `1px solid ${C.border}` }}
     >
       <Td color={C.textDim}>{s.session_id.slice(0, 8)}…</Td>
@@ -142,7 +147,32 @@ function Row({ s, onClick }: { s: SessionRow; onClick: () => void }) {
         </span>
       </Td>
     </tr>
-  )
+    {hover.render(
+      <div>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: C.textMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span style={{ color: ch }}>● {s.channel}</span>
+          <span>·</span>
+          <span style={{ color: md }}>{_modelKey(s.model)}</span>
+          <span>·</span>
+          <span>{s.session_id.slice(0, 8)}</span>
+        </div>
+        <div style={{ color: C.text, fontWeight: 500, marginBottom: 8 }}>
+          {s.first_prompt_preview || <em style={{ color: C.textMute }}>(prazno)</em>}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textDim }}>
+          <div><span style={{ color: C.textMute }}>poruka:</span> <strong style={{ color: C.text }}>{s.msg_count}</strong></div>
+          <div><span style={{ color: C.textMute }}>greške:</span> <strong style={{ color: s.error_count > 0 ? C.err : C.text }}>{s.error_count}</strong></div>
+          <div><span style={{ color: C.textMute }}>tokeni:</span> <strong style={{ color: C.text }}>↓{s.total_tokens_in.toLocaleString()} ↑{s.total_tokens_out.toLocaleString()}</strong></div>
+          <div><span style={{ color: C.textMute }}>trajanje:</span> <strong style={{ color: C.text }}>{(s.total_latency_ms/1000).toFixed(1)}s</strong></div>
+          <div><span style={{ color: C.textMute }}>razgovor:</span> <strong style={{ color: C.text }}>{duration > 60 ? `${Math.round(duration/60)}min` : `${Math.round(duration)}s`}</strong></div>
+          <div><span style={{ color: C.textMute }}>trošak:</span> <strong style={{ color: C.text }}>{s.total_cost_usd != null ? `$${s.total_cost_usd.toFixed(4)}` : '—'}</strong></div>
+        </div>
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 10.5, color: C.textMute }}>
+          klikni za cijeli razgovor →
+        </div>
+      </div>
+    )}
+  </>)
 }
 
 function _modelKey(model: string): string {

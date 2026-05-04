@@ -5,6 +5,7 @@ import { api } from '../api'
 import type { RequestRow } from '../api'
 import { C, channelColor, modelColor } from '../tokens'
 import { TopBar, SectionLabel, Tag, StatusBadge } from '../components/atoms'
+import { useHoverPreview } from '../components/HoverPreview'
 import { isSelected, setLastSelected } from '../lastSelected'
 
 export function Live() {
@@ -114,11 +115,13 @@ function Row({ r, fresh, onClick }: { r: RequestRow; fresh: boolean; onClick: ()
   const ch = channelColor(r.channel)
   const md = modelColor(_modelKey(r.model))
   const selected = isSelected('requests', r.id)
-  return (
+  const hover = useHoverPreview()
+  return (<>
     <tr
       className={fresh ? 'dash-row row-fresh' : 'dash-row'}
       data-selected={selected || undefined}
       onClick={onClick}
+      {...hover.handlers}
       style={{
         background: fresh ? `${C.bitlab}18` : undefined,
         borderBottom: `1px solid ${C.border}`,
@@ -137,6 +140,37 @@ function Row({ r, fresh, onClick }: { r: RequestRow; fresh: boolean; onClick: ()
         </span>
       </Td>
     </tr>
+    {hover.render(<RequestPopover r={r} />)}
+  </>)
+}
+
+function RequestPopover({ r }: { r: RequestRow }) {
+  const ch = channelColor(r.channel)
+  const md = modelColor(_modelKey(r.model))
+  return (
+    <div>
+      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: C.textMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span style={{ color: ch }}>● {r.channel}</span>
+        <span>·</span>
+        <span style={{ color: md }}>{_modelKey(r.model)}</span>
+        <span>·</span>
+        <span>#{r.id}</span>
+        <span>·</span>
+        <span style={{ color: r.status === 'ok' ? C.ok : C.err }}>{r.status}</span>
+      </div>
+      <div style={{ color: C.text, fontWeight: 500, marginBottom: 8 }}>
+        {r.prompt_preview || <em style={{ color: C.textMute }}>(prazno)</em>}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textDim }}>
+        <div><span style={{ color: C.textMute }}>tokeni:</span> <strong style={{ color: C.text }}>↓{r.tokens_in ?? '—'} ↑{r.tokens_out ?? '—'}</strong></div>
+        <div><span style={{ color: C.textMute }}>iter:</span> <strong style={{ color: C.text }}>{r.iterations ?? '—'}</strong></div>
+        <div><span style={{ color: C.textMute }}>trajanje:</span> <strong style={{ color: C.text }}>{r.latency_ms != null ? `${r.latency_ms}ms` : '—'}</strong></div>
+        <div><span style={{ color: C.textMute }}>trošak:</span> <strong style={{ color: C.text }}>{r.cost_usd != null ? `$${r.cost_usd.toFixed(4)}` : '—'}</strong></div>
+      </div>
+      <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 10.5, color: C.textMute }}>
+        klikni za cijelu poruku + pozive alata →
+      </div>
+    </div>
   )
 }
 

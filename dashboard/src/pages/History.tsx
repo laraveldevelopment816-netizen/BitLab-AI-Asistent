@@ -5,6 +5,7 @@ import { api } from '../api'
 import type { RequestRow } from '../api'
 import { C, channelColor, modelColor } from '../tokens'
 import { TopBar, SectionLabel, Tag, StatusBadge } from '../components/atoms'
+import { useHoverPreview } from '../components/HoverPreview'
 import { isSelected, setLastSelected } from '../lastSelected'
 
 const CHANNELS = ['', 'chat', 'voice', 'email', 'compare']
@@ -102,11 +103,13 @@ function Row({ r, onClick }: { r: RequestRow; onClick: () => void }) {
   const md = modelColor(_modelKey(r.model))
   const time = new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const selected = isSelected('requests', r.id)
-  return (
+  const hover = useHoverPreview()
+  return (<>
     <tr
       className="dash-row"
       data-selected={selected || undefined}
       onClick={onClick}
+      {...hover.handlers}
       style={{ borderBottom: `1px solid ${C.border}` }}
     >
       <Td color={C.textDim}>#{r.id}</Td>
@@ -123,7 +126,32 @@ function Row({ r, onClick }: { r: RequestRow; onClick: () => void }) {
         </span>
       </Td>
     </tr>
-  )
+    {hover.render(
+      <div>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: C.textMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span style={{ color: ch }}>● {r.channel}</span>
+          <span>·</span>
+          <span style={{ color: md }}>{_modelKey(r.model)}</span>
+          <span>·</span>
+          <span>#{r.id}</span>
+          <span>·</span>
+          <span style={{ color: r.status === 'ok' ? C.ok : C.err }}>{r.status}</span>
+        </div>
+        <div style={{ color: C.text, fontWeight: 500, marginBottom: 8 }}>
+          {r.prompt_preview || <em style={{ color: C.textMute }}>(prazno)</em>}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textDim }}>
+          <div><span style={{ color: C.textMute }}>tokeni:</span> <strong style={{ color: C.text }}>↓{r.tokens_in ?? '—'} ↑{r.tokens_out ?? '—'}</strong></div>
+          <div><span style={{ color: C.textMute }}>iter:</span> <strong style={{ color: C.text }}>{r.iterations ?? '—'}</strong></div>
+          <div><span style={{ color: C.textMute }}>trajanje:</span> <strong style={{ color: C.text }}>{r.latency_ms != null ? `${r.latency_ms}ms` : '—'}</strong></div>
+          <div><span style={{ color: C.textMute }}>trošak:</span> <strong style={{ color: C.text }}>{r.cost_usd != null ? `$${r.cost_usd.toFixed(4)}` : '—'}</strong></div>
+        </div>
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 10.5, color: C.textMute }}>
+          klikni za cijelu poruku + pozive alata →
+        </div>
+      </div>
+    )}
+  </>)
 }
 
 function PageBtn({ children, disabled, onClick }: { children: React.ReactNode; disabled?: boolean; onClick: () => void }) {
