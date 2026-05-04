@@ -446,9 +446,60 @@ taskkill /F /PID <broj>
 
 ---
 
+## 9.5 Logging dashboard (Sesija 8)
+
+Zasebna React + Vite + TS aplikacija u `dashboard/` direktorijumu — prikazuje
+**fine-grained AI workflow** umjesto black-box logova. Svaki request,
+svaki tool call (sa `input_json`, `output_text`, latency po koraku),
+ukupne tokene, cost, by-channel × by-model breakdown.
+
+**Stranice (6):**
+- **Live** — real-time stream sa polling-om 5s, fresh-row highlight
+- **History** — paginated, filteri po channel/status
+- **Compare** — fan-out istog upita kroz haiku + sonnet paralelno (`POST
+  /api/dashboard/compare`), side-by-side rezultati sa metrikama
+- **RequestDetail** — timeline svakog tool call-a u agent loop-u
+- **Stats** — top-line + by-adapter (channel × model) tabela
+- **Settings** — input za `DASHBOARD_API_KEY`
+
+**Backend:** `app/server/dashboard.py` pod `/api/dashboard/` sa Bearer auth.
+Storage: SQLite + SQLAlchemy async (`var/bitlab.db`), tabele `requests`
+i `tool_calls`. Tracker u `agent.py` snima svaki run agent loop-a.
+
+**Lokalno pokretanje:**
+```bash
+# Generiši DASHBOARD_API_KEY i dodaj u .env
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Init DB schema
+python scripts/init_db.py
+
+# Start FastAPI (port 8000)
+uvicorn app.main:app --reload
+
+# U drugom terminalu — start Vite dev server (port 5173 sa proxy na 8000)
+cd dashboard && pnpm install && pnpm dev
+```
+
+Otvori `http://localhost:5173/admin/`, idi na Settings, paste-uj
+`DASHBOARD_API_KEY`, save → svi tabovi rade.
+
+**Production build:** `cd dashboard && pnpm build` → `dashboard/dist/`
+(statički, servira nginx). Detalji u `deploy/README.md`.
+
+---
+
 ## 10. Deployment na server (VPS)
 
-> Detaljan vodič: `HOSTING.md`. Ovo je brzi pregled redoslijeda koraka.
+> **Server-side install:** umjesto SSH iz lokalne, deploy radi Claude Code
+> instanca instalirana NA samom serveru sa direktnim shell pristupom.
+> Vidi **`deploy/README.md`** za kompletan checklist (uključuje TAČKA 0 —
+> server već hostuje 4 druge aplikacije, treba se prilagoditi njihovim
+> konvencijama prije install-a).
+>
+> Brzi update flow: `sudo bash scripts/deploy.sh update`.
+>
+> Stari vodič: `HOSTING.md` (i dalje koristan za nginx + certbot detalje).
 
 **Preduslovi:** Ubuntu 22.04+, Python 3.11+, 1 GB RAM, domena usmjerena na VPS IP.
 
