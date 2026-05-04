@@ -1215,18 +1215,33 @@ html.bl-scroll-lock body {
   let thinkingState = null;  // { interval, stopped }
 
   function _playPulse(ctx, freq, startAt, durMs) {
+    // Glavni sine ton
     const osc = ctx.createOscillator();
     osc.type = 'sine';
     osc.frequency.value = freq;
     const g = ctx.createGain();
     const dur = durMs / 1000;
+    const peak = 0.07;  // pojačano sa 0.04 — donji opseg traži više gain-a
     g.gain.setValueAtTime(0, startAt);
-    g.gain.linearRampToValueAtTime(0.04, startAt + 0.01);   // 10ms attack
-    g.gain.setValueAtTime(0.04, startAt + dur - 0.015);
-    g.gain.linearRampToValueAtTime(0, startAt + dur);       // 15ms release
+    g.gain.linearRampToValueAtTime(peak, startAt + 0.012);  // 12ms attack
+    g.gain.setValueAtTime(peak, startAt + dur - 0.025);
+    g.gain.linearRampToValueAtTime(0, startAt + dur);        // 25ms release (mekše "nu")
     osc.connect(g).connect(ctx.destination);
     osc.start(startAt);
     osc.stop(startAt + dur + 0.02);
+
+    // Sub-oktava (1 oktava ispod) sa nižim gain — daje "tunu" tijelo
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.value = freq / 2;
+    const sg = ctx.createGain();
+    sg.gain.setValueAtTime(0, startAt);
+    sg.gain.linearRampToValueAtTime(0.05, startAt + 0.012);
+    sg.gain.setValueAtTime(0.05, startAt + dur - 0.025);
+    sg.gain.linearRampToValueAtTime(0, startAt + dur);
+    sub.connect(sg).connect(ctx.destination);
+    sub.start(startAt);
+    sub.stop(startAt + dur + 0.02);
   }
 
   function startThinkingSound() {
@@ -1238,13 +1253,13 @@ html.bl-scroll-lock body {
       if (thinkingAudioCtx.state === 'suspended') thinkingAudioCtx.resume();
 
       const ctx = thinkingAudioCtx;
-      // "tu-ru-ru" pattern: 3 pulsa sa rastućom frekvencijom
-      // (220 → 330 → 495 Hz), svaki ~50ms, razmak ~120ms unutar grupe.
-      // Pa ~750ms pauza, pa ponovi.
-      const PULSE_DUR = 50;
-      const PULSE_GAP = 120;
-      const GROUP_PAUSE = 750;
-      const FREQS = [220, 330, 495];
+      // "tunu nu" pattern: 3 pulsa, nizak opseg sa donjom oktavom
+      // za bass tijelo (110 → 165 → 247 Hz, oktava niže nego prije).
+      // Trajanje 75ms da "nu" zazvuči mekše, razmak 140ms.
+      const PULSE_DUR = 75;
+      const PULSE_GAP = 140;
+      const GROUP_PAUSE = 700;
+      const FREQS = [110, 165, 247];
 
       const scheduleGroup = () => {
         if (!thinkingState || thinkingState.stopped) return;
