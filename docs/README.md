@@ -23,6 +23,7 @@
 | Code review (Sesija 7) | [`reviews/code-review.md`](./reviews/code-review.md) |
 | Security review (Sesija 7) | [`reviews/security-review.md`](./reviews/security-review.md) |
 | Stari materijali | [`archive/`](./archive/) |
+| **Pitch deck v2 (engineer audience)** | [`PITCH-BRIEF-V2-ENGINEER.md`](./PITCH-BRIEF-V2-ENGINEER.md) |
 
 Plus dizajn handoff iz Sesija 6/8: [`BitLab-AI-Asistent-Dizajn/`](./BitLab-AI-Asistent-Dizajn/), [`handoff/`](./handoff/), [`dan4/`](./dan4/).
 
