@@ -225,39 +225,89 @@ Promjene su isključivo u `public/widget.js` u voice mode-u:
 
 ---
 
-## 8. Sesija 5 — Deploy na VPS (Sonnet 4.6, medium, 60m)
+## 8. Sesija 5 — Deploy artefakti (Sonnet/Opus medium, 50m)
 
-### Šta se radi (uz postojeći `HOSTING.md`)
-1. **Lokalno:** `cd dashboard && pnpm build` → `dashboard/dist/`. (Node je samo na dev mašini.)
-2. SSH na VPS, `git pull`, checkout `production-prep`.
-3. `pip install -e .` (nove deps: `aiosqlite`, `sqlalchemy[asyncio]`).
-4. `python scripts/init_db.py`.
-5. `rsync -av dashboard/dist/ user@vps:/opt/bitlab-ai/dashboard-dist/`.
-6. **Nginx update:**
-   ```nginx
-   # Dashboard static
-   location /admin/ {
-       alias /opt/bitlab-ai/dashboard-dist/;
-       try_files $uri $uri/ /admin/index.html;
-   }
-   # Dashboard API
-   location /api/dashboard/ {
-       proxy_pass http://127.0.0.1:8000;
-       proxy_set_header Host $host;
-   }
-   ```
-7. `systemctl restart bitlab-ai && systemctl reload nginx`.
-8. Smoke test sa drugog uređaja:
-   - `curl https://<domain>/healthz`
-   - Chat: "imate li ssd?" — kategorijski filter radi
-   - `https://<domain>/admin/` učita Live, polling vidi nove request-e
-   - Compare radi side-by-side
+> **Promjena pristupa:** umjesto da deploy radimo iz lokalne grane preko SSH-a,
+> Claude Code se instalira **na samom serveru** kao zasebna sesija (sa novom
+> subscripcijom za paralelni rad). Ova sesija samo priprema deploy artefakte;
+> stvarni install i konfiguracija (nginx, systemd, symlinks) izvršava
+> server-side Claude direktnim pristupom shell-u.
+>
+> **Razlog:** projekat će tokom razvoja imati još mikro-servise (n8n migracija,
+> dodatni adapteri, monitoring), pa svaki put 5+ podešavanja kroz pipe nazad
+> kroz lokalni env je trošenje vremena. Server-side Claude radi sve to
+> jednim passom.
 
-### DoD Sesije 5
+### ⚠️ TAČKA 0 — Server već hostuje 4 aplikacije
+
+Server koji koristimo već ima **4 druge aplikacije, svaka na svom domenu**, sa
+postojećim konvencijama (layout direktorijuma, service user-i, port alokacija,
+nginx struktura, SSL setup). **Naš deploy se prilagođava njihovim pravilima,
+NE obrnuto.**
+
+**Server-side Claude (kasnije) MORA prvo:**
+1. Sačekati da Ivan objasni server konvencije:
+   - Gdje žive servisi (`/opt/`, `/srv/`, `/var/www/`, drugo)
+   - Service user (`www-data`, jedan zajednički, per-app)
+   - Rezervisani portovi i konfliktni portovi
+   - nginx layout: `sites-available/` ili `conf.d/`
+   - SSL: per-domen vs wildcard
+   - Logging konvencija
+   - venv per-app vs shared
+   - Postojeća backup/rollback strategija
+2. Ažurirati naše artefakte (`scripts/deploy.sh` varijable, `deploy/bitlab-ai.service` putanje, `deploy/nginx-site.conf` paths) **PRIJE** izvršenja
+3. Tek onda pokrenuti install flow
+
+**Default-i koji vjerovatno trebaju promjenu:** `PROJECT_DIR=/opt/bitlab-ai`,
+`SERVICE_USER=bitlab`, port `8000`, dashboard u `/var/www/bitlab-admin/`,
+nginx site fajl u `/etc/nginx/sites-available/bitlab-ai`. Vidi
+`deploy/README.md` Sekcija 0 za kompletan checklist.
+
+**Princip:** ne pravimo novi standard kad već postoji. Server-side Claude
+prilagođava artefakte, lokalna sesija ih samo priprema kao polazište.
+
+### Artefakti koje ova sesija isporučuje
+
+```
+scripts/deploy.sh                # bash one-shot install/update na serveru
+deploy/bitlab-ai.service         # systemd unit fajl
+deploy/nginx-site.conf           # nginx site (snippet ili full)
+deploy/README.md                 # checklist za server-side Claude
+```
+
+`scripts/deploy.sh` koraci:
+1. Detect / create venv u `/opt/bitlab-ai/.venv`
+2. `pip install -e .` + CPU-only torch
+3. `python scripts/init_db.py` (idempotentno)
+4. Build dashboard ako Node postoji na serveru, inače očekuje
+   pre-built `dashboard/dist/` koji je rsync-ovan ručno
+5. Symlink `dashboard/dist/` na `/var/www/bitlab-admin/`
+6. Reload nginx ako je konfig promijenjen, restart bitlab-ai service
+7. Smoke test: curl /healthz + /api/dashboard/stats sa Bearer key-em
+
+`deploy/README.md` ima precizne korake koje server-side Claude izvršava:
+- SSH preduslove (assumes git već pulled, env već popunjen)
+- Prvi install vs update flow
+- Rollback procedura (git checkout previous tag, rerun deploy.sh)
+
+### DoD Sesije 5 (lokalna)
+- [ ] `scripts/deploy.sh` napisan i `bash -n` ga validira
+- [ ] `deploy/bitlab-ai.service` ima User=, WorkingDirectory=, ExecStart= sa pravim putanjama, Restart=on-failure
+- [ ] `deploy/nginx-site.conf` ima location blokove za `/admin/`, `/api/`, `/public/`, root i SSL preduslove
+- [ ] `deploy/README.md` ima:
+  - prvi-put install checklist
+  - update checklist (samo `git pull && bash scripts/deploy.sh update`)
+  - rollback
+  - lista env vars koje moraju biti popunjene (ANTHROPIC_API_KEY, DASHBOARD_API_KEY, AZURE_*, GROQ_*)
+- [ ] PR opis pominje da je deploy server-side; daje link na `deploy/README.md`
+
+### DoD server-side sesije (kasnije, druga subscripcija)
 - [ ] `https://<domain>/healthz` ok sa drugog uređaja
 - [ ] `https://<domain>/admin/` učita dashboard
-- [ ] Chat na produkciji koristi nove kategorije
-- [ ] systemd auto-restart radi
+- [ ] systemd `bitlab-ai.service` enabled i radi
+- [ ] nginx site enabled, SSL valid, reload bez errora
+- [ ] Bar 1 chat upit zalogovan kroz `/admin/live`
+- [ ] Compare side-by-side radi end-to-end
 
 ---
 
