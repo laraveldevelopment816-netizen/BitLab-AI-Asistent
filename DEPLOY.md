@@ -40,6 +40,8 @@ python scripts/build_categories.py
 
 python scripts/init_db.py
 
+python scripts/migrate_session_id.py
+
 # Dashboard SPA build (Vite → dashboard/dist/)
 cd dashboard
 

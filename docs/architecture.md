@@ -51,7 +51,8 @@ data/categories.json        top 30 kategorija sa labelama
 data/category_terms.json    build-time prefix + soft-boost terms
 data/missing_images.json    audit output — koje slike fale na CDN-u
 data/faq.md                 ručno kurirane sekcije
-var/bitlab.db               SQLite — requests + tool_calls (preživi releaseve)
+var/bitlab.db               SQLite — requests + tool_calls
+                            (Request.session_id grupiše razgovor; preživi releaseve)
 ```
 
 ## Struktura projekta

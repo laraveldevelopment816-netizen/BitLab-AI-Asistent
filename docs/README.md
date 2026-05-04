@@ -9,6 +9,7 @@
 | Email auto-reply (n8n + IMAP) | [`features/email-autoreply.md`](./features/email-autoreply.md) |
 | AI klasifikacija namjere + kategorije | [`features/ai-classification.md`](./features/ai-classification.md) |
 | Logging dashboard (`/admin/`) | [`features/logging-dashboard.md`](./features/logging-dashboard.md) |
+| Sessions tab (thread view razgovora) | [`features/sessions.md`](./features/sessions.md) |
 | Compare panel (haiku ↔ sonnet) | [`features/compare.md`](./features/compare.md) |
 | Server konvencije (Pattern A) | [`operations/server-conventions.md`](./operations/server-conventions.md) |
 | Česti problemi | [`operations/troubleshooting.md`](./operations/troubleshooting.md) |

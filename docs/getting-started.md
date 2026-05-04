@@ -50,9 +50,10 @@ Detalji o svim varijablama: [`features/voice-mode.md`](./features/voice-mode.md)
 ## 4. Vektorska baza i kategorije (jednokratno, ~5 min)
 
 ```bash
-python scripts/embed_products.py    # ~5 min, generiše products.index.npz + meta.json
-python scripts/build_categories.py  # ~10s, generiše categories.json
-python scripts/init_db.py           # idempotentno, kreira var/bitlab.db
+python scripts/embed_products.py     # ~5 min, generiše products.index.npz + meta.json
+python scripts/build_categories.py   # ~10s, generiše categories.json
+python scripts/init_db.py            # idempotentno, kreira var/bitlab.db
+python scripts/migrate_session_id.py # idempotentno, ALTER TABLE za Sessions feature
 ```
 
 Šta ovo radi: [`features/ai-classification.md`](./features/ai-classification.md).

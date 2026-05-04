@@ -15,9 +15,12 @@
 ## Logging dashboard (zasebna React + Vite + TS aplikacija)
 
 - 6 stranica: Live (polling 5s), History, Compare (haiku ↔ sonnet paralelno), RequestDetail (timeline tool calls), Stats (by-channel × by-model), Settings
-- Backend: SQLAlchemy async + SQLite, tabele `requests` + `tool_calls`, 5 endpointa pod `/api/dashboard/` sa Bearer auth
+- Backend: SQLAlchemy async + SQLite, tabele `requests` (sa `session_id` poljem) + `tool_calls`, 7 endpointa pod `/api/dashboard/` sa Bearer auth
 - `POST /compare` fan-out kroz `asyncio.gather`
+- **`GET /sessions` + `GET /sessions/:id`** — thread view, agregat + turn-by-turn detail
 - Tracker u `agent.py` snima svaki tool call sa `input_json`, `output_text`, `latency_ms` (fine-grained, ne black-box)
+- Klijent (widget.js) generiše UUID session ID, dijeli između chat i voice mode-a (sessionStorage)
+- 7 stranica frontend: **Sessions (default home)**, SessionDetail, Live, History, Compare, RequestDetail, Stats, Settings
 
 ## Voice widget UX
 

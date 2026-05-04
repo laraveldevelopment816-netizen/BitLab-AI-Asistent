@@ -9,12 +9,14 @@ Otvori `http://localhost:5173/admin/` (dev) ili `https://<domain>/admin/` (prod)
 
 | Stranica | Šta prikazuje |
 |---|---|
-| **Live** | Polling 5s, fresh-row highlight, pause/resume kontrola, klik na red → RequestDetail |
-| **History** | Paginated, filteri po channel/status, klik za detalje |
-| **Compare** | Paste upit → fan-out kroz haiku + sonnet paralelno → side-by-side rezultati sa latency, tokens, cost, tool call summary, link na request_id |
+| **Sessions** (default) | **Thread view** — jedan red = jedan razgovor klijent+AI. Vidi [`sessions.md`](./sessions.md) |
+| **SessionDetail** | Turn-by-turn cijela komunikacija pitanje→odgovor sa tool calls između |
+| **Live** | Message-level polling 5s, fresh-row highlight, klik na red → RequestDetail |
+| **History** | Paginated message-level, filteri po channel/status |
+| **Compare** | Paste upit → fan-out kroz haiku + sonnet paralelno → side-by-side rezultati sa latency, tokens, cost, tool call summary |
 | **RequestDetail** | Top metrike (status, iteracije, tokens, latency, cost), prompt, error block, **timeline svakog tool call-a** (expand/collapse: input JSON, output text, latency badge), final response |
-| **Stats** | Top-line cards (total req, tokens, cost) + by-adapter (channel × model) tabela sa requests, ok/err, avg latency, cost |
-| **Settings** | Input za `DASHBOARD_API_KEY` (čuva u localStorage, axios interceptor injektuje Bearer header), env diagnostika |
+| **Stats** | Top-line cards (total req, tokens, cost) + by-adapter (channel × model) tabela |
+| **Settings** | Input za `DASHBOARD_API_KEY`, env diagnostika |
 
 ## Šta diferencira (vs konkurencija)
 
