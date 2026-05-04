@@ -245,6 +245,8 @@ function SystemStatusDot() {
   )
 }
 
+const MONTHS_SR = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Avg', 'Sep', 'Okt', 'Nov', 'Dec']
+
 function DailyBarChart({ data }: { data: DailyCount[] }) {
   const maxR = Math.max(1, ...data.map(d => d.requests))
   const width = 760
@@ -276,7 +278,7 @@ function DailyBarChart({ data }: { data: DailyCount[] }) {
           const x = padL + i * barW + 2
           const w = barW - 4
           const dt = new Date(d.date)
-          const dayLbl = `${dt.getDate()}.${dt.getMonth() + 1}`
+          const dayLbl = `${dt.getDate()} ${MONTHS_SR[dt.getMonth()]}`
           return (
             <g key={d.date}>
               {/* glavni bar */}
