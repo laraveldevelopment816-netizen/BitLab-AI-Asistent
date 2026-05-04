@@ -62,6 +62,15 @@ PR: `production-prep` → `main`. Detalji u `PRODUCTION-PREP-PLAN.md`.
 > završiti priču sa potrošnjom kao Haiku") tu je eksplicitno odvojena od
 > stvarnog rezultata — testiramo, pa odlučujemo.
 
+> **📈 Otvorena rezolucija (Sesija 10, kontinuirano od 2026-W19):**
+> Iskorišćavamo Claude Max plan za **growth automatizaciju** —
+> dubinski tehnički + kompetitivni SEO audit, content production,
+> link building outreach, paid ads automatizaciju i AI asistent kao
+> growth tool (newsletter, cart recovery, review requests). Cilj:
+> +50% organic / +20 referring domains u 90 dana, +150% / +60 u 180.
+> Plan, faze, KPI-jevi i schedule u **`GROWTH-PLAN.md`**. Ne radimo
+> black-hat / spam / fake reviews — sve je human-in-the-loop.
+
 ### Modelska odluka — zašto Sonnet 4.6 za chat (a ne Haiku)
 
 Tokom production smoke testa pojavile su se dvije ozbiljne mane Haiku-a 4.5
