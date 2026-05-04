@@ -31,6 +31,10 @@ async def lifespan(app: FastAPI):
         idx = get_index()  # učitava .npz + meta.json — brzo
         asyncio.create_task(asyncio.to_thread(idx.preload_model))
 
+    # Dashboard storage init — idempotentno
+    from .storage.db import init_db
+    await init_db()
+
     yield
 
 
@@ -58,6 +62,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Dashboard router (logging + compare). Pod /api/dashboard/* sa bearer auth.
+from .server.dashboard import router as dashboard_router  # noqa: E402
+
+app.include_router(dashboard_router)
 
 
 # ── Static (widget, voice demo) ──────────────────────────────
@@ -141,12 +150,20 @@ async def healthz():
 @limiter.limit("30/minute")
 async def api_chat(request: Request, req: ChatRequest) -> ChatResponse:
     """Glavni endpoint — koristi se i iz widget-a i iz voice mode-a."""
+    import asyncio
     from .agent import run_agent
+    from .config import settings as _settings
+    from .server.dashboard import _persist_trace
 
     messages = [{"role": m.role, "content": m.content} for m in req.history]
     messages.append({"role": "user", "content": req.message})
 
-    result = run_agent(messages, channel=req.channel)
+    result = await asyncio.to_thread(run_agent, messages, req.channel)
+    # Persist trace fire-and-forget — ne blokira response klijentu
+    model = (result.get("_trace", {}) or {}).get("model") or _settings.chat_model
+    asyncio.create_task(_persist_trace(
+        channel=req.channel, model=model, prompt=req.message, result=result,
+    ))
     return ChatResponse(
         reply=result["reply"],
         reply_voice=result.get("reply_voice", ""),
@@ -161,7 +178,10 @@ async def api_chat(request: Request, req: ChatRequest) -> ChatResponse:
 @limiter.limit("10/minute")
 async def api_email(request: Request, req: EmailRequest) -> EmailResponse:
     """Endpoint koji n8n zove kad stigne novi email; vraća draft replyja."""
+    import asyncio
     from .agent import run_agent
+    from .config import settings as _settings
+    from .server.dashboard import _persist_trace
 
     # Sklopi poruku sa kontekstom emaila.
     # Body se obavija u <email_body> tagove — system prompt nalaže Claude-u da
@@ -174,10 +194,13 @@ async def api_email(request: Request, req: EmailRequest) -> EmailResponse:
         f"Predmet: {req.subject}\n\n"
         f"<email_body>\n{safe_body}\n</email_body>"
     )
-    result = run_agent(
-        [{"role": "user", "content": message}],
-        channel="email",
+    result = await asyncio.to_thread(
+        run_agent, [{"role": "user", "content": message}], "email",
     )
+    model = (result.get("_trace", {}) or {}).get("model") or _settings.email_model
+    asyncio.create_task(_persist_trace(
+        channel="email", model=model, prompt=message, result=result,
+    ))
     return EmailResponse(
         reply=result["reply"],
         escalated=result["escalated"],

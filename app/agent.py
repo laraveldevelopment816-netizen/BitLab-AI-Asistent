@@ -3,7 +3,9 @@ Agent loop sa Claude tool use.
 """
 from __future__ import annotations
 
+import json
 import re
+import time
 from typing import Any
 
 import anthropic
@@ -52,15 +54,23 @@ def _trim_email_preamble(text: str) -> str:
     return text[idx:] if idx != -1 else text
 
 
+def _default_model_for_channel(channel: str) -> str:
+    return settings.email_model if channel == "email" else settings.chat_model
+
+
 def run_agent(
     messages: list[dict[str, Any]],
     channel: str = "chat",
+    model_override: str | None = None,
 ) -> dict[str, Any]:
     """
     Pokreće agent loop i vraća:
-      reply, tools_used, escalated, iterations
+      reply, reply_voice, tools_used, escalated, iterations, _trace
+
+    `_trace` je strukturirani log koji potroši dashboard storage:
+      {model, tokens_in, tokens_out, latency_ms, tool_calls: [...]}
     """
-    model = settings.email_model if channel == "email" else settings.chat_model
+    model = model_override or _default_model_for_channel(channel)
     sys_prompt = system_prompt(channel)
     client = _get_client()
 
@@ -68,6 +78,12 @@ def run_agent(
     escalated = False
     current_messages = list(messages)
     last_text = ""
+
+    # Trace state — akumulirano po koraku
+    trace_calls: list[dict[str, Any]] = []
+    total_in = 0
+    total_out = 0
+    t_start = time.monotonic()
 
     for iteration in range(1, settings.max_tool_iterations + 1):
         response = client.messages.create(
@@ -78,25 +94,22 @@ def run_agent(
             messages=current_messages,
         )
 
+        # Akumuliraj usage iz svakog API poziva
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            total_in += getattr(usage, "input_tokens", 0) or 0
+            total_out += getattr(usage, "output_tokens", 0) or 0
+
         # Izvuci tekst ako postoji u ovom odgovoru
         for block in response.content:
             if hasattr(block, "text"):
                 last_text = block.text
 
         if response.stop_reason == "end_turn":
-            if channel == "email":
-                raw = _trim_email_preamble(last_text)
-                return {"reply": raw, "reply_voice": "", "tools_used": tools_used, "escalated": escalated, "iterations": iteration}
-            if channel == "voice":
-                reply_text, reply_voice = _parse_voice_xml(last_text)
-                return {"reply": reply_text, "reply_voice": reply_voice, "tools_used": tools_used, "escalated": escalated, "iterations": iteration}
-            return {
-                "reply": last_text,
-                "reply_voice": "",
-                "tools_used": tools_used,
-                "escalated": escalated,
-                "iterations": iteration,
-            }
+            return _finalize(
+                last_text, channel, tools_used, escalated, iteration,
+                model, total_in, total_out, t_start, trace_calls,
+            )
 
         if response.stop_reason == "tool_use":
             current_messages.append({"role": "assistant", "content": response.content})
@@ -107,7 +120,16 @@ def run_agent(
                     tools_used.append(block.name)
                     if block.name == "escalate_to_human":
                         escalated = True
+                    t_tool = time.monotonic()
                     result = dispatch(block.name, block.input)
+                    tool_latency_ms = int((time.monotonic() - t_tool) * 1000)
+                    trace_calls.append({
+                        "iteration": iteration,
+                        "tool_name": block.name,
+                        "input_json": json.dumps(dict(block.input), ensure_ascii=False),
+                        "output_text": result,
+                        "latency_ms": tool_latency_ms,
+                    })
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
@@ -122,7 +144,45 @@ def run_agent(
         "Žao mi je, trenutno ne mogu odgovoriti. "
         "Kontaktirajte nas na Viber 066 516 174 ili prodaja@bitlab.rs."
     )
-    if channel == "voice":
-        reply_text, reply_voice = _parse_voice_xml(fallback)
-        return {"reply": reply_text, "reply_voice": reply_voice, "tools_used": tools_used, "escalated": escalated, "iterations": settings.max_tool_iterations}
-    return {"reply": fallback, "reply_voice": "", "tools_used": tools_used, "escalated": escalated, "iterations": settings.max_tool_iterations}
+    return _finalize(
+        fallback, channel, tools_used, escalated, settings.max_tool_iterations,
+        model, total_in, total_out, t_start, trace_calls,
+    )
+
+
+def _finalize(
+    text: str,
+    channel: str,
+    tools_used: list[str],
+    escalated: bool,
+    iterations: int,
+    model: str,
+    total_in: int,
+    total_out: int,
+    t_start: float,
+    trace_calls: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Sklopi finalni response + trace dict."""
+    if channel == "email":
+        reply = _trim_email_preamble(text)
+        reply_voice = ""
+    elif channel == "voice":
+        reply, reply_voice = _parse_voice_xml(text)
+    else:
+        reply = text
+        reply_voice = ""
+
+    return {
+        "reply": reply,
+        "reply_voice": reply_voice,
+        "tools_used": tools_used,
+        "escalated": escalated,
+        "iterations": iterations,
+        "_trace": {
+            "model": model,
+            "tokens_in": total_in,
+            "tokens_out": total_out,
+            "latency_ms": int((time.monotonic() - t_start) * 1000),
+            "tool_calls": trace_calls,
+        },
+    }

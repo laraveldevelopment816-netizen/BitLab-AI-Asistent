@@ -24,6 +24,10 @@ dependencies = [
     # Voice/audio (lazy-loaded u main.py — ne usporavaju startup)
     "faster-whisper>=1.1",
     "edge-tts>=7.0",
+    # Dashboard storage (Sesija 8 — async SQLAlchemy nad SQLite)
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",
+    "jinja2>=3.1",
 ]
 
 [project.optional-dependencies]

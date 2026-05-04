@@ -84,5 +84,18 @@ class Settings(BaseSettings):
         default_factory=lambda: ["https://webshop.bitlab.rs", "http://localhost:8000"]
     )
 
+    # ── Dashboard / logging (Sesija 8) ────────────────────────
+    # Bearer token za /api/dashboard/*. Bez ključa endpointi vraćaju 401.
+    # Generiši: python -c "import secrets; print(secrets.token_urlsafe(32))"
+    dashboard_api_key: str | None = None
+    # Mapa "short-name -> full Anthropic model id" — koristi se za
+    # POST /api/dashboard/compare {"models": ["haiku","sonnet"]}.
+    @property
+    def model_registry(self) -> dict[str, str]:
+        return {
+            "haiku": self.chat_model,
+            "sonnet": self.email_model,
+        }
+
 
 settings = Settings()
