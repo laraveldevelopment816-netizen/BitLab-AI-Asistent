@@ -5,6 +5,7 @@ import { api } from '../api'
 import type { RequestRow } from '../api'
 import { C, channelColor, modelColor } from '../tokens'
 import { TopBar, SectionLabel, Tag, StatusBadge } from '../components/atoms'
+import { isSelected, setLastSelected } from '../lastSelected'
 
 const CHANNELS = ['', 'chat', 'voice', 'email', 'compare']
 const STATUSES = ['', 'ok', 'error']
@@ -55,7 +56,10 @@ export function History() {
               </tr>
             </thead>
             <tbody>
-              {items.map(r => <Row key={r.id} r={r} onClick={() => nav(`/requests/${r.id}`)} />)}
+              {items.map(r => <Row key={r.id} r={r} onClick={() => {
+                setLastSelected('requests', r.id)
+                nav(`/requests/${r.id}`)
+              }} />)}
             </tbody>
           </table>
         )}
@@ -97,8 +101,14 @@ function Row({ r, onClick }: { r: RequestRow; onClick: () => void }) {
   const ch = channelColor(r.channel)
   const md = modelColor(_modelKey(r.model))
   const time = new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const selected = isSelected('requests', r.id)
   return (
-    <tr onClick={onClick} style={{ cursor: 'pointer', borderBottom: `1px solid ${C.border}` }}>
+    <tr
+      className="dash-row"
+      data-selected={selected || undefined}
+      onClick={onClick}
+      style={{ borderBottom: `1px solid ${C.border}` }}
+    >
       <Td color={C.textDim}>#{r.id}</Td>
       <Td>{time}</Td>
       <Td><Tag color={ch}>{r.channel}</Tag></Td>

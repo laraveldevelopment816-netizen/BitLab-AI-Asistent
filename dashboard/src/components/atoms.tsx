@@ -153,7 +153,7 @@ export function SectionLabel({ children }: { children: ReactNode }) {
 
 // ── TopBar ────────────────────────────────────────────────────────────────────
 
-export function TopBar({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
+export function TopBar({ title, subtitle, right }: { title: string; subtitle?: ReactNode; right?: ReactNode }) {
   return (
     <div style={{
       padding: '20px 28px 18px',

@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { api } from '../api'
 import type { ToolCall, RequestDetail } from '../api'
 import { C, channelColor, modelColor } from '../tokens'
 import { TopBar, SectionLabel, Tag, StatusBadge, Btn, Metric } from '../components/atoms'
+import { setLastSelected } from '../lastSelected'
 
 export function SessionDetailPage() {
   const { id } = useParams()
@@ -15,6 +16,40 @@ export function SessionDetailPage() {
     queryFn: () => api.getSession(id!),
     enabled: !!id,
   })
+
+  // Sessions list — koristi se za prev/next navigation arrows.
+  // Ne enabled na initial load (nemamo cache); ako korisnik je došao
+  // sa /sessions, TanStack ima keširanu listu i ne refetch-uje.
+  const { data: sessionsList } = useQuery({
+    queryKey: ['sessions', ''],  // moramo da se podudara sa Sessions.tsx queryKey
+    queryFn: () => api.listSessions(undefined, 1),
+    staleTime: 60_000,
+  })
+
+  // Pronađi prev/next session ID u listi
+  const sessions = sessionsList?.items ?? []
+  const currentIdx = sessions.findIndex(s => s.session_id === id)
+  const prevSession = currentIdx > 0 ? sessions[currentIdx - 1] : null
+  const nextSession = currentIdx >= 0 && currentIdx < sessions.length - 1
+    ? sessions[currentIdx + 1] : null
+
+  // Keyboard arrows ← → za prev/next
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      // Ignoriši kad korisnik tipka u input/textarea
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (e.key === 'ArrowLeft' && prevSession) {
+        setLastSelected('sessions', prevSession.session_id)
+        nav(`/sessions/${prevSession.session_id}`)
+      } else if (e.key === 'ArrowRight' && nextSession) {
+        setLastSelected('sessions', nextSession.session_id)
+        nav(`/sessions/${nextSession.session_id}`)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [prevSession, nextSession, nav])
 
   if (isLoading) return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ loading…</div>
   if (error || !data) return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Sesija nije pronađena.</div>
@@ -32,8 +67,48 @@ export function SessionDetailPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TopBar
         title={`Session ${data.session_id.slice(0, 8)}…`}
-        subtitle={`${reqs.length} poruka · ${new Date(reqs[0].created_at).toLocaleString()} → ${new Date(reqs[reqs.length-1].created_at).toLocaleTimeString()}`}
-        right={<Btn variant="ghost" onClick={() => nav(-1)}>← back</Btn>}
+        subtitle={
+          <span>
+            <Link to="/sessions" style={{ color: C.textDim, textDecoration: 'none' }}>Sessions</Link>
+            <span style={{ color: C.textMute, margin: '0 6px' }}>›</span>
+            <span style={{ color: C.text }}>{data.session_id.slice(0, 8)}…</span>
+            <span style={{ color: C.textMute, margin: '0 8px' }}>·</span>
+            <span style={{ color: C.textDim }}>
+              {reqs.length} poruka · {new Date(reqs[0].created_at).toLocaleTimeString()} → {new Date(reqs[reqs.length-1].created_at).toLocaleTimeString()}
+            </span>
+            {currentIdx >= 0 && (
+              <>
+                <span style={{ color: C.textMute, margin: '0 8px' }}>·</span>
+                <span style={{ color: C.textMute, fontFamily: 'JetBrains Mono, monospace' }}>
+                  {currentIdx + 1} / {sessions.length}
+                </span>
+              </>
+            )}
+          </span>
+        }
+        right={
+          <div style={{ display: 'flex', gap: 6 }}>
+            <NavBtn
+              disabled={!prevSession}
+              title={prevSession ? `← prev (${prevSession.session_id.slice(0, 8)}…)` : 'first session'}
+              onClick={() => {
+                if (!prevSession) return
+                setLastSelected('sessions', prevSession.session_id)
+                nav(`/sessions/${prevSession.session_id}`)
+              }}
+            >←</NavBtn>
+            <NavBtn
+              disabled={!nextSession}
+              title={nextSession ? `next → (${nextSession.session_id.slice(0, 8)}…)` : 'last session'}
+              onClick={() => {
+                if (!nextSession) return
+                setLastSelected('sessions', nextSession.session_id)
+                nav(`/sessions/${nextSession.session_id}`)
+              }}
+            >→</NavBtn>
+            <Btn variant="ghost" onClick={() => nav('/sessions')}>back to list</Btn>
+          </div>
+        }
       />
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -179,6 +254,28 @@ function ToolCallRow({ tc }: { tc: ToolCall }) {
         </div>
       )}
     </div>
+  )
+}
+
+function NavBtn({ children, disabled, title, onClick }: {
+  children: React.ReactNode; disabled?: boolean; title?: string; onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      style={{
+        width: 32, height: 28, borderRadius: 4,
+        background: disabled ? C.panelLo : C.panelHi,
+        color: disabled ? C.textMute : C.text,
+        border: `1px solid ${C.border}`,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.4 : 1,
+        fontFamily: 'JetBrains Mono, monospace', fontSize: 14,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >{children}</button>
   )
 }
 

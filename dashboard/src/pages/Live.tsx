@@ -5,6 +5,7 @@ import { api } from '../api'
 import type { RequestRow } from '../api'
 import { C, channelColor, modelColor } from '../tokens'
 import { TopBar, SectionLabel, Tag, StatusBadge } from '../components/atoms'
+import { isSelected, setLastSelected } from '../lastSelected'
 
 export function Live() {
   const nav = useNavigate()
@@ -88,7 +89,10 @@ export function Live() {
             </thead>
             <tbody>
               {items.map(r => (
-                <Row key={r.id} r={r} fresh={freshIds.has(r.id)} onClick={() => nav(`/requests/${r.id}`)} />
+                <Row key={r.id} r={r} fresh={freshIds.has(r.id)} onClick={() => {
+                  setLastSelected('requests', r.id)
+                  nav(`/requests/${r.id}`)
+                }} />
               ))}
             </tbody>
           </table>
@@ -109,14 +113,15 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
 function Row({ r, fresh, onClick }: { r: RequestRow; fresh: boolean; onClick: () => void }) {
   const ch = channelColor(r.channel)
   const md = modelColor(_modelKey(r.model))
+  const selected = isSelected('requests', r.id)
   return (
     <tr
+      className={fresh ? 'dash-row row-fresh' : 'dash-row'}
+      data-selected={selected || undefined}
       onClick={onClick}
       style={{
-        cursor: 'pointer',
-        background: fresh ? `${C.bitlab}18` : 'transparent',
+        background: fresh ? `${C.bitlab}18` : undefined,
         borderBottom: `1px solid ${C.border}`,
-        transition: 'background 0.6s ease',
       }}
     >
       <Td color={C.textDim}>#{r.id}</Td>

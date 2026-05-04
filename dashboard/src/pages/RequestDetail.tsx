@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { api } from '../api'
 import type { ToolCall } from '../api'
 import { C, channelColor, modelColor } from '../tokens'
@@ -31,7 +31,21 @@ export function RequestDetail() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TopBar
         title={`Request #${r.id}`}
-        subtitle={`${new Date(r.created_at).toLocaleString()} · ${r.adapter}`}
+        subtitle={
+          <span>
+            <Link to="/live" style={{ color: C.textDim, textDecoration: 'none' }}>Live</Link>
+            <span style={{ color: C.textMute, margin: '0 6px' }}>›</span>
+            <span style={{ color: C.text }}>#{r.id}</span>
+            <span style={{ color: C.textMute, margin: '0 8px' }}>·</span>
+            <span style={{ color: C.textDim }}>{new Date(r.created_at).toLocaleString()} · {r.adapter}</span>
+            {r.compare_group_id && (
+              <>
+                <span style={{ color: C.textMute, margin: '0 8px' }}>·</span>
+                <span style={{ color: C.warn }}>compare {r.compare_group_id.slice(0, 8)}</span>
+              </>
+            )}
+          </span>
+        }
         right={<Btn variant="ghost" onClick={() => nav(-1)}>← back</Btn>}
       />
 

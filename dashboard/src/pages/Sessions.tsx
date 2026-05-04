@@ -5,6 +5,7 @@ import { api } from '../api'
 import type { SessionRow } from '../api'
 import { C, channelColor, modelColor } from '../tokens'
 import { TopBar, SectionLabel, Tag } from '../components/atoms'
+import { isSelected, setLastSelected } from '../lastSelected'
 
 const CHANNELS = ['', 'chat', 'voice', 'email']
 
@@ -75,7 +76,10 @@ export function Sessions() {
               </tr>
             </thead>
             <tbody>
-              {items.map(s => <Row key={s.session_id} s={s} onClick={() => nav(`/sessions/${s.session_id}`)} />)}
+              {items.map(s => <Row key={s.session_id} s={s} onClick={() => {
+                setLastSelected('sessions', s.session_id)
+                nav(`/sessions/${s.session_id}`)
+              }} />)}
             </tbody>
           </table>
         )}
@@ -114,8 +118,14 @@ function Row({ s, onClick }: { s: SessionRow; onClick: () => void }) {
   const start = new Date(s.first_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   const lastDate = new Date(s.last_message_at)
   const last = lastDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const selected = isSelected('sessions', s.session_id)
   return (
-    <tr onClick={onClick} style={{ cursor: 'pointer', borderBottom: `1px solid ${C.border}` }}>
+    <tr
+      className="dash-row"
+      data-selected={selected || undefined}
+      onClick={onClick}
+      style={{ borderBottom: `1px solid ${C.border}` }}
+    >
       <Td color={C.textDim}>{s.session_id.slice(0, 8)}…</Td>
       <Td><Tag color={ch}>{s.channel}</Tag></Td>
       <Td><Tag color={md}>{_modelKey(s.model)}</Tag></Td>

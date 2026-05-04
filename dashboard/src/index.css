@@ -87,3 +87,25 @@ input:focus, select:focus, textarea:focus {
 }
 
 .row-fresh { animation: row-fresh 2.1s ease-out forwards; }
+
+/* Tabela rowovi — hover i selected (last-clicked) state.
+   Hover: blagi background tint + suptilan left border indicator.
+   Selected: postoji `data-selected="true"` kad je red posljednji klik-nut
+   (sessionStorage); border-left koristi BitLab orange za jasnu razliku.
+   Korisnik se vraća iz detail view-a → vidi gdje je bio. */
+tr.dash-row {
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-left-color 0.12s ease;
+  border-left: 3px solid transparent;
+}
+tr.dash-row:hover {
+  background-color: #7dd3fc0a;
+  border-left-color: var(--accent-dim);
+}
+tr.dash-row[data-selected="true"] {
+  background-color: #fb6d3b14;
+  border-left-color: #fb6d3b;
+}
+tr.dash-row[data-selected="true"]:hover {
+  background-color: #fb6d3b1f;
+}
