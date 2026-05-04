@@ -1122,7 +1122,14 @@ html.bl-scroll-lock body {
     div.className = 'bl-msg ' + role;
     div.innerHTML = role === 'bot' ? renderMarkdown(text) : escHtml(text);
     messagesEl.appendChild(div);
-    scrollBottom();
+    // Bot odgovori (često sadrže listu proizvoda) — skroluj na VRH nove
+    // poruke da se prvi rezultat vidi prvi. User poruke (kratke) ostaju
+    // bottom-scroll standardno.
+    if (role === 'bot') {
+      setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    } else {
+      scrollBottom();
+    }
     return div;
   }
 
