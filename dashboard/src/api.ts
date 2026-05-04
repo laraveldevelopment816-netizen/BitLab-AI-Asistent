@@ -96,6 +96,33 @@ export interface CompareResponse {
   results: CompareResultItem[]
 }
 
+export interface SessionRow {
+  session_id: string
+  channel: string
+  model: string
+  msg_count: number
+  first_message_at: string
+  last_message_at: string
+  total_tokens_in: number
+  total_tokens_out: number
+  total_latency_ms: number
+  total_cost_usd: number | null
+  error_count: number
+  first_prompt_preview: string
+}
+
+export interface SessionsPage {
+  items: SessionRow[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface SessionDetail {
+  session_id: string
+  requests: RequestDetail[]
+}
+
 export const api = {
   listRequests: (f: RequestsFilter = {}) =>
     http.get<RequestsPage>('/requests', { params: f }).then(r => r.data),
@@ -112,4 +139,10 @@ export const api = {
   compare: (message: string, channel: string, models: string[]) =>
     http.post<CompareResponse>('/compare', { message, channel, models })
         .then(r => r.data),
+
+  listSessions: (channel?: string, page = 1) =>
+    http.get<SessionsPage>('/sessions', { params: { channel, page } }).then(r => r.data),
+
+  getSession: (sessionId: string) =>
+    http.get<SessionDetail>(`/sessions/${sessionId}`).then(r => r.data),
 }

@@ -87,6 +87,10 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=20)
     channel: str = Field(default="chat", pattern="^(chat|voice|email)$")
+    # UUID generisan klijent-side u widget.js — grupiše sve poruke jednog
+    # razgovora pod jednu sesiju (Sessions tab u dashboard-u). Opciono za
+    # backward compat sa starim klijentima.
+    session_id: str | None = Field(default=None, max_length=36)
 
 
 class ToolCallTrace(BaseModel):
@@ -163,6 +167,7 @@ async def api_chat(request: Request, req: ChatRequest) -> ChatResponse:
     model = (result.get("_trace", {}) or {}).get("model") or _settings.chat_model
     asyncio.create_task(_persist_trace(
         channel=req.channel, model=model, prompt=req.message, result=result,
+        session_id=req.session_id,
     ))
     return ChatResponse(
         reply=result["reply"],

@@ -157,6 +157,34 @@ class CompareResponse(BaseModel):
     results: list[CompareResultItem]
 
 
+class SessionRow(BaseModel):
+    """Agregat svih request-a u jednoj sesiji — jedan red u Sessions tabu."""
+    session_id: str
+    channel: str
+    model: str
+    msg_count: int
+    first_message_at: datetime
+    last_message_at: datetime
+    total_tokens_in: int
+    total_tokens_out: int
+    total_latency_ms: int
+    total_cost_usd: float | None
+    error_count: int
+    first_prompt_preview: str
+
+
+class SessionsPage(BaseModel):
+    items: list[SessionRow]
+    total: int
+    page: int
+    page_size: int
+
+
+class SessionDetail(BaseModel):
+    session_id: str
+    requests: list[RequestDetail]
+
+
 # ── Helpers ──────────────────────────────────────────────────
 
 PAGE_SIZE = 50
@@ -302,6 +330,97 @@ async def list_errors(
     )
 
 
+@router.get("/sessions", response_model=SessionsPage)
+async def list_sessions(
+    channel: str | None = Query(None),
+    page: int = Query(1, ge=1),
+):
+    """Vraća listu sesija — jedan red = jedan razgovor (klijent + AI), sa
+    agregiranim metrikama. Sortirano po posljednjoj aktivnosti (silazno)."""
+    async with get_session_factory()() as session:
+        # Uzmi sve requeste sa session_id (legacy bez session_id se preskaču)
+        q = (
+            select(Request)
+            .where(Request.session_id.is_not(None))
+            .order_by(Request.created_at.desc())
+        )
+        if channel:
+            q = q.where(Request.channel == channel)
+
+        rows = (await session.execute(q)).scalars().all()
+
+    # Group by session_id u Python-u (SQLite GROUP BY je manje fleksibilan
+    # za stringove, plus moramo agregirati cost preko COST_PER_M lookup-a)
+    by_session: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        sid = r.session_id
+        if sid not in by_session:
+            by_session[sid] = {
+                "session_id": sid,
+                "channel": r.channel,
+                "model": r.model,
+                "rows": [],
+            }
+        by_session[sid]["rows"].append(r)
+
+    # Sortiraj sesije po najnovijem request-u u svakoj
+    sessions_sorted = sorted(
+        by_session.values(),
+        key=lambda s: max(r.created_at for r in s["rows"]),
+        reverse=True,
+    )
+
+    total = len(sessions_sorted)
+    start = (page - 1) * PAGE_SIZE
+    page_slice = sessions_sorted[start : start + PAGE_SIZE]
+
+    items: list[SessionRow] = []
+    for s in page_slice:
+        rs = s["rows"]
+        rs_sorted = sorted(rs, key=lambda r: r.created_at)
+        first = rs_sorted[0]
+        last = rs_sorted[-1]
+        total_in = sum(r.tokens_in or 0 for r in rs)
+        total_out = sum(r.tokens_out or 0 for r in rs)
+        total_lat = sum(r.latency_ms or 0 for r in rs)
+        total_cost = sum(_cost(r.model, r.tokens_in, r.tokens_out) or 0.0 for r in rs)
+        err_count = sum(1 for r in rs if r.status == "error")
+        items.append(SessionRow(
+            session_id=s["session_id"],
+            channel=s["channel"], model=s["model"],
+            msg_count=len(rs),
+            first_message_at=first.created_at,
+            last_message_at=last.created_at,
+            total_tokens_in=total_in, total_tokens_out=total_out,
+            total_latency_ms=total_lat,
+            total_cost_usd=round(total_cost, 6) if total_cost > 0 else None,
+            error_count=err_count,
+            first_prompt_preview=(first.prompt or "")[:200],
+        ))
+
+    return SessionsPage(items=items, total=total, page=page, page_size=PAGE_SIZE)
+
+
+@router.get("/sessions/{session_id}", response_model=SessionDetail)
+async def get_session(session_id: str):
+    """Vraća sve request-e iz sesije, hronološki (najstariji prvi).
+    Svaki request ima puni tool_calls timeline."""
+    async with get_session_factory()() as session:
+        q = (
+            select(Request)
+            .where(Request.session_id == session_id)
+            .order_by(Request.created_at.asc())
+            .options(selectinload(Request.tool_calls))
+        )
+        rows = (await session.execute(q)).scalars().all()
+    if not rows:
+        raise HTTPException(status_code=404, detail="Sesija nije pronađena")
+    return SessionDetail(
+        session_id=session_id,
+        requests=[_to_detail(r) for r in rows],
+    )
+
+
 @router.post("/compare", response_model=CompareResponse)
 async def compare_models(req: CompareRequest):
     """Fan-out istog upita kroz N modela paralelno. Loguje sve sa istim
@@ -366,6 +485,7 @@ async def _persist_trace(
     prompt: str,
     result: dict[str, Any],
     compare_group_id: str | None = None,
+    session_id: str | None = None,
     error: str | None = None,
 ) -> int | None:
     """Best-effort: greške u DB-u ne smiju srušiti chat. Vraća request_id ili None."""
@@ -384,6 +504,7 @@ async def _persist_trace(
                 status="error" if error else "ok",
                 error=error,
                 compare_group_id=compare_group_id,
+                session_id=session_id,
             )
             for tc in trace.get("tool_calls", []):
                 await insert_tool_call(

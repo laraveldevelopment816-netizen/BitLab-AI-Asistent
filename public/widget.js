@@ -923,6 +923,25 @@ html.bl-scroll-lock body {
   const history = [];
   let chatOpened = false;
 
+  // Session ID — UUID generisan jednom po widget instanci, dijeli se između
+  // chat i voice mode-a. Server koristi za grupisanje requesta u Sessions
+  // tab dashboarda. sessionStorage se briše kad se browser tab zatvori,
+  // što odgovara životnom ciklusu razgovora.
+  function _uuid() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    // Fallback za starije browser-e
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+  let sessionId = sessionStorage.getItem('bitlab.sessionId');
+  if (!sessionId) {
+    sessionId = _uuid();
+    sessionStorage.setItem('bitlab.sessionId', sessionId);
+  }
+
   // ── Markdown + product card post-processor ───────────────────────
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -1157,7 +1176,7 @@ html.bl-scroll-lock body {
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: history.slice(0, -1), channel: 'chat' }),
+        body: JSON.stringify({ message: text, history: history.slice(0, -1), channel: 'chat', session_id: sessionId }),
       });
       typing.remove();
       if (!resp.ok) { addMsg('Greška servera. Pokušaj ponovo.', 'bot'); return; }
@@ -1562,7 +1581,7 @@ html.bl-scroll-lock body {
     const resp = await fetch(CHAT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history: history.slice(0, -1), channel: 'voice' }),
+      body: JSON.stringify({ message, history: history.slice(0, -1), channel: 'voice', session_id: sessionId }),
     });
     if (!resp.ok) throw new Error('Chat greška ' + resp.status);
     const data = await resp.json();

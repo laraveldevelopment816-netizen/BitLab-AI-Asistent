@@ -40,6 +40,10 @@ class Request(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Compare grupiše više requesta (jedan upit, N modela) zajedničkim ID-om
     compare_group_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
+    # Session grupiše sve poruke jednog razgovora (chat tab/voice modal/email
+    # thread). UUID generisan klijent-side u widget.js, prosljeđen kroz /api/chat.
+    # Nullable za legacy podatke prije ovog feature-a.
+    session_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
 
     tool_calls: Mapped[list["ToolCall"]] = relationship(

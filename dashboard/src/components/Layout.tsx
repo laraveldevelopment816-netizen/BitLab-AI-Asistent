@@ -3,8 +3,9 @@ import { NavLink } from 'react-router-dom'
 import { C } from '../tokens'
 
 const NAV = [
-  { to: '/live',     label: 'Live',     hint: 'Real-time stream' },
-  { to: '/history',  label: 'History',  hint: 'All past requests' },
+  { to: '/sessions', label: 'Sessions', hint: 'Razgovori (klijent + AI)' },
+  { to: '/live',     label: 'Live',     hint: 'Pojedinačne poruke' },
+  { to: '/history',  label: 'History',  hint: 'Sve prošle poruke' },
   { to: '/compare',  label: 'Compare',  hint: 'Haiku ↔ Sonnet' },
   { to: '/stats',    label: 'Stats',    hint: 'Tokens · cost' },
   { to: '/settings', label: 'Settings', hint: 'API key, env' },
