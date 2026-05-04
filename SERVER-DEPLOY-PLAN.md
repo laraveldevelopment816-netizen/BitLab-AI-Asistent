@@ -167,60 +167,94 @@ SENTENCE_TRANSFORMERS_HOME=/home/ai/aiasistent-staging/shared/hf-cache
 
 ---
 
-## 6. Inicijalni release — koraci specifični za nas
+## 6. Inicijalni release
+
+> **🔒 STROGO PO ŠABLONU — release folder mehanika.** Ova četiri koraka
+> moraju biti **tačno** kako je Ivan napisao u tački 2 `DEPLOY_GUIDE.md`-a:
+>
+> 1. `RELEASE=$(date +%Y%m%d_%H%M)` (timestamp)
+> 2. `mkdir -p /home/ai/<PROJECT>/releases/$RELEASE` + `git clone` u tu lokaciju
+> 3. Atomic switch: `ln -sfn /home/ai/<PROJECT>/releases/$RELEASE /home/ai/<PROJECT>/current`
+> 4. Verifikacija: `ls -la /home/ai/<PROJECT>/current` + `readlink -f`
+>
+> Šta se dešava **unutar release folder-a između clone-a i atomic switch-a**
+> (Python install, dashboard build, audit, smoke) je projekat-specifično —
+> ne mora biti verbatim po šablonu, organizovano je kako odgovara našem
+> stack-u. Ali release folder struktura je norma.
+
+### 6.1 Komplet flow
 
 ```bash
+# === 1. RELEASE FOLDER (verbatim po šablonu) ====================
 RELEASE=$(date +%Y%m%d_%H%M)
-RELEASE_DIR=/home/ai/$PROJECT_NAME/releases/$RELEASE
-echo "📦 Release: $RELEASE"
+echo "Release: $RELEASE"
 
-# 6.1 Clone
-git clone -b $BRANCH $REPO_URL $RELEASE_DIR
-cd $RELEASE_DIR
+mkdir -p /home/ai/aiasistent-staging/releases/$RELEASE
+git clone git@github.com:laraveldevelopment816-netizen/BitLab-AI-Asistent.git \
+  /home/ai/aiasistent-staging/releases/$RELEASE
 
-# 6.2 Symlinks za shared resources
-ln -sfn /home/ai/$PROJECT_NAME/shared/.env $RELEASE_DIR/.env
-ln -sfn /home/ai/$PROJECT_NAME/shared/var  $RELEASE_DIR/var
+cd /home/ai/aiasistent-staging/releases/$RELEASE
 
-# 6.3 Python venv + deps (CPU torch je obavezan flag)
+# === 2. PROJEKAT-SPECIFIČAN INSTALL =============================
+# (Ivan u guide-u ima primjer `pip install -r requirements.txt` — to je
+# generički šablon. Naš projekat koristi pyproject.toml + obavezan CPU
+# torch flag jer je CUDA wheel 1.2GB, a CPU 200MB.)
+
+git checkout production-prep   # ili main poslije PR merge-a
+
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip wheel
 pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu
 
-# 6.4 Generiši product index (samo prvi put ili kad se katalog promijeni)
-# Trajanje: ~5 min, ~5GB temp diska
-if [ ! -f /home/ai/$PROJECT_NAME/shared/var/products.index.npz ]; then
-    echo "🔨 Generišem product index (jednokratno, ~5min)..."
+# Symlinks na shared (env, perzistentni var/)
+ln -sfn /home/ai/aiasistent-staging/shared/.env .env
+ln -sfn /home/ai/aiasistent-staging/shared/var  var
+
+# Product embedding index — jednokratno na prvom releasu (~5 min CPU,
+# ~5GB temp diska), reuse u sledećim
+if [ ! -f /home/ai/aiasistent-staging/shared/var/products.index.npz ]; then
+    echo "🔨 Generišem product index (jednokratno)..."
     python scripts/embed_products.py
-    # Premjesti u shared/var da preživi releaseve
-    mv data/products.index.npz /home/ai/$PROJECT_NAME/shared/var/
-    mv data/products.meta.json /home/ai/$PROJECT_NAME/shared/var/
+    mv data/products.index.npz /home/ai/aiasistent-staging/shared/var/
+    mv data/products.meta.json /home/ai/aiasistent-staging/shared/var/
 fi
-# Symlink iz release-a → shared
-ln -sfn /home/ai/$PROJECT_NAME/shared/var/products.index.npz data/products.index.npz
-ln -sfn /home/ai/$PROJECT_NAME/shared/var/products.meta.json data/products.meta.json
+ln -sfn /home/ai/aiasistent-staging/shared/var/products.index.npz data/products.index.npz
+ln -sfn /home/ai/aiasistent-staging/shared/var/products.meta.json data/products.meta.json
 
-# 6.5 Generiši kategorije i missing image audit (deterministički)
+# Kategorije + missing image audit (deterministički, ~3 min)
 python scripts/build_categories.py
-python scripts/audit_missing_images.py --concurrency 50  # ~2-3 min
+python scripts/audit_missing_images.py --concurrency 50
 
-# 6.6 Init dashboard DB schema (idempotentno)
+# Dashboard SQLite schema (idempotentno)
 python scripts/init_db.py
 
-# 6.7 Build dashboard SPA
+# Dashboard SPA build (Vite → dashboard/dist/)
 cd dashboard
 pnpm install --frozen-lockfile
-pnpm build           # → dashboard/dist/
+pnpm build
 cd ..
 
-# 6.8 Quick smoke prije atomic switch
-.venv/bin/python -c "from app.main import app; print('✅ Import OK')"
+# Quick smoke prije switch-a — catch import errore odmah
+python -c "from app.main import app; print('✅ Import OK')"
 
-# 6.9 Atomic switch
-ln -sfn $RELEASE_DIR /home/ai/$PROJECT_NAME/current
-readlink -f /home/ai/$PROJECT_NAME/current   # verifikuj
+# === 3. ATOMIC SWITCH (verbatim po šablonu) =====================
+ln -sfn /home/ai/aiasistent-staging/releases/$RELEASE \
+        /home/ai/aiasistent-staging/current
+
+# === 4. VERIFIKACIJA (verbatim po šablonu) ======================
+ls -la /home/ai/aiasistent-staging/current
+readlink -f /home/ai/aiasistent-staging/current
 ```
+
+> **Šta ide u `shared/var/`** (preživi releaseve):
+> - `bitlab.db` — SQLite za dashboard logove
+> - `products.index.npz` — embedding indeks (~7MB)
+> - `products.meta.json` — meta JSON (~5MB)
+> - `missing_images.json` — audit output, regeneriše se po deploy-u
+>
+> Sve ostalo (Python venv, dashboard/dist, kod) je per-release pod
+> `releases/<timestamp>/` i čisti se kroz cleanup zadnjih 5.
 
 ---
 
