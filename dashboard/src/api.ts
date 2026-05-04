@@ -123,6 +123,53 @@ export interface SessionDetail {
   requests: RequestDetail[]
 }
 
+export interface DailyCount {
+  date: string
+  requests: number
+  sessions: number
+  errors: number
+}
+
+export interface ChannelBreakdown {
+  channel: string
+  requests: number
+  cost_usd: number
+}
+
+export interface ModelBreakdown {
+  model_key: string
+  requests: number
+  cost_usd: number
+}
+
+export interface RecentSession {
+  session_id: string
+  channel: string
+  model: string
+  msg_count: number
+  last_at: string
+  first_prompt: string
+}
+
+export interface OverviewResponse {
+  total_sessions: number
+  total_requests: number
+  total_tokens_in: number
+  total_tokens_out: number
+  total_cost_usd: number
+  error_count: number
+  avg_latency_ms: number | null
+  p50_latency_ms: number | null
+  p95_latency_ms: number | null
+  today_requests: number
+  today_sessions: number
+  today_cost_usd: number
+  daily_last_14: DailyCount[]
+  by_channel: ChannelBreakdown[]
+  by_model: ModelBreakdown[]
+  recent_sessions: RecentSession[]
+}
+
 export const api = {
   listRequests: (f: RequestsFilter = {}) =>
     http.get<RequestsPage>('/requests', { params: f }).then(r => r.data),
@@ -145,4 +192,7 @@ export const api = {
 
   getSession: (sessionId: string) =>
     http.get<SessionDetail>(`/sessions/${sessionId}`).then(r => r.data),
+
+  getOverview: () =>
+    http.get<OverviewResponse>('/overview').then(r => r.data),
 }

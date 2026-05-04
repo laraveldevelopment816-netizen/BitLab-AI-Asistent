@@ -185,6 +185,62 @@ class SessionDetail(BaseModel):
     requests: list[RequestDetail]
 
 
+# ── Overview / pregled ──────────────────────────────────────────────
+
+class DailyCount(BaseModel):
+    date: str        # YYYY-MM-DD
+    requests: int
+    sessions: int    # broj jedinstvenih sesija tog dana
+    errors: int
+
+
+class ChannelBreakdown(BaseModel):
+    channel: str
+    requests: int
+    cost_usd: float
+
+
+class ModelBreakdown(BaseModel):
+    model_key: str   # haiku / sonnet / drugo
+    requests: int
+    cost_usd: float
+
+    model_config = {"protected_namespaces": ()}
+
+
+class RecentSession(BaseModel):
+    session_id: str
+    channel: str
+    model: str
+    msg_count: int
+    last_at: datetime
+    first_prompt: str
+
+
+class OverviewResponse(BaseModel):
+    # Total agregati
+    total_sessions: int
+    total_requests: int
+    total_tokens_in: int
+    total_tokens_out: int
+    total_cost_usd: float
+    error_count: int
+    # Latency
+    avg_latency_ms: float | None
+    p50_latency_ms: int | None
+    p95_latency_ms: int | None
+    # Today
+    today_requests: int
+    today_sessions: int
+    today_cost_usd: float
+    # Charts data
+    daily_last_14: list[DailyCount]
+    by_channel: list[ChannelBreakdown]
+    by_model: list[ModelBreakdown]
+    # Activity
+    recent_sessions: list[RecentSession]
+
+
 # ── Helpers ──────────────────────────────────────────────────
 
 PAGE_SIZE = 50
@@ -327,6 +383,130 @@ async def list_errors(
     return RequestsPage(
         items=[_to_row(r) for r in rows],
         total=total, page=page, page_size=PAGE_SIZE,
+    )
+
+
+@router.get("/overview", response_model=OverviewResponse)
+async def get_overview():
+    """Agregat za Pregled stranicu — sve top metrike + chart data + recent
+    aktivnost u jednom pozivu (brz UI render)."""
+    from datetime import date, timedelta, datetime as _dt
+
+    async with get_session_factory()() as session:
+        rows = (await session.execute(select(Request))).scalars().all()
+
+    today = date.today()
+    cutoff_14 = today - timedelta(days=13)  # uključuje 14 dana sa današnjim
+
+    # Total agregati
+    total_requests = len(rows)
+    total_in = sum(r.tokens_in or 0 for r in rows)
+    total_out = sum(r.tokens_out or 0 for r in rows)
+    total_cost = sum(_cost(r.model, r.tokens_in, r.tokens_out) or 0.0 for r in rows)
+    error_count = sum(1 for r in rows if r.status == "error")
+
+    # Sessions (jedinstvene)
+    session_ids = {r.session_id for r in rows if r.session_id}
+    total_sessions = len(session_ids)
+
+    # Latency
+    latencies = sorted([r.latency_ms for r in rows if r.latency_ms is not None])
+    avg_lat = sum(latencies) / len(latencies) if latencies else None
+    p50 = latencies[len(latencies) // 2] if latencies else None
+    p95 = latencies[int(len(latencies) * 0.95)] if latencies else None
+
+    # Today
+    today_rows = [r for r in rows if r.created_at.date() == today]
+    today_sessions = len({r.session_id for r in today_rows if r.session_id})
+    today_cost = sum(_cost(r.model, r.tokens_in, r.tokens_out) or 0.0 for r in today_rows)
+
+    # Daily breakdown — popuni svih 14 dana (i ako 0 requests, da chart ima continuity)
+    daily_map: dict[str, dict] = {}
+    for d in (cutoff_14 + timedelta(days=i) for i in range(14)):
+        daily_map[d.isoformat()] = {"requests": 0, "session_ids": set(), "errors": 0}
+    for r in rows:
+        d_iso = r.created_at.date().isoformat()
+        if d_iso in daily_map:
+            daily_map[d_iso]["requests"] += 1
+            if r.session_id:
+                daily_map[d_iso]["session_ids"].add(r.session_id)
+            if r.status == "error":
+                daily_map[d_iso]["errors"] += 1
+    daily_last_14 = [
+        DailyCount(
+            date=d, requests=v["requests"],
+            sessions=len(v["session_ids"]), errors=v["errors"],
+        )
+        for d, v in sorted(daily_map.items())
+    ]
+
+    # By channel
+    ch_map: dict[str, dict] = {}
+    for r in rows:
+        ch = r.channel or "other"
+        if ch not in ch_map:
+            ch_map[ch] = {"requests": 0, "cost": 0.0}
+        ch_map[ch]["requests"] += 1
+        ch_map[ch]["cost"] += _cost(r.model, r.tokens_in, r.tokens_out) or 0.0
+    by_channel = [
+        ChannelBreakdown(channel=ch, requests=v["requests"], cost_usd=round(v["cost"], 6))
+        for ch, v in sorted(ch_map.items(), key=lambda x: -x[1]["requests"])
+    ]
+
+    # By model
+    md_map: dict[str, dict] = {}
+    for r in rows:
+        mk = _short_model_name(r.model or "")
+        if mk not in md_map:
+            md_map[mk] = {"requests": 0, "cost": 0.0}
+        md_map[mk]["requests"] += 1
+        md_map[mk]["cost"] += _cost(r.model, r.tokens_in, r.tokens_out) or 0.0
+    by_model = [
+        ModelBreakdown(model_key=mk, requests=v["requests"], cost_usd=round(v["cost"], 6))
+        for mk, v in sorted(md_map.items(), key=lambda x: -x[1]["requests"])
+    ]
+
+    # Recent sessions (5 najnovijih po posljednjoj poruci)
+    by_sid: dict[str, list[Request]] = {}
+    for r in rows:
+        if r.session_id:
+            by_sid.setdefault(r.session_id, []).append(r)
+    sorted_sids = sorted(
+        by_sid.items(),
+        key=lambda kv: max(rr.created_at for rr in kv[1]),
+        reverse=True,
+    )
+    recent_sessions = []
+    for sid, rs in sorted_sids[:5]:
+        rs_sorted = sorted(rs, key=lambda r: r.created_at)
+        first = rs_sorted[0]
+        last = rs_sorted[-1]
+        recent_sessions.append(RecentSession(
+            session_id=sid,
+            channel=first.channel,
+            model=first.model,
+            msg_count=len(rs),
+            last_at=last.created_at,
+            first_prompt=(first.prompt or "")[:140],
+        ))
+
+    return OverviewResponse(
+        total_sessions=total_sessions,
+        total_requests=total_requests,
+        total_tokens_in=total_in,
+        total_tokens_out=total_out,
+        total_cost_usd=round(total_cost, 6),
+        error_count=error_count,
+        avg_latency_ms=avg_lat,
+        p50_latency_ms=p50,
+        p95_latency_ms=p95,
+        today_requests=len(today_rows),
+        today_sessions=today_sessions,
+        today_cost_usd=round(today_cost, 6),
+        daily_last_14=daily_last_14,
+        by_channel=by_channel,
+        by_model=by_model,
+        recent_sessions=recent_sessions,
     )
 
 

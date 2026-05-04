@@ -3,7 +3,8 @@ import { NavLink } from 'react-router-dom'
 import { C } from '../tokens'
 
 const NAV = [
-  { to: '/sessions', label: 'Razgovori',     hint: 'Sesije korisnik + AI' },
+  { to: '/overview', label: 'Pregled',        hint: 'Brojevi · grafikoni · status' },
+  { to: '/sessions', label: 'Razgovori',      hint: 'Sesije korisnik + AI' },
   { to: '/live',     label: 'Uživo',          hint: 'Pojedinačne poruke' },
   { to: '/history',  label: 'Istorija',       hint: 'Sve prošle poruke' },
   { to: '/compare',  label: 'Uporedi',        hint: 'Haiku ↔ Sonet' },
