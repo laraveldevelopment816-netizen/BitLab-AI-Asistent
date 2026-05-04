@@ -505,7 +505,8 @@ html.bl-scroll-lock body {
   overscroll-behavior: contain;
 }
 #bl-voice-panel {
-  width: 460px; max-width: 100%; max-height: 92vh;
+  width: 460px; max-width: 100%;
+  height: 80vh; max-height: 720px; min-height: 520px;
   background: #fff; border-radius: 24px;
   box-shadow: var(--bl-shadow-3);
   display: flex; flex-direction: column; overflow: hidden;
@@ -543,14 +544,16 @@ html.bl-scroll-lock body {
   box-shadow: 0 0 0 3px rgba(34,197,94,.25);
 }
 
-/* Stage with orb */
+/* Compact stage with orb — header section ~25% panela */
 #bl-vstage {
-  padding: 36px 24px 24px;
-  display: flex; flex-direction: column; align-items: center; gap: 22px;
+  padding: 14px 18px 14px;
+  display: flex; flex-direction: row; align-items: center; gap: 14px;
   background: linear-gradient(180deg, #fff 0%, var(--bl-bg-softer) 100%);
+  border-bottom: 1px solid var(--bl-line);
+  flex-shrink: 0;
 }
 .bl-orb {
-  position: relative; width: 160px; height: 160px;
+  position: relative; width: 64px; height: 64px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -568,17 +571,18 @@ html.bl-scroll-lock body {
   100% { transform: scale(1.3); opacity: 0; }
 }
 .bl-orb__core {
-  width: 96px; height: 96px; border-radius: 50%;
+  width: 48px; height: 48px; border-radius: 50%;
   background: linear-gradient(135deg, var(--bl-orange) 0%, var(--bl-orange-600) 100%);
   box-shadow:
-    0 12px 32px rgba(251,109,59,.45),
+    0 6px 16px rgba(251,109,59,.4),
     inset 0 2px 4px rgba(255,255,255,.3),
-    inset 0 -4px 12px rgba(224,81,31,.4);
+    inset 0 -3px 8px rgba(224,81,31,.4);
   display: flex; align-items: center; justify-content: center;
   color: #fff; position: relative; z-index: 1;
+  cursor: pointer;
   transition: background .3s, box-shadow .3s;
 }
-.bl-orb__core svg { width: 38px; height: 38px; }
+.bl-orb__core svg { width: 22px; height: 22px; }
 .bl-orb--listening .bl-orb__core,
 .bl-orb--recording .bl-orb__core {
   background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
@@ -598,10 +602,10 @@ html.bl-scroll-lock body {
 }
 /* 3-dot loader inside orb during PROCESSING (zamjenjuje mic ikonu) */
 .bl-orb__loader {
-  display: flex; gap: 7px; align-items: center; justify-content: center;
+  display: flex; gap: 4px; align-items: center; justify-content: center;
 }
 .bl-orb__loader span {
-  width: 11px; height: 11px; border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background: #fff;
   animation: bl-orb-loader-dot 1.3s infinite ease-in-out;
 }
@@ -617,44 +621,58 @@ html.bl-scroll-lock body {
 }
 .bl-orb--paused .bl-orb__ring { animation: none; opacity: 0; }
 
+/* Stage tekst — kompaktan, lijevo poravnat (orb je lijevo) */
+#bl-vstage-info {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
 #bl-vtline {
-  font-size: 18px; font-weight: 500;
-  color: var(--bl-text); text-align: center; line-height: 1.4;
-  letter-spacing: -.01em; max-width: 380px; min-height: 50px;
+  font-size: 13px; font-weight: 600;
+  color: var(--bl-text); line-height: 1.35;
+  letter-spacing: -.01em;
 }
 #bl-vtline em { color: var(--bl-text-3); font-style: normal; font-weight: 400; }
 
 .bl-wave {
-  display: flex; align-items: center; gap: 3px;
-  height: 36px; min-height: 36px;
+  display: flex; align-items: center; gap: 2px;
+  height: 18px; min-height: 18px;
 }
 .bl-wave span {
-  width: 3px; border-radius: 2px;
+  width: 2px; border-radius: 2px;
   background: var(--bl-orange); opacity: .85;
   animation: bl-wave 1.2s ease-in-out infinite;
 }
 #bl-voice-panel.vp-speaking .bl-wave span { background: #2563eb; }
 @keyframes bl-wave {
-  0%,100% { height: 6px; }
-  50%     { height: 32px; }
+  0%,100% { height: 4px; }
+  50%     { height: 16px; }
 }
 #bl-vwave.bl-hidden, #bl-vhint.bl-hidden, #bl-vtranscript.bl-hidden,
 .bl-orb__ring.bl-hidden { display: none !important; }
 
 #bl-vhint {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; color: var(--bl-text-3);
-  background: var(--bl-bg-soft);
-  padding: 8px 14px; border-radius: 99px;
-  border: 1px solid var(--bl-line);
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--bl-text-3);
+  padding: 0;
 }
-#bl-vhint svg { width: 12px; height: 12px; }
+#bl-vhint svg { width: 11px; height: 11px; flex-shrink: 0; }
 
-/* Transcript bubbles below stage */
+/* Transcript / rezultati — glavna body sekcija (~75% panela) */
 #bl-vtranscript {
-  padding: 0 18px 14px;
+  padding: 14px 18px 14px;
   display: flex; flex-direction: column; gap: 10px;
-  max-height: 220px; overflow-y: auto;
+  flex: 1; min-height: 0; overflow-y: auto;
+  background: var(--bl-bg-softer);
+}
+#bl-vtranscript.bl-hidden {
+  /* Kad je prazan u idle stanju: zauzima isti prostor, ali bez sadržaja */
+  display: flex !important;
+  align-items: center; justify-content: center;
+}
+#bl-vtranscript.bl-hidden::before {
+  content: 'Pričaj sa asistentom — rezultati će se prikazati ovdje';
+  color: var(--bl-text-3); font-size: 12px; text-align: center;
+  padding: 0 24px;
 }
 #bl-vtranscript::-webkit-scrollbar { width: 5px; }
 #bl-vtranscript::-webkit-scrollbar-thumb {
@@ -691,9 +709,12 @@ html.bl-scroll-lock body {
     width: 100%; max-height: 100vh; height: 100vh;
     border-radius: 0;
   }
-  .bl-orb { width: 140px; height: 140px; }
-  .bl-orb__core { width: 84px; height: 84px; }
-  .bl-orb__core svg { width: 32px; height: 32px; }
+  /* Mobilno: header nešto kompaktniji da ostane ~20% */
+  #bl-vstage { padding: 10px 14px; gap: 12px; }
+  .bl-orb { width: 56px; height: 56px; }
+  .bl-orb__core { width: 44px; height: 44px; }
+  .bl-orb__core svg { width: 20px; height: 20px; }
+  #bl-vtline { font-size: 12.5px; }
 }
 `;
 
@@ -769,13 +790,15 @@ html.bl-scroll-lock body {
         <span class="bl-orb__ring"></span>
         <div id="bl-vorb-large" class="bl-orb__core">${I.mic}</div>
       </div>
-      <div id="bl-vtline"><em>Spremno za razgovor...</em></div>
-      <div id="bl-vwave" class="bl-wave bl-hidden">
-        ${Array.from({ length: 15 }, (_, i) =>
-          `<span style="animation-delay:${(i * 0.08).toFixed(2)}s"></span>`
-        ).join('')}
+      <div id="bl-vstage-info">
+        <div id="bl-vtline"><em>Spremno za razgovor...</em></div>
+        <div id="bl-vwave" class="bl-wave bl-hidden">
+          ${Array.from({ length: 12 }, (_, i) =>
+            `<span style="animation-delay:${(i * 0.08).toFixed(2)}s"></span>`
+          ).join('')}
+        </div>
+        <div id="bl-vhint">${I.lock} Mikrofon se aktivira tek na klik</div>
       </div>
-      <div id="bl-vhint">${I.lock} Mikrofon se aktivira tek na klik</div>
     </div>
 
     <div id="bl-vtranscript" class="bl-hidden"></div>
