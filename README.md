@@ -8,6 +8,7 @@
 
 | # | Plan | Šta radi |
 |---|---|---|
+| 🚀 | [`DEPLOY.md`](./DEPLOY.md) | **8 komandi za deploy.** Kratko, copy-paste. |
 | 8 | [`PRODUCTION-PREP-PLAN.md`](./PRODUCTION-PREP-PLAN.md) | Production-readiness: AI klasifikacija namjere + logging dashboard + voice UX + deploy artefakti (čeka server-side install) |
 | 9 | [`MODEL-EVAL-PLAN.md`](./MODEL-EVAL-PLAN.md) | Multi-provider eval (Claude / GPT / Llama / DeepSeek) sa tehničkim pragom ≥99% i ekonomskom odlukom kraj sedmice |
 | 10 | [`GROWTH-PLAN.md`](./GROWTH-PLAN.md) | SEO audit + content production + link building + paid ads + AI asistent kao growth tool (organic +50% za 90 dana) |
