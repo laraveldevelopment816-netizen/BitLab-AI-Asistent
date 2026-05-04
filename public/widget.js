@@ -1144,6 +1144,7 @@ html.bl-scroll-lock body {
     history.push({ role: 'user', content: text });
     const typing = addTyping();
     $('bl-send').disabled = true;
+    startThinkingSound();  // soft tone dok čekamo odgovor
 
     try {
       const resp = await fetch(CHAT_URL, {
@@ -1161,6 +1162,7 @@ html.bl-scroll-lock body {
       typing.remove();
       addMsg('Greška mreže: ' + err.message, 'bot');
     } finally {
+      stopThinkingSound();
       $('bl-send').disabled = false;
       $('bl-input').focus();
     }
@@ -1196,6 +1198,71 @@ html.bl-scroll-lock body {
   // Trigger: addVoiceMsg() poziv prvi put → skida vp-fullscreen klasu.
   let voiceFullscreenActive = false;
 
+  // ── Thinking sound (kao ChatGPT / Claude.ai) ─────────────────────
+  // Soft procedural tone preko Web Audio API — dva blago-detuned sine
+  // oscilatora sa LFO modulacijom amplituden (slow breathing). Aktivira
+  // se na VS.PROCESSING, deaktivira na bilo koji drugi state.
+  // Ne učitava audio fajlove (zero-dep, zero CSP issues).
+  let thinkingAudioCtx = null;
+  let thinkingNodes = null;
+
+  function startThinkingSound() {
+    if (thinkingNodes) return;  // već svira
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!thinkingAudioCtx) thinkingAudioCtx = new Ctx();
+      // resume() je potreban poslije Chrome auto-play policy promjene
+      if (thinkingAudioCtx.state === 'suspended') thinkingAudioCtx.resume();
+
+      const ctx = thinkingAudioCtx;
+      const now = ctx.currentTime;
+      // Dva sine generatora — base 220Hz + 5th harmonic 330Hz, blago detuned
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.value = 220;
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.value = 330;
+      // Master gain — vrlo tiho (0.04 max amplituda)
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      gain.gain.linearRampToValueAtTime(0.035, now + 0.4);  // fade in
+      // LFO za "breathing" efekat — modulira gain 0.4Hz ±0.015
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 0.4;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 0.015;
+      lfo.connect(lfoGain).connect(gain.gain);
+      // Routing
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+      osc1.start(now);
+      osc2.start(now);
+      lfo.start(now);
+      thinkingNodes = { osc1, osc2, lfo, gain };
+    } catch (e) {
+      // Audio nije dostupan — graceful fail
+    }
+  }
+
+  function stopThinkingSound() {
+    if (!thinkingNodes || !thinkingAudioCtx) return;
+    try {
+      const { osc1, osc2, lfo, gain } = thinkingNodes;
+      const now = thinkingAudioCtx.currentTime;
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(gain.gain.value, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.25);  // fade out
+      osc1.stop(now + 0.3);
+      osc2.stop(now + 0.3);
+      lfo.stop(now + 0.3);
+    } catch (e) { /* ignore */ }
+    thinkingNodes = null;
+  }
+
   const STATE_MAP = {
     [VS.IDLE]:       { mod: '',           status: 'Spremno', tline: '<em>Pritisni mikrofon i počni razgovor.</em>', wave: false },
     [VS.LISTENING]:  { mod: 'listening',  status: 'Slušam...', tline: '<em>Slušam...</em>',                          wave: false },
@@ -1230,6 +1297,9 @@ html.bl-scroll-lock body {
     vEls.tline.innerHTML = cfg.tline;
     vEls.wave.classList.toggle('bl-hidden', !cfg.wave);
     setOrbCoreContent(s === VS.PROCESSING ? 'loader' : 'mic');
+    // Thinking sound pri PROCESSING, stop u svim drugim stanjima
+    if (s === VS.PROCESSING) startThinkingSound();
+    else stopThinkingSound();
   }
 
   function setOrbCoreContent(kind) {
@@ -1261,7 +1331,15 @@ html.bl-scroll-lock body {
     div.className = 'bl-msg ' + (role === 'user' ? 'user' : 'bot');
     div.innerHTML = role === 'user' ? escHtml(content) : renderMarkdown(content);
     vEls.trans.appendChild(div);
-    vEls.trans.scrollTop = vEls.trans.scrollHeight;
+    // Scroll na VRH novog AI odgovora — korisnik želi prvi rezultat na
+    // početku, pa skroluje dolje za ostale. Za user poruke (kratke)
+    // ostaje bottom-scroll standardno.
+    if (role === 'bot') {
+      // setTimeout 0 da se DOM render završi prije scroll-a
+      setTimeout(() => { div.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 0);
+    } else {
+      vEls.trans.scrollTop = vEls.trans.scrollHeight;
+    }
   }
 
   // ── Mic open/close ───────────────────────────────────────────────

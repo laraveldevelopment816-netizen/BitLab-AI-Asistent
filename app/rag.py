@@ -21,6 +21,26 @@ from .config import settings
 # torch + transformers (~50s na WSL2 /mnt/c). Bez ovoga startup je nepodnošljiv.
 
 _CATEGORY_TERMS_PATH = settings.data_dir / "category_terms.json"
+_MISSING_IMAGES_PATH = settings.data_dir / "missing_images.json"
+
+
+def _load_missing_image_sifras() -> frozenset[str]:
+    """Učitaj listu sifri proizvoda čije cover slike vraćaju 302 redirect
+    na webshop homepage (= slika ne postoji na CDN-u, vidi
+    scripts/audit_missing_images.py). Bez ovog filtera, browser pokušava
+    učitati sliku, dobije HTML, sakrije <img> kroz onerror — ali Claude
+    svejedno generiše ![](url) markup koji izgleda neuredno u raw output-u
+    pa je bolje da image_url bude None od starta."""
+    if not _MISSING_IMAGES_PATH.exists():
+        return frozenset()
+    try:
+        data = json.loads(_MISSING_IMAGES_PATH.read_text(encoding="utf-8"))
+        return frozenset(m["sifra"] for m in data.get("missing", []) if m.get("sifra"))
+    except Exception:
+        return frozenset()
+
+
+_MISSING_IMAGE_SIFRAS = _load_missing_image_sifras()
 
 
 def _load_category_terms() -> dict[str, list[str]]:
@@ -242,10 +262,18 @@ class ProductIndex:
             else:
                 url = url_raw or None
             cover = meta.get("cover") or ""
-            image_url = (
-                f"https://webshop.bitlab.rs/files/products/img/{cover}"
-                if cover else None
-            )
+            sifra = meta.get("sifra", "")
+            # Legacy webshop naming: dugi cover prefix (≥7 cifara) je novi
+            # storage; kratki legacy prefix (`728_lenovo.jpg`, `45_x.jpg`)
+            # su iz starog sistema gdje fajlovi nisu migrirani — server
+            # vraća 302 na homepage. Plus eksplicitan list missing sifri
+            # iz audit-a. Oba uslova → image_url = None.
+            cover_is_legacy = bool(cover) and not re.match(r'^\d{7,}_', cover)
+            cover_is_known_missing = sifra in _MISSING_IMAGE_SIFRAS
+            if not cover or cover_is_legacy or cover_is_known_missing:
+                image_url = None
+            else:
+                image_url = f"https://webshop.bitlab.rs/files/products/img/{cover}"
             results.append({
                 "sifra": meta.get("sifra", ""),
                 "name": meta.get("name", ""),
