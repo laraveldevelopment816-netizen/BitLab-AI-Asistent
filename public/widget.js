@@ -544,18 +544,52 @@ html.bl-scroll-lock body {
   box-shadow: 0 0 0 3px rgba(34,197,94,.25);
 }
 
-/* Compact stage with orb — header section ~25% panela */
+/* Compact stage with orb — header section ~25% panela. Animirana
+   tranzicija iz fullscreen state-a (vp-fullscreen) u compact state
+   triger-uje se kad stigne prvi rezultat i transcript dobije sadržaj. */
 #bl-vstage {
   padding: 14px 18px 14px;
   display: flex; flex-direction: row; align-items: center; gap: 14px;
   background: linear-gradient(180deg, #fff 0%, var(--bl-bg-softer) 100%);
   border-bottom: 1px solid var(--bl-line);
   flex-shrink: 0;
+  transition: padding 0.35s cubic-bezier(.2,.8,.3,1),
+              gap     0.35s cubic-bezier(.2,.8,.3,1);
 }
 .bl-orb {
   position: relative; width: 64px; height: 64px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  transition: width 0.35s cubic-bezier(.2,.8,.3,1),
+              height 0.35s cubic-bezier(.2,.8,.3,1);
+}
+
+/* Fullscreen orb state — aktivan dok nema transkripta (idle / listening /
+   processing prvo dok nije stigao prvi result). Orb je VELIK i CENTRIRAN
+   preko cijelog widgeta. Kad addVoiceMsg pozove prvi put, JS skida klasu
+   pa CSS animira prelaz u compact state. */
+#bl-voice-panel.vp-fullscreen #bl-vstage {
+  flex-direction: column;
+  padding: 36px 24px 28px;
+  gap: 20px;
+  flex: 1;
+  justify-content: center;
+  border-bottom: 0;
+}
+#bl-voice-panel.vp-fullscreen .bl-orb {
+  width: 160px; height: 160px;
+}
+#bl-voice-panel.vp-fullscreen .bl-orb__core {
+  width: 96px; height: 96px;
+}
+#bl-voice-panel.vp-fullscreen .bl-orb__core svg {
+  width: 38px; height: 38px;
+}
+#bl-voice-panel.vp-fullscreen #bl-vstage-info {
+  align-items: center; text-align: center;
+}
+#bl-voice-panel.vp-fullscreen #bl-vtline {
+  font-size: 16px;
 }
 .bl-orb__ring {
   position: absolute; inset: 0; border-radius: 50%;
@@ -657,19 +691,30 @@ html.bl-scroll-lock body {
 }
 #bl-vhint svg { width: 11px; height: 11px; flex-shrink: 0; }
 
-/* Transcript / rezultati — glavna body sekcija (~75% panela) */
+/* Transcript / rezultati — glavna body sekcija (~75% panela u compact
+   stanju). U fullscreen stanju (prije prvog rezultata), kompletno je
+   skriven da orb zauzme cijeli widget. */
 #bl-vtranscript {
   padding: 14px 18px 14px;
   display: flex; flex-direction: column; gap: 10px;
   flex: 1; min-height: 0; overflow-y: auto;
   background: var(--bl-bg-softer);
+  animation: bl-transcript-in 0.4s cubic-bezier(.2,.8,.3,1);
 }
-#bl-vtranscript.bl-hidden {
-  /* Kad je prazan u idle stanju: zauzima isti prostor, ali bez sadržaja */
+@keyframes bl-transcript-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Hidden u fullscreen mode-u — orb zauzima cijeli prostor */
+#bl-voice-panel.vp-fullscreen #bl-vtranscript {
+  display: none !important;
+}
+/* Bez fullscreen klase ali sa bl-hidden — empty state placeholder */
+#bl-voice-panel:not(.vp-fullscreen) #bl-vtranscript.bl-hidden {
   display: flex !important;
   align-items: center; justify-content: center;
 }
-#bl-vtranscript.bl-hidden::before {
+#bl-voice-panel:not(.vp-fullscreen) #bl-vtranscript.bl-hidden::before {
   content: 'Pričaj sa asistentom — rezultati će se prikazati ovdje';
   color: var(--bl-text-3); font-size: 12px; text-align: center;
   padding: 0 24px;
@@ -797,7 +842,6 @@ html.bl-scroll-lock body {
             `<span style="animation-delay:${(i * 0.08).toFixed(2)}s"></span>`
           ).join('')}
         </div>
-        <div id="bl-vhint">${I.lock} Mikrofon se aktivira tek na klik</div>
       </div>
     </div>
 
@@ -1125,7 +1169,6 @@ html.bl-scroll-lock body {
     statusTxt:$('bl-vstate-text'),
     tline:    $('bl-vtline'),
     wave:     $('bl-vwave'),
-    hint:     $('bl-vhint'),
     trans:    $('bl-vtranscript'),
     pauseBtn: $('bl-vpause'),
     pauseLbl: $('bl-vpause-label'),
@@ -1133,13 +1176,28 @@ html.bl-scroll-lock body {
 
   const ORB_LOADER_HTML = '<span class="bl-orb__loader"><span></span><span></span><span></span></span>';
 
+  // Fullscreen state — orb je velik i centriran preko cijelog widget-a
+  // dok ne stigne prvi rezultat (animirano se skuplja u compact header).
+  // Trigger: addVoiceMsg() poziv prvi put → skida vp-fullscreen klasu.
+  let voiceFullscreenActive = false;
+
   const STATE_MAP = {
-    [VS.IDLE]:       { mod: '',           status: 'Spremno · pritisni mikrofon', tline: '<em>Postavi pitanje glasom.</em><br><em>Govori bosanski, srpski ili hrvatski.</em>', wave: false, hint: true },
-    [VS.LISTENING]:  { mod: 'listening',  status: 'Slušam...',                   tline: '<em>Govori — pauzom šalješ poruku</em>',                                            wave: false, hint: true },
-    [VS.RECORDING]:  { mod: 'recording',  status: 'Snimam...',                   tline: '<em>Govori...</em>',                                                                wave: true,  hint: false },
-    [VS.PROCESSING]: { mod: 'processing', status: 'Razmišljam...',               tline: '<em>Tražim odgovor...</em>',                                                        wave: false, hint: false },
-    [VS.SPEAKING]:   { mod: '',           status: 'Govorim...',                  tline: '<em>Asistent govori...</em>',                                                       wave: true,  hint: false },
+    [VS.IDLE]:       { mod: '',           status: 'Spremno', tline: '<em>Pritisni mikrofon i počni razgovor.</em>', wave: false },
+    [VS.LISTENING]:  { mod: 'listening',  status: 'Slušam...', tline: '<em>Slušam...</em>',                          wave: false },
+    [VS.RECORDING]:  { mod: 'recording',  status: 'Snimam...', tline: '<em>Govori...</em>',                          wave: true  },
+    [VS.PROCESSING]: { mod: 'processing', status: 'Razmišljam...', tline: '<em>Razmišljam...</em>',                  wave: false },
+    [VS.SPEAKING]:   { mod: '',           status: 'Govorim...', tline: '<em>Asistent govori...</em>',                wave: true  },
   };
+
+  function _applyPanelClasses(stateClass, paused = false) {
+    // Sastavi panel className zadržavajući vp-fullscreen ako je aktivan.
+    // Sve ostale vp-* klase se prepisuju.
+    const classes = [];
+    if (paused) classes.push('vp-paused');
+    else if (stateClass) classes.push('vp-' + stateClass);
+    if (voiceFullscreenActive) classes.push('vp-fullscreen');
+    vEls.panel.className = classes.join(' ');
+  }
 
   function setVoiceState(s) {
     const prev = vState;
@@ -1152,11 +1210,10 @@ html.bl-scroll-lock body {
     }
     const cfg = STATE_MAP[s];
     vEls.orb.className = 'bl-orb' + (cfg.mod ? ' bl-orb--' + cfg.mod : '');
-    vEls.panel.className = 'vp-' + s;
+    _applyPanelClasses(s);
     vEls.statusTxt.textContent = cfg.status;
     vEls.tline.innerHTML = cfg.tline;
     vEls.wave.classList.toggle('bl-hidden', !cfg.wave);
-    vEls.hint.classList.toggle('bl-hidden', !cfg.hint);
     setOrbCoreContent(s === VS.PROCESSING ? 'loader' : 'mic');
   }
 
@@ -1168,15 +1225,22 @@ html.bl-scroll-lock body {
 
   function setPausedState() {
     vEls.orb.className = 'bl-orb bl-orb--paused';
-    vEls.panel.className = 'vp-paused';
+    _applyPanelClasses(null, true);
     vEls.statusTxt.textContent = 'Pauzirano';
     vEls.tline.innerHTML = '<em>Pauzirano — klikni "Nastavi" da nastaviš razgovor.</em>';
     vEls.wave.classList.add('bl-hidden');
-    vEls.hint.classList.add('bl-hidden');
     setOrbCoreContent('mic');
   }
 
+  function setVoiceFullscreen(on) {
+    voiceFullscreenActive = !!on;
+    if (on) vEls.panel.classList.add('vp-fullscreen');
+    else    vEls.panel.classList.remove('vp-fullscreen');
+  }
+
   function addVoiceMsg(role, content) {
+    // Prvi rezultat → skupi orb iz fullscreen u compact header (animacija)
+    if (voiceFullscreenActive) setVoiceFullscreen(false);
     vEls.trans.classList.remove('bl-hidden');
     const div = document.createElement('div');
     div.className = 'bl-msg ' + (role === 'user' ? 'user' : 'bot');
@@ -1427,6 +1491,13 @@ html.bl-scroll-lock body {
       Object.assign(document.createElement('span'), { innerHTML: I.pause }).firstChild
     );
 
+    // Reset transkripta + aktiviraj fullscreen orb (orb VELIK i centriran).
+    // Skupljanje u compact header animira se kad addVoiceMsg pozove prvi
+    // put (poslije API odgovora).
+    vEls.trans.innerHTML = '';
+    vEls.trans.classList.add('bl-hidden');
+    setVoiceFullscreen(true);
+
     setVoiceState(VS.IDLE);
     vEls.statusTxt.textContent = 'Zahtijevam pristup mikrofonu...';
     voiceModeActive = true;
@@ -1467,6 +1538,7 @@ html.bl-scroll-lock body {
     cancelAnimationFrame(vadRafId);
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     closeMic();
+    setVoiceFullscreen(false);   // reset za sledeće otvaranje
     setVoiceState(VS.IDLE);
     $('bl-voice-overlay').classList.remove('open');
     document.documentElement.classList.remove('bl-scroll-lock');
