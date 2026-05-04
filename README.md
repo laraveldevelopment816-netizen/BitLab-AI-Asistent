@@ -6,12 +6,13 @@
 
 ## 🟢 Aktivne rezolucije (čitaj prije svega)
 
-| # | Plan | Šta radi |
+| # | Fajl | Šta radi |
 |---|---|---|
-| 🚀 | [`DEPLOY.md`](./DEPLOY.md) | **8 komandi za deploy.** Kratko, copy-paste. |
-| 8 | [`PRODUCTION-PREP-PLAN.md`](./PRODUCTION-PREP-PLAN.md) | Production-readiness: AI klasifikacija namjere + logging dashboard + voice UX + deploy artefakti (čeka server-side install) |
-| 9 | [`MODEL-EVAL-PLAN.md`](./MODEL-EVAL-PLAN.md) | Multi-provider eval (Claude / GPT / Llama / DeepSeek) sa tehničkim pragom ≥99% i ekonomskom odlukom kraj sedmice |
-| 10 | [`GROWTH-PLAN.md`](./GROWTH-PLAN.md) | SEO audit + content production + link building + paid ads + AI asistent kao growth tool (organic +50% za 90 dana) |
+| 🚀 | [`DEPLOY.md`](./DEPLOY.md) | **8 komandi za deploy.** + prvi-put setup, smoke test, rollback. |
+| ⚙️ | [`DEPLOY_GUIDE.md`](./DEPLOY_GUIDE.md) | Ivanov master server konvencije (Pattern A, port mapa). Generic. |
+| 8 | [`PRODUCTION-PREP-PLAN.md`](./PRODUCTION-PREP-PLAN.md) | Production-readiness: AI klasifikacija + dashboard + voice UX (završeno) |
+| 9 | [`MODEL-EVAL-PLAN.md`](./MODEL-EVAL-PLAN.md) | Multi-provider eval sa pragom ≥99% i ekonomskom odlukom (sedmica 2026-W19) |
+| 10 | [`GROWTH-PLAN.md`](./GROWTH-PLAN.md) | SEO + content + link building + AI asistent kao growth tool |
 
 
 > **✅ Sesija 8 — Production prep (završeno, čeka deploy):**
