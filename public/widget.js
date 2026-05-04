@@ -937,14 +937,14 @@ html.bl-scroll-lock body {
       .trim();
   }
 
-  // Sklopi multi-line product card u single-line. Defensive parser jer
-  // Claude (Sonnet 4.6) povremeno razbije format propisan promptom.
-  // Pattern koji tražimo (sa praznim redovima ili bez):
-  //   ![](image_url)        ← optional
-  //   **Name**
-  //   929 KM                ← cijena bilo gdje, "X[.,]Y KM"
-  //   Na lageru / Dobavljivo ← optional
-  //   [Pogledaj](url)        ← optional
+  // Sklopi multi-line product card u single-line. **Konzervativan**
+  // defensive parser — sklapa SAMO ako su sva 3 obavezna elementa
+  // (slika, **bold ime ≥8 znakova**, cijena) prisutna u susjednim
+  // linijama. Bez slike ne sklapa (rizik false positive — npr. plain
+  // **bold tekst** sa cijenom u sledećem redu nije produkt).
+  //
+  // Sa pojačanim promptom (Sesija 8) Sonnet 4.6 vraća čist single-line
+  // format pa je ovo no-op u 99% slučajeva. Drži se za backstop.
   function collapseMultiLineProducts(src) {
     const lines = src.split('\n');
     const out = [];
@@ -954,47 +954,57 @@ html.bl-scroll-lock body {
     const RE_PRICE = /^\s*([0-9][\d.,]*)\s*KM\s*$/i;
     const RE_AVAIL = /^\s*(na\s+lager[a-z]*|dobavljiv[a-z]*|na\s+stanju|po\s+narud(?:ž|z)bi)\s*$/i;
     const RE_LINK  = /^\s*\[([^\]]+)\]\((https?:\/\/[^)]+)\)\s*$/;
+    // Linije koje preskočimo između product elemenata: prazne, horizontal
+    // rules (---/***/___), te BCS bullet-i koji se ponekad uvuku.
+    const RE_FILLER = /^\s*(?:[-*_]{3,}|)$/;
+    const isFiller = (line) => RE_FILLER.test(line);
 
     while (i < lines.length) {
-      // Skip leading blanks before potential block
       let j = i;
-      while (j < lines.length && lines[j].trim() === '') j++;
+      while (j < lines.length && isFiller(lines[j])) j++;
 
-      // Try parse block starting at j
       let img = null, name = null, price = null, avail = null, href = null;
       let k = j;
-      const skipBlanks = () => { while (k < lines.length && lines[k].trim() === '') k++; };
+      const skipFiller = () => {
+        while (k < lines.length && isFiller(lines[k])) k++;
+      };
 
-      // Optional image line
+      // Konzervativan guard: bez slike ne sklapamo (smanjuje false positive
+      // gdje bi plain **bold tekst** sa brojem u sledećem redu izgledao
+      // kao produkt — npr. "**Pažnja**: 500 KM minimalno za besplatnu dostavu").
       const mImg = k < lines.length && lines[k].match(RE_IMG);
-      if (mImg) { img = mImg[1]; k++; skipBlanks(); }
+      if (!mImg) { out.push(lines[i]); i++; continue; }
+      img = mImg[1]; k++; skipFiller();
 
-      // Required: bold name
       const mBold = k < lines.length && lines[k].match(RE_BOLD);
-      if (!mBold) { out.push(lines[i]); i++; continue; }
-      name = mBold[1]; k++; skipBlanks();
+      // Drugi guard: bold ime mora biti ≥8 znakova (ime proizvoda nikad
+      // nije kraće od toga; npr. "**SSD**: 240 GB" ne kvalifikuje).
+      if (!mBold || mBold[1].trim().length < 8) {
+        out.push(lines[i]); i++; continue;
+      }
+      name = mBold[1]; k++; skipFiller();
 
-      // Required: price
       const mPrice = k < lines.length && lines[k].match(RE_PRICE);
       if (!mPrice) { out.push(lines[i]); i++; continue; }
-      price = mPrice[1]; k++; skipBlanks();
+      price = mPrice[1]; k++; skipFiller();
 
-      // Optional: availability
       const mAvail = k < lines.length && lines[k].match(RE_AVAIL);
-      if (mAvail) { avail = mAvail[1]; k++; skipBlanks(); }
+      if (mAvail) { avail = mAvail[1]; k++; skipFiller(); }
 
-      // Optional: link
       const mLink = k < lines.length && lines[k].match(RE_LINK);
       if (mLink) { href = { label: mLink[1], url: mLink[2] }; k++; }
 
-      // Sklopi single-line ekvivalent koji PROD_RE hvata
       let line = '';
       if (img) line += `![](${img}) `;
       line += `**${name}** — ${price} KM`;
       if (avail) line += ` — ${avail}`;
       if (href) line += ` — [${href.label}](${href.url})`;
-      // Push leading blanks i sklopljenu liniju
-      for (let b = i; b < j; b++) out.push(lines[b]);
+
+      // Filler linije između i i j zadržavamo (ali samo prazne, ne `---`
+      // jer su `---` izvor vizualnog šuma kad razdvajaju proizvode).
+      for (let b = i; b < j; b++) {
+        if (lines[b].trim() === '') out.push(lines[b]);
+      }
       out.push(line);
       i = k;
     }
@@ -1087,12 +1097,17 @@ html.bl-scroll-lock body {
 
     // 2) Standard markdown
     html = html
+      // Ukloni horizontal rules (---/***/___) na vlastitom redu — vizualni
+      // šum u chat balon-u, separator nije potreban kad imamo product cards.
+      .replace(/^[ \t]*[-*_]{3,}[ \t]*$/gm, '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g,
         '<img src="$2" alt="$1" loading="lazy" onerror="this.style.display=\'none\'">')
       .replace(/\[([^\]]+)\]\(((?:https?|mailto):[^)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      // Stišaj višestruke prazne redove (>2 \n → 2)
+      .replace(/\n{3,}/g, '\n\n')
       .replace(/\n/g, '<br>');
 
     // 3) Restore cards (HTML-encoded tokens preserved through escaping)

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.agent import _strip_voice_tags, _parse_voice_xml
+from app.agent import _strip_voice_tags, _parse_voice_xml, _strip_horizontal_rules
 
 
 class TestStripVoiceTags:
@@ -111,3 +111,49 @@ class TestParseVoiceXml:
         # Voice = prve 2 rečenice
         assert "Imam 3 laptopa" in voice
         assert "Najjeftiniji" in voice
+
+
+class TestStripHorizontalRules:
+    """_strip_horizontal_rules() uklanja standalone --- footer/separator
+    koji Sonnet voli da doda iako prompt zabranjuje."""
+
+    def test_strips_hr_separator_between_products(self):
+        inp = (
+            "Evo 3 laptopa:\n\n"
+            "1. **ASUS** — 929 KM\n"
+            "2. **Lenovo** — 1.315 KM\n\n"
+            "---\n\n"
+            "Trebaš pomoć?"
+        )
+        out = _strip_horizontal_rules(inp)
+        assert "---" not in out
+        assert "ASUS" in out
+        assert "Trebaš pomoć?" in out
+
+    def test_strips_multiple_hr_styles(self):
+        for hr in ["---", "***", "___", "----", "*****", "________"]:
+            inp = f"Tekst\n\n{hr}\n\nDrugi"
+            out = _strip_horizontal_rules(inp)
+            assert hr not in out, f"HR '{hr}' nije uklonjen"
+
+    def test_collapses_multiple_blank_lines(self):
+        inp = "Tekst\n\n\n\n\nDrugi"
+        out = _strip_horizontal_rules(inp)
+        # Max 2 blank line-a (jedan paragraf separator)
+        assert "\n\n\n" not in out
+        assert "Tekst" in out and "Drugi" in out
+
+    def test_does_not_strip_inline_dashes(self):
+        """`---` u sredini reda (npr. em-dash u tekstu) ne smije biti diran."""
+        inp = "Cijena — vrlo dobra. Lenovo --- najbolji izbor."
+        out = _strip_horizontal_rules(inp)
+        # Inline `---` ostaje (nije na vlastitom redu)
+        assert "Lenovo --- najbolji" in out
+
+    def test_idempotent_on_clean_text(self):
+        inp = "Imam 5 laptopa do 2000 KM."
+        assert _strip_horizontal_rules(inp) == inp
+
+    def test_handles_empty_input(self):
+        assert _strip_horizontal_rules("") == ""
+        assert _strip_horizontal_rules("\n\n\n") == ""

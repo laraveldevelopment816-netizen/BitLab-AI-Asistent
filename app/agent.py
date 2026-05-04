@@ -91,6 +91,20 @@ def _strip_voice_tags(text: str) -> str:
     return text.strip()
 
 
+def _strip_horizontal_rules(text: str) -> str:
+    """Defensive: ukloni standalone markdown horizontal rules (---/***/___).
+
+    Sonnet 4.6 sa pojačanim promptom svejedno povremeno ubaci `---` separator
+    između proizvoda ili kao footer. Frontend ne renderuje `<hr>` (chat
+    balon je tijesan), pa to izlazi kao plain "---" tekst koji izgleda
+    neprofesionalno. Idempotentan no-op kad output je već čist.
+
+    Takođe normalizuje višestruke prazne redove (>2 \\n → 2)."""
+    text = re.sub(r'^[ \t]*[-*_]{3,}[ \t]*$', '', text, flags=re.MULTILINE)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
 def _default_model_for_channel(channel: str) -> str:
     return settings.email_model if channel == "email" else settings.chat_model
 
@@ -215,6 +229,9 @@ def _finalize(
     # VOICE_FORMAT prompt-a kad nije aktivan). Sanitizujemo na izlazu
     # bez obzira šta je channel rekao.
     reply = _strip_voice_tags(reply)
+    # Sanitize horizontal rules + višestruke prazne redove (Sonnet 4.6
+    # i sa pojačanim promptom u 20% slučajeva ubaci `---` footer).
+    reply = _strip_horizontal_rules(reply)
 
     return {
         "reply": reply,
