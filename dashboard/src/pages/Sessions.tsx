@@ -26,8 +26,8 @@ export function Sessions() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TopBar
-        title="Sessions"
-        subtitle={`${total.toLocaleString()} razgovora · jedan red = jedna sesija (klijent + AI)`}
+        title="Razgovori"
+        subtitle={`${total.toLocaleString()} razgovora · jedan red = jedna sesija (korisnik + AI)`}
         right={
           <button
             onClick={() => setPause(p => !p)}
@@ -38,20 +38,20 @@ export function Sessions() {
               color: pause ? C.warn : C.textDim,
               border: `1px solid ${pause ? C.warn + '40' : C.border}`,
             }}
-          >{pause ? '▶ resume' : '⏸ pause'} (5s polling)</button>
+          >{pause ? '▶ nastavi' : '⏸ pauziraj'} (osvježavanje 5s)</button>
         }
       />
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
         <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-          <Filter label="channel" value={channel} options={CHANNELS} onChange={setChannel} />
+          <Filter label="kanal" value={channel} options={CHANNELS} onChange={setChannel} />
         </div>
 
-        <SectionLabel>razgovori (sortirani po posljednjoj poruci)</SectionLabel>
+        <SectionLabel>razgovori (sortirani po poslednjoj poruci)</SectionLabel>
 
-        {isLoading && <div style={{ color: C.textMute, fontSize: 12 }}>⠋ loading…</div>}
+        {isLoading && <div style={{ color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>}
         {!isLoading && items.length === 0 && (
           <div style={{ color: C.textMute, fontSize: 12 }}>
-            Nema sesija. Pošalji par poruka kroz widget — pojavit će se za 5s.
+            Nema razgovora. Pošalji par poruka kroz widget — pojaviće se za 5s.
           </div>
         )}
 
@@ -62,17 +62,17 @@ export function Sessions() {
           }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                <Th>session</Th>
-                <Th>channel</Th>
+                <Th>razgovor</Th>
+                <Th>kanal</Th>
                 <Th>model</Th>
-                <Th right>msgs</Th>
-                <Th right>tokens</Th>
-                <Th right>latency</Th>
-                <Th right>cost</Th>
-                <Th right>err</Th>
-                <Th>started</Th>
-                <Th>last activity</Th>
-                <Th>first prompt</Th>
+                <Th right>poruka</Th>
+                <Th right>tokeni</Th>
+                <Th right>trajanje</Th>
+                <Th right>trošak</Th>
+                <Th right>greške</Th>
+                <Th>počeo</Th>
+                <Th>poslednja poruka</Th>
+                <Th>prvo pitanje</Th>
               </tr>
             </thead>
             <tbody>
@@ -98,7 +98,7 @@ function Filter({ label, value, options, onChange }: {
         background: C.panelLo, color: C.text, border: `1px solid ${C.border}`,
         borderRadius: 3, padding: '4px 8px', fontFamily: 'inherit', fontSize: 12,
       }}>
-        {options.map(o => <option key={o} value={o}>{o || '— any —'}</option>)}
+        {options.map(o => <option key={o} value={o}>{o || '— svi —'}</option>)}
       </select>
     </label>
   )

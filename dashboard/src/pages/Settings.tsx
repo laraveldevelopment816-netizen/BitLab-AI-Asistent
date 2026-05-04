@@ -20,21 +20,21 @@ export function Settings() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <TopBar title="Settings" subtitle="Dashboard API key i konekcija" />
+      <TopBar title="Podešavanja" subtitle="API ključ i konekcija na backend" />
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', maxWidth: 720 }}>
         <div style={{ marginBottom: 24 }}>
-          <SectionLabel>dashboard api key (Bearer)</SectionLabel>
+          <SectionLabel>API ključ (Bearer)</SectionLabel>
           <div style={{ fontSize: 12, color: C.textDim, marginBottom: 8, lineHeight: 1.5 }}>
             Unesi <code style={{ background: C.panelLo, padding: '1px 6px', borderRadius: 3, fontFamily: 'JetBrains Mono, monospace' }}>DASHBOARD_API_KEY</code> iz tvog
             <code style={{ background: C.panelLo, padding: '1px 6px', borderRadius: 3, fontFamily: 'JetBrains Mono, monospace', marginLeft: 4 }}>.env</code> fajla.
-            Čuva se lokalno u browser localStorage-u; backend prima kao Bearer header.
+            Čuva se lokalno u browser-u (localStorage); backend prima kao Bearer header.
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               type="password"
               value={key}
               onChange={e => setKey(e.target.value)}
-              placeholder="paste API key…"
+              placeholder="zaljepi API ključ…"
               style={{
                 flex: 1, padding: '8px 12px', borderRadius: 4, fontSize: 12,
                 fontFamily: 'JetBrains Mono, monospace',
@@ -42,18 +42,18 @@ export function Settings() {
                 outline: 'none',
               }}
             />
-            <Btn variant="primary" onClick={save}>{saved ? '✓ saved' : 'save'}</Btn>
+            <Btn variant="primary" onClick={save}>{saved ? '✓ sačuvano' : 'sačuvaj'}</Btn>
           </div>
         </div>
 
         <div style={{ marginBottom: 24 }}>
-          <SectionLabel>environment</SectionLabel>
+          <SectionLabel>okruženje</SectionLabel>
           <table style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
             <tbody>
-              <Row k="api base"        v="/api/dashboard" />
-              <Row k="dev proxy target" v="http://localhost:8000" />
-              <Row k="auth"             v="Bearer (localStorage)" />
-              <Row k="polling interval" v="5000ms (Live), 10000ms (Stats)" />
+              <Row k="API ruta"             v="/api/dashboard" />
+              <Row k="proxy u dev modu"     v="http://localhost:8000" />
+              <Row k="autorizacija"         v="Bearer (localStorage)" />
+              <Row k="osvježavanje liste"   v="5s (Uživo, Razgovori), 10s (Statistika)" />
             </tbody>
           </table>
         </div>

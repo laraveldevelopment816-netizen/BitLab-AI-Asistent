@@ -51,8 +51,8 @@ export function SessionDetailPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [prevSession, nextSession, nav])
 
-  if (isLoading) return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ loading…</div>
-  if (error || !data) return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Sesija nije pronađena.</div>
+  if (isLoading) return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>
+  if (error || !data) return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Razgovor nije pronađen.</div>
 
   const reqs = data.requests
   const totalTokensIn = reqs.reduce((s, r) => s + (r.tokens_in ?? 0), 0)
@@ -66,10 +66,10 @@ export function SessionDetailPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TopBar
-        title={`Session ${data.session_id.slice(0, 8)}…`}
+        title={`Razgovor ${data.session_id.slice(0, 8)}…`}
         subtitle={
           <span>
-            <Link to="/sessions" style={{ color: C.textDim, textDecoration: 'none' }}>Sessions</Link>
+            <Link to="/sessions" style={{ color: C.textDim, textDecoration: 'none' }}>Razgovori</Link>
             <span style={{ color: C.textMute, margin: '0 6px' }}>›</span>
             <span style={{ color: C.text }}>{data.session_id.slice(0, 8)}…</span>
             <span style={{ color: C.textMute, margin: '0 8px' }}>·</span>
@@ -90,7 +90,7 @@ export function SessionDetailPage() {
           <div style={{ display: 'flex', gap: 6 }}>
             <NavBtn
               disabled={!prevSession}
-              title={prevSession ? `← prev (${prevSession.session_id.slice(0, 8)}…)` : 'first session'}
+              title={prevSession ? `← prethodni (${prevSession.session_id.slice(0, 8)}…)` : 'prvi razgovor'}
               onClick={() => {
                 if (!prevSession) return
                 setLastSelected('sessions', prevSession.session_id)
@@ -99,25 +99,25 @@ export function SessionDetailPage() {
             >←</NavBtn>
             <NavBtn
               disabled={!nextSession}
-              title={nextSession ? `next → (${nextSession.session_id.slice(0, 8)}…)` : 'last session'}
+              title={nextSession ? `sledeći → (${nextSession.session_id.slice(0, 8)}…)` : 'poslednji razgovor'}
               onClick={() => {
                 if (!nextSession) return
                 setLastSelected('sessions', nextSession.session_id)
                 nav(`/sessions/${nextSession.session_id}`)
               }}
             >→</NavBtn>
-            <Btn variant="ghost" onClick={() => nav('/sessions')}>back to list</Btn>
+            <Btn variant="ghost" onClick={() => nav('/sessions')}>nazad na listu</Btn>
           </div>
         }
       />
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
-          <Metric label="messages" value={String(reqs.length)} accent />
-          <Metric label="tokens" value={`↓${totalTokensIn.toLocaleString()} ↑${totalTokensOut.toLocaleString()}`} />
-          <Metric label="latency" value={`${(totalLatency / 1000).toFixed(1)}s`} />
-          <Metric label="cost" value={totalCost > 0 ? `$${totalCost.toFixed(4)}` : '—'} />
-          <Metric label="errors" value={String(errorCount)} />
+          <Metric label="poruka" value={String(reqs.length)} accent />
+          <Metric label="tokeni" value={`↓${totalTokensIn.toLocaleString()} ↑${totalTokensOut.toLocaleString()}`} />
+          <Metric label="trajanje" value={`${(totalLatency / 1000).toFixed(1)}s`} />
+          <Metric label="trošak" value={totalCost > 0 ? `$${totalCost.toFixed(4)}` : '—'} />
+          <Metric label="greške" value={String(errorCount)} />
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
@@ -176,7 +176,7 @@ function Turn({ r, index }: { r: RequestDetail; index: number }) {
           {/* Tool calls */}
           {r.tool_calls.length > 0 && (
             <div style={{ paddingLeft: 32 }}>
-              <SectionLabel>{r.tool_calls.length} tool call{r.tool_calls.length > 1 ? 's' : ''}</SectionLabel>
+              <SectionLabel>{r.tool_calls.length} {r.tool_calls.length === 1 ? 'poziv alata' : 'poziva alata'}</SectionLabel>
               {r.tool_calls.map((tc, i) => <ToolCallRow key={i} tc={tc} />)}
             </div>
           )}
@@ -196,7 +196,7 @@ function Turn({ r, index }: { r: RequestDetail; index: number }) {
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Link to={`/requests/${r.id}`} style={{ color: C.textDim, fontSize: 11, textDecoration: 'none', fontFamily: 'JetBrains Mono, monospace' }}>
-              full request #{r.id} →
+              cijela poruka #{r.id} →
             </Link>
           </div>
         </div>
@@ -212,9 +212,9 @@ const bubblePre: React.CSSProperties = {
 
 function Bubble({ role, children }: { role: 'user' | 'assistant' | 'error'; children: React.ReactNode }) {
   const colors = {
-    user:      { bg: `${C.bitlab}10`, border: `${C.bitlab}40`, label: 'USER' },
-    assistant: { bg: C.panelLo,        border: C.border,        label: 'ASSISTANT' },
-    error:     { bg: `${C.err}10`,     border: `${C.err}40`,    label: 'ERROR' },
+    user:      { bg: `${C.bitlab}10`, border: `${C.bitlab}40`, label: 'KORISNIK' },
+    assistant: { bg: C.panelLo,        border: C.border,        label: 'ASISTENT' },
+    error:     { bg: `${C.err}10`,     border: `${C.err}40`,    label: 'GREŠKA' },
   }[role]
   return (
     <div style={{

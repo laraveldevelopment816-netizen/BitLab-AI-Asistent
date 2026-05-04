@@ -3,12 +3,12 @@ import { NavLink } from 'react-router-dom'
 import { C } from '../tokens'
 
 const NAV = [
-  { to: '/sessions', label: 'Sessions', hint: 'Razgovori (klijent + AI)' },
-  { to: '/live',     label: 'Live',     hint: 'Pojedinačne poruke' },
-  { to: '/history',  label: 'History',  hint: 'Sve prošle poruke' },
-  { to: '/compare',  label: 'Compare',  hint: 'Haiku ↔ Sonnet' },
-  { to: '/stats',    label: 'Stats',    hint: 'Tokens · cost' },
-  { to: '/settings', label: 'Settings', hint: 'API key, env' },
+  { to: '/sessions', label: 'Razgovori',     hint: 'Sesije korisnik + AI' },
+  { to: '/live',     label: 'Uživo',          hint: 'Pojedinačne poruke' },
+  { to: '/history',  label: 'Istorija',       hint: 'Sve prošle poruke' },
+  { to: '/compare',  label: 'Uporedi',        hint: 'Haiku ↔ Sonet' },
+  { to: '/stats',    label: 'Statistika',     hint: 'Tokeni · trošak' },
+  { to: '/settings', label: 'Podešavanja',    hint: 'API ključ, okruženje' },
 ]
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -35,7 +35,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: C.textMute,
                 letterSpacing: '0.05em', marginTop: 1,
               }}>
-                v0.8 · dashboard
+                v0.8 · pregled rada
               </div>
             </div>
           </div>

@@ -30,16 +30,16 @@ export function History() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <TopBar title="History" subtitle={`${total.toLocaleString()} requesta total`} />
+      <TopBar title="Istorija" subtitle={`${total.toLocaleString()} poruka ukupno`} />
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
         <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
-          <Filter label="channel" value={channel} options={CHANNELS} onChange={(v) => { setChannel(v); setPage(1) }} />
-          <Filter label="status"  value={status}  options={STATUSES}  onChange={(v) => { setStatus(v); setPage(1) }} />
+          <Filter label="kanal"  value={channel} options={CHANNELS} onChange={(v) => { setChannel(v); setPage(1) }} />
+          <Filter label="status" value={status}  options={STATUSES}  onChange={(v) => { setStatus(v); setPage(1) }} />
         </div>
 
-        <SectionLabel>page {page} / {totalPages}</SectionLabel>
+        <SectionLabel>stranica {page} / {totalPages}</SectionLabel>
         {isLoading && (
-          <div style={{ color: C.textMute, fontSize: 12 }}>⠋ loading…</div>
+          <div style={{ color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>
         )}
         {!isLoading && items.length === 0 && (
           <div style={{ color: C.textMute, fontSize: 12 }}>Nema rezultata za ove filtere.</div>
@@ -51,8 +51,8 @@ export function History() {
           }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                <Th>id</Th><Th>time</Th><Th>channel</Th><Th>model</Th><Th>status</Th>
-                <Th right>tokens</Th><Th right>latency</Th><Th right>cost</Th><Th>prompt</Th>
+                <Th>id</Th><Th>vrijeme</Th><Th>kanal</Th><Th>model</Th><Th>status</Th>
+                <Th right>tokeni</Th><Th right>trajanje</Th><Th right>trošak</Th><Th>poruka</Th>
               </tr>
             </thead>
             <tbody>
@@ -65,8 +65,8 @@ export function History() {
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-          <PageBtn disabled={page <= 1} onClick={() => setPage(page - 1)}>← prev</PageBtn>
-          <PageBtn disabled={page >= totalPages} onClick={() => setPage(page + 1)}>next →</PageBtn>
+          <PageBtn disabled={page <= 1} onClick={() => setPage(page - 1)}>← prethodna</PageBtn>
+          <PageBtn disabled={page >= totalPages} onClick={() => setPage(page + 1)}>sledeća →</PageBtn>
         </div>
       </div>
     </div>
@@ -83,7 +83,7 @@ function Filter({ label, value, options, onChange }: {
         background: C.panelLo, color: C.text, border: `1px solid ${C.border}`,
         borderRadius: 3, padding: '4px 8px', fontFamily: 'inherit', fontSize: 12,
       }}>
-        {options.map(o => <option key={o} value={o}>{o || '— any —'}</option>)}
+        {options.map(o => <option key={o} value={o}>{o || '— svi —'}</option>)}
       </select>
     </label>
   )

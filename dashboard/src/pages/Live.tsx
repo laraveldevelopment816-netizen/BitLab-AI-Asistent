@@ -41,8 +41,8 @@ export function Live() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TopBar
-        title="Live"
-        subtitle="Real-time stream sa svih kanala (chat · voice · email · compare)"
+        title="Uživo"
+        subtitle="Tok poruka sa svih kanala (chat · glas · email · uporedi)"
         right={
           <button
             onClick={() => setPause(p => !p)}
@@ -54,20 +54,20 @@ export function Live() {
               border: `1px solid ${pause ? C.warn + '40' : C.border}`,
             }}
           >
-            {pause ? '▶ resume' : '⏸ pause'} (5s polling)
+            {pause ? '▶ nastavi' : '⏸ pauziraj'} (osvježavanje 5s)
           </button>
         }
       />
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
-        <SectionLabel>last 50 requests</SectionLabel>
+        <SectionLabel>poslednjih 50 poruka</SectionLabel>
         {isLoading && (
           <div style={{ color: C.textMute, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
-            ⠋ loading…
+            ⠋ učitavam…
           </div>
         )}
         {!isLoading && items.length === 0 && (
           <div style={{ color: C.textMute, fontSize: 12 }}>
-            Nema zalogovanih request-a još. Pokreni jedan curl ili otvori chat widget.
+            Nema zabilježenih poruka. Pošalji nešto kroz chat ili glas widget.
           </div>
         )}
         {items.length > 0 && (
@@ -78,13 +78,13 @@ export function Live() {
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <Th>id</Th>
-                <Th>channel</Th>
+                <Th>kanal</Th>
                 <Th>model</Th>
                 <Th>status</Th>
-                <Th right>tokens ↓ ↑</Th>
-                <Th right>latency</Th>
-                <Th right>cost</Th>
-                <Th>prompt</Th>
+                <Th right>tokeni ↓ ↑</Th>
+                <Th right>trajanje</Th>
+                <Th right>trošak</Th>
+                <Th>poruka</Th>
               </tr>
             </thead>
             <tbody>

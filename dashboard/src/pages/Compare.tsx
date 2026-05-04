@@ -32,7 +32,7 @@ export function Compare() {
       const data = await api.compare(prompt, channel, [...picked])
       setResults(data.results)
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || e?.message || 'Greška u compare-u')
+      setErr(e?.response?.data?.detail || e?.message || 'Greška pri poređenju')
     } finally {
       setRunning(false)
     }
@@ -40,16 +40,16 @@ export function Compare() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <TopBar title="Compare" subtitle="Isti upit kroz N modela paralelno · poredi quality vs cost vs latency" />
+      <TopBar title="Uporedi" subtitle="Isto pitanje kroz više modela paralelno · poređenje kvaliteta, troška i brzine" />
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
         <div style={{ marginBottom: 16 }}>
-          <SectionLabel>prompt</SectionLabel>
+          <SectionLabel>pitanje</SectionLabel>
           <textarea
             rows={3}
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
-            placeholder='npr. "imate li gaming mis", "trebam laptop do 1500 KM"…'
+            placeholder='npr. "imate li gaming miš", "trebam laptop do 1500 KM"…'
             style={{
               width: '100%', resize: 'vertical',
               fontFamily: 'JetBrains Mono, monospace', fontSize: 12.5, lineHeight: 1.6,
@@ -61,7 +61,7 @@ export function Compare() {
 
         <div style={{ display: 'flex', gap: 24, marginBottom: 16, flexWrap: 'wrap' }}>
           <div>
-            <SectionLabel>channel</SectionLabel>
+            <SectionLabel>kanal</SectionLabel>
             <div style={{ display: 'flex', gap: 6 }}>
               {CHANNELS.map(c => {
                 const on = c === channel
@@ -80,7 +80,7 @@ export function Compare() {
             </div>
           </div>
           <div>
-            <SectionLabel>models to compare</SectionLabel>
+            <SectionLabel>modeli za poređenje</SectionLabel>
             <div style={{ display: 'flex', gap: 6 }}>
               {ALL_MODELS.map(m => {
                 const on = picked.has(m)
@@ -101,7 +101,7 @@ export function Compare() {
         </div>
 
         <Btn variant="primary" onClick={runCompare} disabled={running || !prompt.trim()}>
-          {running ? '⠋ running…' : `▶ Run on ${picked.size} model${picked.size > 1 ? 's' : ''}`}
+          {running ? '⠋ pokrećem…' : `▶ Pokreni na ${picked.size} ${picked.size === 1 ? 'modelu' : 'modela'}`}
         </Btn>
 
         {err && (
@@ -136,14 +136,14 @@ function ResultCard({ r }: { r: CompareResultItem }) {
       </div>
       <div style={{ padding: 14, minHeight: 120, fontFamily: 'JetBrains Mono, monospace', fontSize: 12, lineHeight: 1.6, color: C.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
         {r.status === 'error' ? (
-          <span style={{ color: C.err }}>{r.error || 'Request failed'}</span>
+          <span style={{ color: C.err }}>{r.error || 'Zahtjev nije uspio'}</span>
         ) : (
           r.reply
         )}
       </div>
       {r.tool_calls.length > 0 && (
         <div style={{ padding: '8px 14px', borderTop: `1px solid ${C.border}`, fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: C.textMute }}>
-          {r.tool_calls.length} tool call{r.tool_calls.length > 1 ? 's' : ''}: {' '}
+          {r.tool_calls.length} {r.tool_calls.length === 1 ? 'poziv alata' : 'poziva alata'}: {' '}
           {r.tool_calls.map((tc, i) => (
             <span key={i}>{i > 0 && ' · '}{tc.tool_name} ({tc.latency_ms}ms)</span>
           ))}

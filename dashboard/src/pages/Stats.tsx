@@ -11,26 +11,26 @@ export function Stats() {
   })
 
   if (isLoading) {
-    return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ loading…</div>
+    return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>
   }
   if (!data) {
-    return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Stats nedostupne (provjeri API key u Settings).</div>
+    return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Statistika nije dostupna (provjeri API ključ u Podešavanjima).</div>
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <TopBar title="Stats" subtitle="Tokens · cost · latency po kanalu i modelu" />
+      <TopBar title="Statistika" subtitle="Tokeni · trošak · trajanje po kanalu i modelu" />
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-          <Metric label="total requests" value={data.total_requests.toLocaleString()} accent />
-          <Metric label="tokens in"      value={data.total_tokens_in.toLocaleString()} />
-          <Metric label="tokens out"     value={data.total_tokens_out.toLocaleString()} />
-          <Metric label="total cost"     value={`$${data.total_cost_usd.toFixed(4)}`} />
+          <Metric label="ukupno poruka" value={data.total_requests.toLocaleString()} accent />
+          <Metric label="tokeni unos"   value={data.total_tokens_in.toLocaleString()} />
+          <Metric label="tokeni izlaz"  value={data.total_tokens_out.toLocaleString()} />
+          <Metric label="ukupan trošak" value={`$${data.total_cost_usd.toFixed(4)}`} />
         </div>
 
         <div>
-          <SectionLabel>by adapter (channel × model)</SectionLabel>
+          <SectionLabel>po kanalu × modelu</SectionLabel>
           {data.by_adapter.length === 0 ? (
             <div style={{ color: C.textMute, fontSize: 12 }}>Nema podataka.</div>
           ) : (
@@ -40,10 +40,10 @@ export function Stats() {
             }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMute, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  <Th>channel</Th><Th>model</Th>
-                  <Th right>requests</Th><Th right>ok</Th><Th right>err</Th>
-                  <Th right>tokens ↓</Th><Th right>tokens ↑</Th>
-                  <Th right>avg latency</Th><Th right>cost</Th>
+                  <Th>kanal</Th><Th>model</Th>
+                  <Th right>poruka</Th><Th right>ok</Th><Th right>greške</Th>
+                  <Th right>tokeni ↓</Th><Th right>tokeni ↑</Th>
+                  <Th right>prosj. trajanje</Th><Th right>trošak</Th>
                 </tr>
               </thead>
               <tbody>

@@ -18,10 +18,10 @@ export function RequestDetail() {
   })
 
   if (isLoading) {
-    return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ loading…</div>
+    return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>
   }
   if (error || !r) {
-    return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Request #{id} nije pronađen.</div>
+    return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Poruka #{id} nije pronađena.</div>
   }
 
   const ch = channelColor(r.channel)
@@ -30,10 +30,10 @@ export function RequestDetail() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TopBar
-        title={`Request #${r.id}`}
+        title={`Poruka #${r.id}`}
         subtitle={
           <span>
-            <Link to="/live" style={{ color: C.textDim, textDecoration: 'none' }}>Live</Link>
+            <Link to="/live" style={{ color: C.textDim, textDecoration: 'none' }}>Uživo</Link>
             <span style={{ color: C.textMute, margin: '0 6px' }}>›</span>
             <span style={{ color: C.text }}>#{r.id}</span>
             <span style={{ color: C.textMute, margin: '0 8px' }}>·</span>
@@ -41,22 +41,22 @@ export function RequestDetail() {
             {r.compare_group_id && (
               <>
                 <span style={{ color: C.textMute, margin: '0 8px' }}>·</span>
-                <span style={{ color: C.warn }}>compare {r.compare_group_id.slice(0, 8)}</span>
+                <span style={{ color: C.warn }}>poređenje {r.compare_group_id.slice(0, 8)}</span>
               </>
             )}
           </span>
         }
-        right={<Btn variant="ghost" onClick={() => nav(-1)}>← back</Btn>}
+        right={<Btn variant="ghost" onClick={() => nav(-1)}>← nazad</Btn>}
       />
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Top metrics */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
           <Metric label="status" value={r.status} accent={r.status === 'ok'} />
-          <Metric label="iterations" value={String(r.iterations ?? '—')} />
-          <Metric label="tokens" value={`↓${r.tokens_in ?? '—'} ↑${r.tokens_out ?? '—'}`} />
-          <Metric label="latency" value={r.latency_ms ? `${r.latency_ms}ms` : '—'} />
-          <Metric label="cost" value={r.cost_usd != null ? `$${r.cost_usd.toFixed(4)}` : '—'} />
+          <Metric label="iteracije" value={String(r.iterations ?? '—')} />
+          <Metric label="tokeni" value={`↓${r.tokens_in ?? '—'} ↑${r.tokens_out ?? '—'}`} />
+          <Metric label="trajanje" value={r.latency_ms ? `${r.latency_ms}ms` : '—'} />
+          <Metric label="trošak" value={r.cost_usd != null ? `$${r.cost_usd.toFixed(4)}` : '—'} />
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
@@ -64,12 +64,12 @@ export function RequestDetail() {
           <Tag color={md}>{_modelKey(r.model)}</Tag>
           <StatusBadge status={r.status} />
           {r.compare_group_id && (
-            <Tag color={C.warn}>compare {r.compare_group_id.slice(0, 8)}</Tag>
+            <Tag color={C.warn}>poređenje {r.compare_group_id.slice(0, 8)}</Tag>
           )}
         </div>
 
         <div>
-          <SectionLabel>prompt</SectionLabel>
+          <SectionLabel>pitanje korisnika</SectionLabel>
           <pre style={{
             background: C.panelLo, border: `1px solid ${C.border}`, borderRadius: 4,
             padding: 12, color: C.text, fontFamily: 'JetBrains Mono, monospace',
@@ -79,7 +79,7 @@ export function RequestDetail() {
 
         {r.error && (
           <div>
-            <SectionLabel>error</SectionLabel>
+            <SectionLabel>greška</SectionLabel>
             <pre style={{
               background: `${C.err}10`, border: `1px solid ${C.err}40`, borderRadius: 4,
               padding: 12, color: C.err, fontFamily: 'JetBrains Mono, monospace',
@@ -89,9 +89,9 @@ export function RequestDetail() {
         )}
 
         <div>
-          <SectionLabel>tool calls timeline ({r.tool_calls.length})</SectionLabel>
+          <SectionLabel>pozivi alata, hronološki ({r.tool_calls.length})</SectionLabel>
           {r.tool_calls.length === 0 && (
-            <div style={{ color: C.textMute, fontSize: 12 }}>Bez tool poziva.</div>
+            <div style={{ color: C.textMute, fontSize: 12 }}>Bez poziva alata.</div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {r.tool_calls.map((tc, i) => <ToolCallRow key={i} tc={tc} />)}
@@ -99,7 +99,7 @@ export function RequestDetail() {
         </div>
 
         <div>
-          <SectionLabel>response</SectionLabel>
+          <SectionLabel>odgovor asistenta</SectionLabel>
           <pre style={{
             background: C.panelLo, border: `1px solid ${C.border}`, borderRadius: 4,
             padding: 12, color: C.text, fontFamily: 'JetBrains Mono, monospace',
@@ -129,7 +129,7 @@ function ToolCallRow({ tc }: { tc: ToolCall }) {
         }}
       >
         <span style={{ color: C.textMute, width: 28 }}>{open ? '▼' : '▶'}</span>
-        <span style={{ color: C.textMute, width: 60 }}>iter #{tc.iteration}</span>
+        <span style={{ color: C.textMute, width: 64 }}>korak #{tc.iteration}</span>
         <span style={{ color: C.accent, fontWeight: 500, minWidth: 160 }}>{tc.tool_name}</span>
         <span style={{ color: C.textDim, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {typeof parsedInput === 'object' ? JSON.stringify(parsedInput).slice(0, 80) : String(parsedInput).slice(0, 80)}
@@ -139,7 +139,7 @@ function ToolCallRow({ tc }: { tc: ToolCall }) {
       {open && (
         <div style={{ padding: '0 12px 12px 48px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div>
-            <SectionLabel>input</SectionLabel>
+            <SectionLabel>parametri (ulaz)</SectionLabel>
             <pre style={{
               background: C.bg, border: `1px solid ${C.border}`, borderRadius: 3, padding: 8,
               color: C.text, fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5,
@@ -147,7 +147,7 @@ function ToolCallRow({ tc }: { tc: ToolCall }) {
             }}>{typeof parsedInput === 'object' ? JSON.stringify(parsedInput, null, 2) : String(parsedInput)}</pre>
           </div>
           <div>
-            <SectionLabel>output</SectionLabel>
+            <SectionLabel>rezultat (izlaz)</SectionLabel>
             <pre style={{
               background: C.bg, border: `1px solid ${C.border}`, borderRadius: 3, padding: 8,
               color: C.textDim, fontFamily: 'JetBrains Mono, monospace', fontSize: 11.5,

@@ -55,12 +55,12 @@ export function StatusBadge({ status }: { status: string }) {
   if (status === 'ok' || status === 'done' || status === 'online')
     return <Tag color={C.ok}>200 OK</Tag>
   if (status === 'rate_limit' || status === 'rate_limited')
-    return <Tag color={C.rate}>429</Tag>
+    return <Tag color={C.rate}>limit dosegnut</Tag>
   if (status === 'in_progress')
-    return <Tag color={C.accent}>running</Tag>
+    return <Tag color={C.accent}>u toku</Tag>
   if (status === 'warn' || status === 'degraded')
-    return <Tag color={C.warn}>degraded</Tag>
-  return <Tag color={C.err}>ERR</Tag>
+    return <Tag color={C.warn}>usporeno</Tag>
+  return <Tag color={C.err}>greška</Tag>
 }
 
 // ── AdapterPill ───────────────────────────────────────────────────────────────
