@@ -53,6 +53,15 @@ Knowledge base + storage:
 
 PR: `production-prep` → `main`. Detalji u `PRODUCTION-PREP-PLAN.md`.
 
+> **🔬 Otvorena rezolucija (Sesija 9, sedmica 2026-05-05 → 2026-05-11):**
+> Sonnet 4.6 je *trenutni* default, ne *konačna* odluka. Ova sedmica je
+> dedikovana **multi-provider eval-u** (Claude Haiku/Sonnet/Opus, GPT-4o-mini,
+> Llama 3.x, DeepSeek-V3) sa target-om ≥99% pass rate i ekonomskom odlukom
+> kraj sedmice. Plan, kandidati, metodologija i timeline u
+> **`MODEL-EVAL-PLAN.md`**. Ivanova subjektivna hipoteza ("GPT mini će
+> završiti priču sa potrošnjom kao Haiku") tu je eksplicitno odvojena od
+> stvarnog rezultata — testiramo, pa odlučujemo.
+
 ### Modelska odluka — zašto Sonnet 4.6 za chat (a ne Haiku)
 
 Tokom production smoke testa pojavile su se dvije ozbiljne mane Haiku-a 4.5
