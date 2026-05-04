@@ -73,6 +73,12 @@ class Settings(BaseSettings):
     smtp_user: str | None = None
     smtp_password: str | None = None
 
+    # Eskalacija notifikacija — ako popunjeno, escalate_to_human tool
+    # šalje email na ovu adresu. Default je smtp_user (sami sebi).
+    # Bez SMTP config-a, tool vraća "upit zabilježen" umjesto laži
+    # "tim obaviješten".
+    escalation_email_to: str | None = None
+
     # ── Webshop ───────────────────────────────────────────────
     webshop_base_url: str = "https://webshop.bitlab.rs"
     product_url_template: str = "https://webshop.bitlab.rs/proizvod/{urlhash}"

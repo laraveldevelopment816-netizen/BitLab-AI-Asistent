@@ -233,13 +233,55 @@ def handle_check_availability(sifra: str) -> str:
 
 
 def handle_escalate_to_human(reason: str, summary: str) -> str:
+    """Eskalacija u dashboard log + opciono stvarni email notifikacija.
+
+    Bug fix Sesija 8: ranije je tool vraćao "Prodajni tim je obaviješten"
+    iako ništa stvarno nije slano — laž koju je AI ponavljao korisniku.
+    Sad: ako je ESCALATION_EMAIL_TO + SMTP konfigurisan u .env, šaljemo
+    pravi email; inače honest tekst "vaš upit je zabilježen, kontaktirajte
+    tim direktno za brz odgovor"."""
+    from .config import settings
+
+    notified = False
+    notify_target = getattr(settings, "escalation_email_to", None) or settings.smtp_user
+    if notify_target and settings.smtp_host and settings.smtp_user and settings.smtp_password:
+        try:
+            import smtplib
+            from email.message import EmailMessage
+            msg = EmailMessage()
+            msg["From"] = settings.smtp_user
+            msg["To"] = notify_target
+            msg["Subject"] = f"[BitLab AI] Eskalacija: {reason}"
+            msg.set_content(
+                f"Razlog: {reason}\n\n"
+                f"Sažetak korisnikovog upita:\n{summary}\n\n"
+                f"-- automatski iz BitLab AI Asistenta"
+            )
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as smtp:
+                smtp.starttls()
+                smtp.login(settings.smtp_user, settings.smtp_password)
+                smtp.send_message(msg)
+            notified = True
+        except Exception as exc:
+            print(f"[ESCALATE] Email send failed: {exc!r}")
+            # Ne padaj — tool i dalje treba da vrati instrukcije korisniku
+
+    if notified:
+        notify_status = "Prodajni tim je obaviješten putem emaila — javit će se u toku radnog vremena."
+    else:
+        # Honest fallback: NE tvrdi obavještenje koje nije poslano
+        notify_status = (
+            "Vaš upit je zabilježen u sistemu. Za brz odgovor kontaktirajte tim DIREKTNO "
+            "(email notifikacija nije poslata)."
+        )
+
     return (
         f"Eskalacija inicirana — razlog: {reason}\n"
         f"Sažetak: {summary}\n\n"
         "Kontakti za korisnika:\n"
         f"• Viber / Tel: {TEL}\n"
         f"• Email: {EMAIL}\n"
-        "Prodajni tim je obaviješten i javit će se u toku radnog vremena."
+        f"{notify_status}"
     )
 
 

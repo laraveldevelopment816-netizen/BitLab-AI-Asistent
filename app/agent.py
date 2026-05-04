@@ -105,6 +105,37 @@ def _strip_horizontal_rules(text: str) -> str:
     return text.strip()
 
 
+# Markdown table line: | foo | bar | ili | --- | --- | (separator row)
+_MD_TABLE_LINE = re.compile(r'^\s*\|.*\|\s*$')
+
+
+def _strip_markdown_tables(text: str) -> str:
+    """Defensive: ukloni markdown tabele (`| col | col |`).
+
+    Voice channel demo bug: Sonnet je vratio listu laptopa kao markdown
+    tabelu. Frontend renderer ne podržava tabele — pipe karakteri se
+    vide u tekstu, a TTS izgovara "crta crta crta" za separator row.
+    PROD_RE traži single-line bullet format pa tabela postaje šum.
+
+    Strategija: detektuj 2+ uzastopne tabele linije, ukloni ih iz
+    output-a. NE pokušava da konvertuje u list (rizik gubitka podataka).
+    Pojačan prompt je primarna obrana, ovo je backstop."""
+    lines = text.split('\n')
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        if _MD_TABLE_LINE.match(lines[i]):
+            # Provjeri da li sledeći red takođe table — minimum 2 reda za pravu tabelu
+            if i + 1 < len(lines) and _MD_TABLE_LINE.match(lines[i + 1]):
+                # Preskoči sve uzastopne table line-ove
+                while i < len(lines) and _MD_TABLE_LINE.match(lines[i]):
+                    i += 1
+                continue
+        out.append(lines[i])
+        i += 1
+    return '\n'.join(out).strip()
+
+
 def _default_model_for_channel(channel: str) -> str:
     return settings.email_model if channel == "email" else settings.chat_model
 
@@ -232,6 +263,9 @@ def _finalize(
     # Sanitize horizontal rules + višestruke prazne redove (Sonnet 4.6
     # i sa pojačanim promptom u 20% slučajeva ubaci `---` footer).
     reply = _strip_horizontal_rules(reply)
+    # Sanitize markdown tabele — frontend renderer ih ne podržava, a
+    # TTS čita pipe + crtice. Voice channel demo bug.
+    reply = _strip_markdown_tables(reply)
 
     return {
         "reply": reply,

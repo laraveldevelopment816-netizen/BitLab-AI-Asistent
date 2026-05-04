@@ -1199,68 +1199,68 @@ html.bl-scroll-lock body {
   let voiceFullscreenActive = false;
 
   // ── Thinking sound (kao ChatGPT / Claude.ai) ─────────────────────
-  // Soft procedural tone preko Web Audio API — dva blago-detuned sine
-  // oscilatora sa LFO modulacijom amplituden (slow breathing). Aktivira
-  // se na VS.PROCESSING, deaktivira na bilo koji drugi state.
-  // Ne učitava audio fajlove (zero-dep, zero CSP issues).
+  // ISPREKIDAN ritam ("tu-ru-ru" pattern): triple soft pulses, kratka pauza,
+  // ponavlja. Korisnik je tražio "ne kontinuirano nego isprekidano kao
+  // tu-ru-ru tu-ru-ru". Implementacija: setInterval scheduluje grupu
+  // 3 kratka tone-a (40ms ON / 100ms OFF / 40ms ON / 100ms OFF / 40ms
+  // ON), pa pauza ~700ms, pa repeat. Trostruki harmonijum 220/330/495 Hz.
   let thinkingAudioCtx = null;
-  let thinkingNodes = null;
+  let thinkingState = null;  // { interval, stopped }
+
+  function _playPulse(ctx, freq, startAt, durMs) {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const g = ctx.createGain();
+    const dur = durMs / 1000;
+    g.gain.setValueAtTime(0, startAt);
+    g.gain.linearRampToValueAtTime(0.04, startAt + 0.01);   // 10ms attack
+    g.gain.setValueAtTime(0.04, startAt + dur - 0.015);
+    g.gain.linearRampToValueAtTime(0, startAt + dur);       // 15ms release
+    osc.connect(g).connect(ctx.destination);
+    osc.start(startAt);
+    osc.stop(startAt + dur + 0.02);
+  }
 
   function startThinkingSound() {
-    if (thinkingNodes) return;  // već svira
+    if (thinkingState) return;  // već svira
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
       if (!thinkingAudioCtx) thinkingAudioCtx = new Ctx();
-      // resume() je potreban poslije Chrome auto-play policy promjene
       if (thinkingAudioCtx.state === 'suspended') thinkingAudioCtx.resume();
 
       const ctx = thinkingAudioCtx;
-      const now = ctx.currentTime;
-      // Dva sine generatora — base 220Hz + 5th harmonic 330Hz, blago detuned
-      const osc1 = ctx.createOscillator();
-      osc1.type = 'sine';
-      osc1.frequency.value = 220;
-      const osc2 = ctx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.value = 330;
-      // Master gain — vrlo tiho (0.04 max amplituda)
-      const gain = ctx.createGain();
-      gain.gain.value = 0;
-      gain.gain.linearRampToValueAtTime(0.035, now + 0.4);  // fade in
-      // LFO za "breathing" efekat — modulira gain 0.4Hz ±0.015
-      const lfo = ctx.createOscillator();
-      lfo.type = 'sine';
-      lfo.frequency.value = 0.4;
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 0.015;
-      lfo.connect(lfoGain).connect(gain.gain);
-      // Routing
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
-      osc1.start(now);
-      osc2.start(now);
-      lfo.start(now);
-      thinkingNodes = { osc1, osc2, lfo, gain };
+      // "tu-ru-ru" pattern: 3 pulsa sa rastućom frekvencijom
+      // (220 → 330 → 495 Hz), svaki ~50ms, razmak ~120ms unutar grupe.
+      // Pa ~750ms pauza, pa ponovi.
+      const PULSE_DUR = 50;
+      const PULSE_GAP = 120;
+      const GROUP_PAUSE = 750;
+      const FREQS = [220, 330, 495];
+
+      const scheduleGroup = () => {
+        if (!thinkingState || thinkingState.stopped) return;
+        const now = ctx.currentTime;
+        FREQS.forEach((f, i) => {
+          _playPulse(ctx, f, now + i * (PULSE_GAP / 1000), PULSE_DUR);
+        });
+      };
+
+      scheduleGroup();  // odmah prva grupa
+      const totalGroupMs = (FREQS.length - 1) * PULSE_GAP + PULSE_DUR + GROUP_PAUSE;
+      const interval = setInterval(scheduleGroup, totalGroupMs);
+      thinkingState = { interval, stopped: false };
     } catch (e) {
       // Audio nije dostupan — graceful fail
     }
   }
 
   function stopThinkingSound() {
-    if (!thinkingNodes || !thinkingAudioCtx) return;
-    try {
-      const { osc1, osc2, lfo, gain } = thinkingNodes;
-      const now = thinkingAudioCtx.currentTime;
-      gain.gain.cancelScheduledValues(now);
-      gain.gain.setValueAtTime(gain.gain.value, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.25);  // fade out
-      osc1.stop(now + 0.3);
-      osc2.stop(now + 0.3);
-      lfo.stop(now + 0.3);
-    } catch (e) { /* ignore */ }
-    thinkingNodes = null;
+    if (!thinkingState) return;
+    thinkingState.stopped = true;
+    clearInterval(thinkingState.interval);
+    thinkingState = null;
   }
 
   const STATE_MAP = {

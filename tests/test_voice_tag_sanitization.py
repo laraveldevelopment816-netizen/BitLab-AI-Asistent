@@ -13,7 +13,10 @@ from __future__ import annotations
 
 import pytest
 
-from app.agent import _strip_voice_tags, _parse_voice_xml, _strip_horizontal_rules
+from app.agent import (
+    _strip_voice_tags, _parse_voice_xml,
+    _strip_horizontal_rules, _strip_markdown_tables,
+)
 
 
 class TestStripVoiceTags:
@@ -157,3 +160,37 @@ class TestStripHorizontalRules:
     def test_handles_empty_input(self):
         assert _strip_horizontal_rules("") == ""
         assert _strip_horizontal_rules("\n\n\n") == ""
+
+
+class TestStripMarkdownTables:
+    """_strip_markdown_tables() uklanja markdown tabele jer frontend
+    renderer ih ne podržava i TTS čita pipe + crtice."""
+
+    def test_strips_table_with_separator(self):
+        inp = (
+            "Evo laptopa:\n\n"
+            "| # | Laptop | Cijena |\n"
+            "|---|--------|--------|\n"
+            "| 1 | ASUS   | 929 KM |\n"
+            "| 2 | Lenovo | 1.315  |\n\n"
+            "Treba li dodatne info?"
+        )
+        out = _strip_markdown_tables(inp)
+        assert "|" not in out, f"Pipe ostala u outputu: {out!r}"
+        assert "Evo laptopa" in out
+        assert "Treba li dodatne info" in out
+
+    def test_keeps_inline_pipe_in_text(self):
+        """Pipe usred plain teksta (nije table line) ne treba dirati."""
+        inp = "Možeš birati: A | B | C — koju opciju?"
+        out = _strip_markdown_tables(inp)
+        assert out == inp.strip()
+
+    def test_idempotent(self):
+        inp = "Imam 5 laptopa. Sve na lageru."
+        assert _strip_markdown_tables(inp) == inp.strip()
+
+    def test_handles_table_only_input(self):
+        inp = "| a | b |\n|---|---|\n| 1 | 2 |"
+        out = _strip_markdown_tables(inp)
+        assert out == ""
