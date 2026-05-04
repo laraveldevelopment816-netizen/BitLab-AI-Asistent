@@ -59,7 +59,6 @@
     send:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.45-7.48a1 1 0 0 0 0-1.84L3.4 3.6a1 1 0 0 0-1.4.92V9.5L15 12 2 14.5v4.98a1 1 0 0 0 1.4.92z"/></svg>',
     close:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     minus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg>',
-    attach: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.38a2 2 0 0 1-2.83-2.83l8.49-8.49"/></svg>',
     laptop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M2 20h20"/></svg>',
     truck:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="13" height="11" rx="1"/><path d="M14 9h4l3 4v4h-7V9zM6 21a2 2 0 100-4 2 2 0 000 4zM18 21a2 2 0 100-4 2 2 0 000 4z"/></svg>',
     shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 9.5-8 10-4.5-.5-8-5-8-10V6z"/></svg>',
@@ -459,15 +458,6 @@
   height: 100%; min-width: 0;
 }
 #bl-input::placeholder { color: var(--bl-text-3); }
-.bl-attach {
-  width: 32px; height: 32px; background: transparent;
-  border: none; border-radius: 99px;
-  color: var(--bl-text-3); cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; padding: 0;
-}
-.bl-attach:hover { color: var(--bl-text); background: var(--bl-line); }
-.bl-attach svg { width: 18px; height: 18px; }
 #bl-voice-btn {
   width: 42px; height: 42px; border-radius: 99px;
   background: var(--bl-bg-soft);
@@ -509,13 +499,86 @@
 }
 .bl-footer strong { color: var(--bl-orange); font-weight: 700; }
 
-/* ───── Mobile ───── */
-@media (max-width: 440px) {
-  #bl-window {
-    right: 8px; left: 8px; bottom: 88px;
-    width: auto; height: auto; max-height: calc(100vh - 100px);
+/* ───── Mobile (chat widget) ───── */
+@media (max-width: 560px) {
+  /* Launcher: full bottom-right, smjestiti u safe-area iOS-a */
+  #bl-launcher {
+    right: 14px; bottom: 14px;
+    width: 56px; height: 56px;
+    bottom: max(14px, env(safe-area-inset-bottom, 14px));
   }
-  #bl-launcher { right: 16px; bottom: 16px; }
+  #bl-launcher__badge {
+    width: 18px; height: 18px; font-size: 10px;
+  }
+
+  /* Chat window — full screen sa safe-area paddingom */
+  #bl-window {
+    right: 0; left: 0; top: 0; bottom: 0;
+    width: 100%; max-width: 100%;
+    height: 100%; max-height: 100%;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* Header — kompaktan, manji avatar */
+  #bl-header { padding: 14px 14px 12px; }
+  .bl-header__avatar { width: 38px; height: 38px; border-radius: 12px; }
+  .bl-header__avatar svg { width: 19px; height: 19px; }
+  .bl-header__title { font-size: 14.5px; gap: 6px; }
+  .bl-header__sub { font-size: 11.5px; }
+  .bl-icon-btn { width: 36px; height: 36px; }  /* veći touch target ≥44px sa paddingom */
+
+  /* Header chips — horizontal scroll umjesto wrap */
+  .bl-header__chips {
+    overflow-x: auto; white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    margin: 10px -14px 0; padding: 0 14px;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+  }
+  .bl-header__chips::-webkit-scrollbar { display: none; }
+  .bl-header__chip { flex-shrink: 0; }
+
+  /* Welcome — manji padding */
+  .bl-welcome { padding: 18px 16px; gap: 12px; }
+  .bl-welcome__avatar { width: 56px; height: 56px; border-radius: 16px; }
+  .bl-welcome__title { font-size: 26px; }
+  .bl-welcome__sub { font-size: 14px; }
+  .bl-suggest { padding: 12px 14px; }
+  .bl-beta-notice { font-size: 12px; padding: 9px 11px; }
+
+  /* Messages — širi balončići */
+  .bl-msg { max-width: 92%; font-size: 14.5px; padding: 10px 13px; }
+
+  /* Input area — veći touch target-i (≥44px) */
+  #bl-input-area { padding: 10px 12px 12px; gap: 8px; }
+  #bl-input {
+    height: 46px; font-size: 16px; /* 16px sprečava iOS auto-zoom */
+    padding: 0 14px;
+  }
+  #bl-voice-btn, #bl-send {
+    width: 46px; height: 46px;
+    flex-shrink: 0;
+  }
+  #bl-voice-btn svg, #bl-send svg { width: 20px; height: 20px; }
+
+  .bl-footer { font-size: 10.5px; padding: 8px 12px; }
+
+  /* Product cards — kompaktniji na mobilnom */
+  .bl-prod { padding: 8px; gap: 10px; }
+  .bl-prod__img { width: 56px; height: 56px; flex-shrink: 0; }
+  .bl-prod__name { font-size: 13px; line-height: 1.35; }
+  .bl-prod__price { font-size: 14.5px; }
+  .bl-prod__avail { font-size: 11px; }
+}
+
+/* Even smaller — vrlo uski telefoni (320-340px) */
+@media (max-width: 340px) {
+  .bl-header__avatar { width: 34px; height: 34px; }
+  .bl-header__title { font-size: 13.5px; }
+  .bl-msg { max-width: 95%; font-size: 14px; }
+  .bl-prod__img { width: 48px; height: 48px; }
 }
 
 /* ───── Voice modal ───── */
@@ -780,18 +843,59 @@ html.bl-scroll-lock body {
 .bl-vbtn--danger:hover { background: #fee2e2; }
 .bl-vbtn svg { width: 14px; height: 14px; }
 
-@media (max-width: 480px) {
+/* ───── Mobile (voice modal) ───── */
+@media (max-width: 560px) {
   #bl-voice-overlay { padding: 0; align-items: stretch; }
   #bl-voice-panel {
-    width: 100%; max-height: 100vh; height: 100vh;
-    border-radius: 0;
+    width: 100%; max-width: 100%;
+    height: 100vh; max-height: 100vh; min-height: 100vh;
+    border-radius: 0; border: 0;
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
-  /* Mobilno: header nešto kompaktniji da ostane ~20% */
+
+  /* Voice header (compact stanje, poslije prvog rezultata) */
+  #bl-vheader { padding: 14px 14px; gap: 10px; }
+  #bl-vheader-avatar { width: 32px; height: 32px; border-radius: 10px; }
+  #bl-vheader-avatar svg { width: 16px; height: 16px; }
+  .bl-vtitle { font-size: 13.5px; gap: 6px; }
+  #bl-vstate { font-size: 10.5px; }
+
+  /* Compact stage (poslije prvog rezultata) — mali orb desno */
   #bl-vstage { padding: 10px 14px; gap: 12px; }
   .bl-orb { width: 56px; height: 56px; }
   .bl-orb__core { width: 44px; height: 44px; }
   .bl-orb__core svg { width: 20px; height: 20px; }
   #bl-vtline { font-size: 12.5px; }
+
+  /* Fullscreen stage (idle, prije prvog rezultata) — orb veliki, centriran */
+  #bl-voice-panel.vp-fullscreen #bl-vstage {
+    padding: 30px 24px;
+    gap: 18px;
+  }
+  #bl-voice-panel.vp-fullscreen .bl-orb { width: 130px; height: 130px; }
+  #bl-voice-panel.vp-fullscreen .bl-orb__core { width: 76px; height: 76px; }
+  #bl-voice-panel.vp-fullscreen .bl-orb__core svg { width: 30px; height: 30px; }
+  #bl-voice-panel.vp-fullscreen #bl-vtline { font-size: 15px; }
+
+  /* Transcript — full width, kompaktan */
+  #bl-vtranscript { padding: 12px 14px; gap: 8px; }
+  #bl-vtranscript .bl-msg { font-size: 14px; max-width: 94%; }
+
+  /* Controls — veći touch target-i */
+  #bl-vcontrols { padding: 12px 14px; gap: 8px; }
+  .bl-vbtn { height: 48px; font-size: 14px; padding: 0 14px; }
+  .bl-vbtn svg { width: 16px; height: 16px; }
+
+  /* Wave (visualizer) — manje energije na malom ekranu */
+  .bl-wave { height: 16px; min-height: 16px; }
+}
+
+/* Even smaller — vrlo uski (320-340px) */
+@media (max-width: 340px) {
+  #bl-voice-panel.vp-fullscreen .bl-orb { width: 110px; height: 110px; }
+  #bl-voice-panel.vp-fullscreen .bl-orb__core { width: 64px; height: 64px; }
+  .bl-vbtn { font-size: 13px; padding: 0 10px; }
 }
 `;
 
@@ -843,7 +947,6 @@ html.bl-scroll-lock body {
   <div id="bl-input-area">
     <div class="bl-input-wrap">
       <input id="bl-input" type="text" placeholder="Postavi pitanje..." autocomplete="off">
-      <button class="bl-attach" title="Priloži" aria-label="Priloži">${I.attach}</button>
     </div>
     <button id="bl-voice-btn" title="Voice mode" aria-label="Voice mode">${I.mic}</button>
     <button id="bl-send" aria-label="Pošalji">${I.send}</button>
