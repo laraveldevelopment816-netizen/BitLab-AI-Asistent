@@ -188,17 +188,20 @@
   display: flex; align-items: center; gap: 8px;
 }
 .bl-beta-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 7px; border-radius: 6px;
-  font-size: 9.5px; font-weight: 700; letter-spacing: .06em;
-  background: rgba(251,191,36,.18);
-  color: #fbbf24;
-  border: 1px solid rgba(251,191,36,.45);
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 7px; border-radius: 4px;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-size: 9.5px; font-weight: 600; letter-spacing: .08em;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.78);
+  border: 1px solid rgba(255,255,255,.18);
   text-transform: uppercase;
   flex-shrink: 0;
+  cursor: help;
 }
 .bl-beta-badge::before {
-  content: '⚠'; font-size: 10px;
+  content: ''; width: 5px; height: 5px; border-radius: 99px;
+  background: #7dd3fc; box-shadow: 0 0 0 2px rgba(125,211,252,.18);
 }
 .bl-header__sub {
   margin-top: 2px; font-size: 12px; opacity: .7;
@@ -366,14 +369,15 @@
 .bl-beta-notice {
   margin: 12px 0 4px;
   padding: 10px 12px;
-  background: rgba(251,191,36,.08);
-  border: 1px solid rgba(251,191,36,.32);
-  border-radius: 10px;
+  background: var(--bl-bg-soft);
+  border: 1px solid var(--bl-line);
+  border-left: 3px solid #7dd3fc;
+  border-radius: 8px;
   font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--bl-text-2);
+  line-height: 1.55;
+  color: var(--bl-text-3);
 }
-.bl-beta-notice strong { color: var(--bl-text); font-weight: 700; }
+.bl-beta-notice strong { color: var(--bl-text); font-weight: 600; }
 .bl-welcome__suggest {
   width: 100%; display: flex; flex-direction: column;
   gap: 8px; margin-top: 8px;
@@ -809,12 +813,12 @@ html.bl-scroll-lock body {
       <div class="bl-header__info">
         <div class="bl-header__title">
           BitLab Asistent
-          <span class="bl-beta-badge" title="Sistem je u testiranju — informacije provjerite sa prodajnim timom">
+          <span class="bl-beta-badge" title="BETA verzija — sistem je u stalnom unapređenju. Za važne odluke kontaktirajte prodajni tim.">
             BETA
           </span>
         </div>
         <div class="bl-header__sub">
-          <span class="bl-dot"></span>Online · U testiranju, moguće greške
+          <span class="bl-dot"></span>Online · Odgovara odmah
         </div>
       </div>
       <div class="bl-header__actions">
@@ -857,7 +861,7 @@ html.bl-scroll-lock body {
       <div id="bl-vheader-info">
         <div class="bl-vtitle">
           Voice Asistent
-          <span class="bl-beta-badge" title="Sistem je u testiranju — informacije provjerite sa prodajnim timom">
+          <span class="bl-beta-badge" title="BETA verzija — sistem je u stalnom unapređenju. Za važne odluke kontaktirajte prodajni tim.">
             BETA
           </span>
         </div>
@@ -926,10 +930,10 @@ html.bl-scroll-lock body {
         <div class="bl-welcome__sub">Pitaj me bilo šta o našim proizvodima, dostavi ili garanciji.</div>
       </div>
       <div class="bl-beta-notice">
-        <strong>⚠ Sistem je u testiranju (BETA).</strong>
-        Informacije koje dobijete su orijentaciono tačne, ali mogu sadržavati greške.
-        Za važne odluke (B2B ponuda, narudžba većih količina, garancija) provjerite
-        sa prodajnim timom — <strong>066 516 174</strong> ili <strong>prodaja@bitlab.rs</strong>.
+        <strong>BETA verzija — u stalnom unapređenju.</strong>
+        Za važne odluke (B2B ponude, veće narudžbe, reklamacije) najbrže je
+        kontaktirati prodajni tim direktno: <strong>066 516 174</strong> ili
+        <strong>prodaja@bitlab.rs</strong>.
       </div>
       <div class="bl-welcome__suggest"></div>
     `;
