@@ -1,35 +1,55 @@
 # BitLab AI Asistent
 
-AI sistem za **webshop.bitlab.rs** — tri kanala, jedna baza znanja.
+> Multi-channel AI prodajni asistent za **webshop.bitlab.rs** sa fine-grained logging dashboard-om za optimizaciju AI workflow-a.
 
 ```
-┌──────────────────────────────────────────────────────┐
-│  FastAPI backend (Python, lokalno)                   │
-│  /api/chat   → Chat widget + Voice mod               │
-│  /api/email  → n8n webhook (email auto-reply)        │
-│  /api/tts    → ElevenLabs proxy (API ključ na serveru│
-│                                                      │
-│  Agent loop (Claude tool use):                       │
-│    search_products   — hibridna pretraga kataloga    │
-│    get_faq           — dostava, garancija, B2B...    │
-│    check_availability — zaliha po šifri              │
-│    escalate_to_human  — Viber/email prodajnog tima   │
-└──────────────────────────────────────────────────────┘
-           ▲                ▲               ▲
-   ┌───────┘                │               └────────────────┐
-   │                        │                               │
-┌──────────────┐  ┌─────────────────┐  ┌─────────────────────────┐
-│ Web Widget   │  │ Voice mod        │  │ n8n Email Auto-Reply     │
-│ widget.html  │  │ voice.html       │  │ IMAP → /api/email        │
-│ widget.js    │  │ Web Speech STT   │  │ → AI reply → SMTP        │
-└──────────────┘  │ ElevenLabs TTS   │  └─────────────────────────┘
-                  └─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  FastAPI backend (Python 3.11+, async)                          │
+│                                                                 │
+│  Public:                          Dashboard (Bearer auth):      │
+│    /api/chat   chat + voice        /api/dashboard/requests      │
+│    /api/email  n8n webhook         /api/dashboard/requests/:id  │
+│    /api/stt    Groq → Azure        /api/dashboard/stats         │
+│    /api/tts    Azure → edge-tts    /api/dashboard/errors        │
+│                                    /api/dashboard/compare       │
+│                                                                 │
+│  Agent loop (Claude tool use, max 5 iter):                      │
+│    search_products(query, category_id?, max_price_km?, top_k?)  │
+│    get_faq(topic)                                               │
+│    check_availability(sifra)                                    │
+│    escalate_to_human(reason, summary)                           │
+└─────────────────────────────────────────────────────────────────┘
+       ▲              ▲             ▲                  ▲
+   ┌───┘              │             │                  │
+┌──────────┐ ┌────────────────┐ ┌──────────────┐ ┌────────────────┐
+│ Widget   │ │ Voice mod      │ │ n8n Email    │ │ Dashboard SPA  │
+│ widget.js│ │ (header 25%/   │ │ IMAP→/email  │ │ React+Vite+TS  │
+│          │ │  results 75%)  │ │ →SMTP reply  │ │ /admin/        │
+└──────────┘ └────────────────┘ └──────────────┘ └────────────────┘
 
-Baza znanja:
-  data/products.index.npz  — 5.278 proizvoda, lokalni vektorski indeks
-  data/products.meta.json  — metadata (naziv, cijena, URL, dostupnost)
-  data/faq.md              — FAQ, dostava, plaćanje, garancija (ručno kurirano)
+Knowledge base + storage:
+  data/products.index.npz   5.278 vektora, MiniLM-L12-v2 (multilingual)
+  data/products.meta.json   meta (ime, cijena, kolicina, URL, sifra)
+  data/categories.json      top 30 kategorija sa labelama (Sesija 8)
+  data/category_terms.json  build-time prefix + soft-boost (legacy)
+  data/faq.md               ručno kurirane sekcije
+  var/bitlab.db             SQLite — requests + tool_calls
 ```
+
+---
+
+## Šta je novo (Sesija 8 — production prep)
+
+| Stavka | Status |
+|---|---|
+| **AI klasifikacija namjere** sa hard category filter (eval **94.4%**) | ✅ |
+| **Logging dashboard** (React + Vite + TS, 6 stranica) sa fine-grained tool call timeline | ✅ |
+| **Compare endpoint** — fan-out istog upita kroz haiku ↔ sonnet paralelno | ✅ |
+| **Voice widget UX** — kompaktan header 25% + body 75% za rezultate | ✅ |
+| **Deploy artefakti** (`scripts/deploy.sh`, `deploy/*.service`, nginx, README) | ✅ |
+| Server-side install na produkciju (zasebna sesija, vidi `deploy/README.md`) | 🟡 čeka |
+
+PR: `production-prep` → `main`. Detalji u `PRODUCTION-PREP-PLAN.md`.
 
 ---
 
@@ -38,45 +58,76 @@ Baza znanja:
 ```
 bitlab-ai-asistent/
 ├── app/
-│   ├── main.py            # FastAPI: /api/chat, /api/email, /api/tts, /healthz
-│   ├── agent.py           # Claude tool-use agent loop (max 5 iteracija)
-│   ├── tools.py           # 4 alata: schema + handleri + dispatcher
-│   ├── rag.py             # Hibridna pretraga: BM25 (0.4) + vektor cosine (0.6)
-│   ├── faq.py             # Učitava faq.md, keyword scoring po sekcijama
-│   ├── system_prompts.py  # 3 system prompta: chat / voice / email
-│   ├── email_poller.py    # IMAP fallback poller (rezerva za n8n)
-│   └── config.py          # Pydantic Settings, čita .env
+│   ├── main.py            # FastAPI + lifespan (RAG preload, init_db)
+│   ├── agent.py           # Claude tool-use loop, vraća _trace dict za logging
+│   ├── tools.py           # 4 tool-a: search_products + get_faq + check_availability + escalate
+│   ├── rag.py             # Hibrid: BM25 (0.4) + vektor (0.6) + hard category filter
+│   ├── faq.py             # FAQ keyword retrieval po sekcijama
+│   ├── system_prompts.py  # 3 prompta: chat / voice / email + klasifikaciono pravilo
+│   ├── email_poller.py    # IMAP fallback (rezerva za n8n)
+│   ├── config.py          # Pydantic Settings, čita .env
+│   ├── server/
+│   │   └── dashboard.py   # /api/dashboard/* (Bearer auth, JSON API + compare)
+│   └── storage/
+│       ├── db.py          # async SQLAlchemy engine + sessionmaker
+│       ├── models.py      # Request + ToolCall (sa FK)
+│       └── repo.py        # insert + get helper-i (best-effort)
+├── dashboard/             # React 19 + Vite 8 + TS — 6 stranica (Live, History,
+│   ├── src/pages/         # Compare, RequestDetail, Stats, Settings)
+│   ├── src/components/    # Layout (sidebar 232px), atoms (Tag, Btn, Metric...)
+│   ├── src/api.ts         # axios client + Bearer interceptor (localStorage)
+│   ├── src/tokens.ts      # dark theme + BitLab orange + per-channel/model boje
+│   └── package.json       # react-router 7, TanStack Query, axios, tailwind 4
+├── deploy/                # Server-side install artefakti (Sesija 5)
+│   ├── README.md          # ⚠️ TAČKA 0 — server hostuje 4 druge aplikacije
+│   ├── bitlab-ai.service  # systemd unit (User=bitlab, venv ExecStart)
+│   └── nginx-site.conf    # full nginx site (HTTPS, /admin/, /api/, gzip)
 ├── scripts/
-│   ├── embed_products.py  # JEDNOKRATNO: generiše products.index.npz
-│   └── smoke_test.py      # Provjera 4 pitanja end-to-end
+│   ├── embed_products.py    # JEDNOKRATNO: products.index.npz + meta.json
+│   ├── build_categories.py  # Generiše data/categories.json (Sesija 1)
+│   ├── init_db.py           # Idempotentno kreira requests + tool_calls tabele
+│   ├── deploy.sh            # Server-side: install/update/rebuild/restart
+│   └── smoke_test.py        # 4 chat upita end-to-end
+├── evals/
+│   ├── test_questions.json  # Originalni eval set (Sesija 4)
+│   ├── run.py               # Originalni eval runner
+│   ├── category_eval.json   # 36 upita za AI klasifikaciju (Sesija 1)
+│   └── run_categories.py    # Mjeri top-1 category_id accuracy
 ├── public/
-│   ├── widget.html        # Demo BitLab webshop sa embeddovanim widgetom
-│   ├── widget.js          # Embeddable chat widget (poziva /api/chat)
-│   └── voice.html         # Voice mod (Web Speech STT + ElevenLabs TTS)
+│   ├── widget.html        # Demo BitLab webshop
+│   ├── widget.js          # Embeddable chat + voice widget
+│   └── voice.html         # Voice mod standalone demo
 ├── n8n/
-│   └── email-autoreply.json  # n8n workflow export — importuje se jednim klikom
-├── evals/                 # Sesija 4
-├── tests/                 # Sesija 4
+│   └── email-autoreply.json
 ├── data/
-│   ├── all-products.json  # Sirovi podaci — 5.287 proizvoda (phpMyAdmin export)
-│   ├── faq.md             # Ručno kurirani FAQ sa sajta
-│   ├── products.index.npz # Generiše embed_products.py — NE editovati
-│   └── products.meta.json # Generiše embed_products.py — NE editovati
-├── .env                   # Lokalni secrets (nije u gitu)
-├── .env.example           # Šablon za .env
-└── pyproject.toml         # Zavisnosti projekta
+│   ├── all-products.json     # Sirovi katalog (phpMyAdmin export)
+│   ├── faq.md
+│   ├── categories.json       # Sesija 8 — top 30 kategorija sa labelama
+│   ├── category_terms.json   # Build-time prefix + soft-boost terms
+│   ├── products.index.npz    # ❌ gitignore — generiše embed_products.py
+│   └── products.meta.json    # ❌ gitignore — generiše embed_products.py
+├── var/                   # ❌ gitignore — bitlab.db i runtime
+├── tests/                 # pytest, 19 testova
+├── PRODUCTION-PREP-PLAN.md  # Sesija 8 plan + DoD
+├── BITLAB-MVP-PLAN.md       # Originalni MVP plan (Sesije 0–7)
+├── HOSTING.md             # Detaljan VPS vodič (legacy reference)
+├── PLAN.md                # ⚠️ DEPRECATED (Node.js verzija iz aprila)
+├── .env / .env.example
+└── pyproject.toml
 ```
 
 ---
 
 ## Preduslovi
 
-| Alat | Verzija | Provjera |
-|------|---------|----------|
-| Python | 3.11+ | `python3 --version` |
-| pip | bilo koja | `pip --version` |
+| Alat | Verzija | Zašto |
+|---|---|---|
+| Python | 3.11+ | FastAPI lifespan + async SQLAlchemy |
+| pip | bilo koja | install -e . |
+| Node.js + pnpm | 20+ | **samo za dashboard build** (nema Node u runtime-u) |
+| nginx + certbot | bilo koja | server-side deploy |
 
-Rad na **WSL2** (Windows) ili Linux/macOS terminalu.
+Rad na **WSL2** (Windows), Linux ili macOS.
 
 ---
 
@@ -85,125 +136,188 @@ Rad na **WSL2** (Windows) ili Linux/macOS terminalu.
 ### Kloniranje
 
 ```bash
-git clone https://github.com/tvoj-username/bitlab-ai-asistent.git
-cd bitlab-ai-asistent
+git clone https://github.com/laraveldevelopment816-netizen/BitLab-AI-Asistent.git
+cd BitLab-AI-Asistent
 ```
 
-### Virtuelno okruženje
+### Python venv
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-> **Windows (PowerShell — van WSL2):**
-> ```powershell
-> python -m venv .venv
-> .\.venv\Scripts\Activate.ps1
-> ```
-
-> **⚠️ WSL2 napomena (kritično za startup brzinu):** Ako je projekat na `/mnt/c/...`
-> (Windows filesystem mounted u WSL2), Python import preko 9p protokola je **5–10× sporiji**
-> nego na native Linux FS. Sentence-transformers ima ~180 .py fajlova → import može trajati
-> 50+ sekundi.
+> **⚠️ WSL2 napomena (kritično za startup brzinu):** ako je projekat na `/mnt/c/...`,
+> Python import preko 9p protokola je **5–10× sporiji** nego na native Linux FS.
+> sentence-transformers ima ~180 .py fajlova → import može trajati 50+ sekundi.
 >
-> **Rješenje:** Drži `.venv` izvan `/mnt/c`:
+> **Rješenje:** drži `.venv` izvan `/mnt/c`:
 > ```bash
 > python3 -m venv ~/.venvs/bitlab
 > source ~/.venvs/bitlab/bin/activate
-> # nastavi sa pip install -e . iz projekat foldera
 > ```
 > Kod (sa `/mnt/c`) može ostati gdje jeste — samo venv treba biti na ext4.
 
 ### Instalacija zavisnosti
 
 ```bash
-# Sve odjednom: torch CPU + projekat sa pinned deps
 pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu
 ```
 
 Šta dolazi:
-- **torch CPU** (~200MB) umjesto CUDA wheel-a (~1.2GB) — ne koristimo GPU.
-- **sentence-transformers <4** — bez `sparse_encoder` modula koji u v5.x dodaje ~30s import.
-- **faster-whisper, edge-tts** — voice mod (lazy-loaded, ne usporavaju startup).
+- **torch CPU** (~200MB) umjesto CUDA wheel-a (~1.2GB)
+- **sentence-transformers <4** — bez `sparse_encoder` modula (v5.x dodaje ~30s import)
+- **anthropic, faster-whisper, edge-tts, httpx**
+- **sqlalchemy[asyncio] + aiosqlite** — dashboard storage (Sesija 8)
 
-Provjera:
 ```bash
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"  # False ✓
 ```
 
-> Opcionalno za pull iz MySQL baze: `pip install -e ".[mysql]"`
+> Opciono za pull iz MySQL baze: `pip install -e ".[mysql]"`
+
+### Node + pnpm (za dashboard)
+
+```bash
+# Ubuntu/WSL2
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+sudo apt-get install -y nodejs
+sudo npm i -g pnpm
+```
 
 ---
 
-## 2. API ključevi
-
-Kopiraj `.env.example` u `.env`:
+## 2. API ključevi i .env
 
 ```bash
 cp .env.example .env
 ```
 
-Otvori `.env` i popuni:
-
 ```env
-# Obavezno — Anthropic (Claude)
-# Dobiti na: console.anthropic.com → API Keys
+# ── Anthropic (OBAVEZNO) ─────────────────────────────────────
+# console.anthropic.com → API Keys
 ANTHROPIC_API_KEY=sk-ant-api03-...
 
-# Opciono — ElevenLabs (Voice mod)
-# Dobiti na: elevenlabs.io → My Account → API Keys
-ELEVENLABS_API_KEY=sk_...
-# Voice Library → Add to My Voices → Copy ID
-# Preporučeni glas: Lara (Croatian/BCS, mlađi ženski)
-ELEVENLABS_VOICE_ID=...
+# Default modeli (override opciono):
+# CHAT_MODEL=claude-haiku-4-5-20251001     # chat + voice — brz, jeftin
+# EMAIL_MODEL=claude-sonnet-4-6            # email + compare drugi pole
 
-# Opciono — IMAP/SMTP (rezerva za n8n, vidi Sekciju 6)
+# ── TTS / STT ─────────────────────────────────────────────────
+# Azure Speech: portal.azure.com → "Speech Services" (Free F0 tier).
+# Pokriva i TTS i STT istim ključem. Najbolji kvalitet za bs/hr/sr.
+AZURE_SPEECH_KEY=
+AZURE_SPEECH_REGION=westeurope
+AZURE_STT_LANGUAGE=hr-HR
+TTS_VOICE=hr-HR-GabrijelaNeural
+
+# Groq Whisper STT (opciono fallback, besplatno 7200s/dan)
+# console.groq.com → API Keys → Create
+GROQ_API_KEY=
+
+# ── Dashboard / logging (Sesija 8, OBAVEZNO za /admin/) ──────
+# Generiši: python -c "import secrets; print(secrets.token_urlsafe(32))"
+DASHBOARD_API_KEY=
+
+# ── IMAP/SMTP (rezerva ako n8n cloud zataji) ─────────────────
 IMAP_HOST=imap.gmail.com
-IMAP_USER=email@bitlab.rs
-IMAP_PASSWORD=app-password-ovdje
+IMAP_USER=
+IMAP_PASSWORD=
 SMTP_HOST=smtp.gmail.com
-SMTP_USER=email@bitlab.rs
-SMTP_PASSWORD=app-password-ovdje
+SMTP_USER=
+SMTP_PASSWORD=
+
+# ── Webshop ──────────────────────────────────────────────────
+WEBSHOP_BASE_URL=https://webshop.bitlab.rs
 ```
 
 > **Format:** koristi `=`, ne `:`. Bez navodnika oko vrijednosti.
 
 ---
 
-## 3. Generisanje vektorske baze (jednokratno)
+## 3. Vektorska baza i kategorije (jednokratno)
 
-Ova skripta čita `data/all-products.json`, generiše embeddings lokalno (bez API troška) i upisuje `data/products.index.npz` i `data/products.meta.json`.
+### 3.1 Embeddings za 5.278 proizvoda
 
 ```bash
 python scripts/embed_products.py
 ```
 
-**Trajanje:** 3–5 minuta (prvi put skida ~120MB model; naredni puta ~1–2 min).  
-**Provjera:** na kraju ispiše:
+Trajanje: 3–5 min (prvi put skida ~120MB MiniLM-L12-v2 model). Output:
 
 ```
-✓ Sačuvano: data/products.index.npz (7.2 MB)
-✓ Sačuvano: data/products.meta.json (4.5 MB)
-
-Gotovo. Sad možeš pokrenuti uvicorn:
-    uvicorn app.main:app --reload
+✓ Sačuvano: data/products.index.npz   (~7.2 MB)
+✓ Sačuvano: data/products.meta.json   (~4.5 MB)
 ```
 
-> **Napomena:** Oba `.npz` i `.meta.json` fajla su u `.gitignore`. Svaki developer pokrene skriptu jednom lokalno.
+> Oba fajla su u `.gitignore` — svaki dev ih generiše lokalno.
 
-### Smart matching: `data/category_terms.json`
+### 3.2 Kategorije (Sesija 8 — AI klasifikacija)
 
-Mapiranje kategorija → terminima koji nisu u imenima proizvoda te kategorije. Koristi se u dva sloja:
+```bash
+python scripts/build_categories.py
+```
 
-1. **Build-time** (`embed_products.py`): prefix se ponavlja 3× u `search_text` polju → embedding razumije "laptop" iako su u imenu samo brendovi (Acer Nitro, Lenovo IdeaPad).
-2. **Search-time** (`app/rag.py`): kratki upiti (npr. "laptop", "tv 50") boost-uju proizvode iz match-ed kategorije za +0.25 — sprečava da accessory-i (torbe za laptop, postolja) preuzmu top rezultate.
+Output:
 
-**Kad dodati novu kategoriju:** ako korisnici traže tip proizvoda po generičkoj riječi koja nije u imenima, dopuni `category_terms.json` i pokreni rebuild. Skripta `scripts/embed_products.py` ima ugrađen detektor — proizvodi u kategorijama gdje prva riječ imena nije konzistentna su kandidati za prefix.
+```
+✅ data/categories.json — top 30 kategorija
+   Pokrivenost: 4,304 / 5,278 (81.5%)
+```
+
+### 3.3 Inicijalizacija dashboard DB
+
+```bash
+python scripts/init_db.py
+```
+
+Idempotentno — kreira `var/bitlab.db` sa tabelama `requests` i `tool_calls`.
+
+### 3.4 Smart matching: tri sloja klasifikacije
+
+Korisnici nisu uvijek precizni ("trebam nešto za kucanje", "imate li laptopov", "treba mi disk za laptop"). Sistem rješava namjeru u tri komplementarna sloja:
+
+#### Sloj 1 — AI klasifikacija namjere (primarno, Sesija 8) ⭐
+
+`data/categories.json` sadrži **top 30 kategorija** sa human-readable labelama, koje pokrivaju 81.5% kataloga:
+
+```json
+{
+  "98":  {"label": "Laptopi i notebook računari", "count": 50, "examples": [...]},
+  "220": {"label": "Tastature", "count": 99, ...},
+  "277": {"label": "Miševi", "count": 535, ...},
+  "394": {"label": "Maske, futrole i zaštitna stakla za telefone", ...}
+}
+```
+
+Kategorije se utiskuju u `search_products` tool description **i** kao `enum` na `category_id` parametru. Claude vidi listu pri svakom pozivu i sam klasifikuje upit u jedan ID — **single-call** flow:
+
+```
+korisnik: "trebam nešto za kucanje"
+  ↓
+Claude (jedan API poziv) → search_products(query="tastatura", category_id="220")
+  ↓
+rag.search() → hard filter na 99 tastatura, hibridni rang unutar kategorije
+```
+
+Eval: **94.4%** top-1 accuracy na 36 realnih upita (`evals/run_categories.py`).
+
+**Regenerisanje:** `python scripts/build_categories.py` čita `products.meta.json` i regeneriše `data/categories.json`. Manuelni labeli su u `LABELS` dict-u u skripti — tu dopuni nove kategorije ako se pojave u top 30. Auto-fallback heuristika (najčešći leading bigram/monogram) pokriva nepoznate.
+
+#### Sloj 2 — Build-time prefix (`data/category_terms.json`)
+
+Mapiranje kategorija → terminima koji nisu u imenima proizvoda te kategorije. U `embed_products.py` se prefix ponavlja 3× u `search_text` polju → embedding razumije "laptop" iako su u imenu samo brendovi (Acer Nitro, Lenovo IdeaPad). Ovo pomaže semantičkom retrieval-u **unutar** odabrane kategorije.
+
+#### Sloj 3 — Search-time soft boost (fallback)
+
+Ako Claude **ne pošalje** `category_id` (npr. brand+model upit "Patriot SSD 240GB"), `rag.py` i dalje pokušava intent detekciju iz `category_terms.json` i daje +0.25 boost match-ed proizvodima — sprečava accessory šum kad AI nije bio siguran. Kad je `category_id` zadat, hard filter ima prednost i soft boost se preskače.
+
+**Kad dodati novu kategoriju u top 30:** dopuni `LABELS` dict u `scripts/build_categories.py`, pokreni skriptu, dodaj 1–2 reprezentativna upita u `evals/category_eval.json`, ponovo `python evals/run_categories.py`.
 
 ---
 
-## 4. Pokretanje servera
+## 4. Pokretanje (lokalno dev)
+
+### Backend
 
 ```bash
 uvicorn app.main:app --reload
@@ -211,22 +325,11 @@ uvicorn app.main:app --reload
 
 Server sluša na `http://localhost:8000`.
 
-**Startup log (očekivano):**
-
-```
-INFO:     Waiting for application startup.
-Loading weights: 100%|████████████| 199/199 [...]
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-```
-
-### Provjera zdravlja
+**Provjera zdravlja:**
 
 ```bash
 curl http://localhost:8000/healthz
 ```
-
-Očekivani odgovor:
 
 ```json
 {
@@ -240,56 +343,49 @@ Očekivani odgovor:
 }
 ```
 
-### Swagger UI (interaktivni API docs)
+Swagger UI: `http://localhost:8000/docs`
 
-Otvori u browseru: `http://localhost:8000/docs`
+### Dashboard (drugi terminal)
+
+```bash
+cd dashboard
+pnpm install
+pnpm dev    # Vite na :5173 sa proxy /api/* → :8000
+```
+
+Otvori `http://localhost:5173/admin/`, idi na **Settings**, paste-uj `DASHBOARD_API_KEY` iz `.env`, save → svi tabovi rade.
 
 ---
 
-## 5. Demo — tri kanala
+## 5. Demo — četiri kanala + dashboard
 
-### Chat widget
+### 5.1 Chat widget
 
-Otvori u browseru: `http://localhost:8000`  
-(ili direktno: `http://localhost:8000/public/widget.html`)
+`http://localhost:8000` (ili direktno `http://localhost:8000/public/widget.html`)
 
-Jednolinijska integracija na bilo koji sajt:
-
+Embed na bilo koji sajt:
 ```html
-<!-- Zalijepiti pred </body> tag -->
-<script src="http://localhost:8000/public/widget.js"></script>
+<script src="https://ai.bitlab.rs/public/widget.js"></script>
 ```
 
-Za produkciju zamijeni `localhost` sa domenом (npr. `ai.bitlab.rs`).
-
-### Voice mod
+### 5.2 Voice mod
 
 Otvori u **Chrome ili Edge** (Firefox ne podržava Web Speech API):
-
 ```
 http://localhost:8000/public/voice.html
 ```
 
-Klikni mikrofon → govori → AI odgovara glasom (Lara, BCS).  
-TTS radi samo ako je `ELEVENLABS_API_KEY` i `ELEVENLABS_VOICE_ID` postavljen u `.env`.
+UX (Sesija 8): kompaktan header (orb + state + wave inline, ~25% panela), body sa product cards (~75%) — auto-scroll, isti markdown renderer kao chat. Mobilni breakpoint preserved.
 
-### Chat API (ručni test)
+### 5.3 Chat API (curl)
 
 ```bash
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "Imate li SSD 1TB do 400 KM?", "channel": "chat"}'
+  -d '{"message": "Imate li gaming mis", "channel": "chat"}'
 ```
 
-**PowerShell:**
-
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8000/api/chat" `
-  -Method POST -ContentType "application/json" `
-  -Body '{"message": "Imate li SSD 1TB do 400 KM?", "channel": "chat"}'
-```
-
-### Email API (ručni test)
+### 5.4 Email API (curl, n8n format)
 
 ```bash
 curl -X POST http://localhost:8000/api/email \
@@ -297,346 +393,226 @@ curl -X POST http://localhost:8000/api/email \
   -d '{
     "sender": "kupac@example.com",
     "subject": "Upit za SSD diskove",
-    "body": "Pozdrav, zanima me imate li SSD 1TB u ponudi i kolika je dostava?"
+    "body": "Pozdrav, zanima me imate li SSD 1TB i koja je dostava?"
   }'
+```
+
+### 5.5 Dashboard /admin/
+
+Otvori `http://localhost:5173/admin/` (dev) ili `https://<domain>/admin/` (prod):
+
+- **Live** — polling 5s, fresh-row highlight, pause/resume; klik na red → RequestDetail
+- **History** — paginated, filteri po channel/status
+- **Compare** — paste upit → fan-out kroz haiku + sonnet paralelno → side-by-side rezultati sa latency, tokens, cost, tool call summary
+- **RequestDetail** — top metrike, prompt, **timeline svakog tool call-a** (expand/collapse: input JSON, output text, latency badge), final response
+- **Stats** — total + by-adapter (channel × model) breakdown
+- **Settings** — input za API key + env diagnostika
+
+### 5.6 Compare API (curl)
+
+```bash
+curl -X POST http://localhost:8000/api/dashboard/compare \
+  -H "Authorization: Bearer $DASHBOARD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "imate li tastaturu", "channel": "chat", "models": ["haiku", "sonnet"]}'
 ```
 
 ---
 
-## 6. Smoke test
-
-Provjera da sva 4 osnovna upita rade end-to-end (server mora biti pokrenut):
+## 6. Smoke test + eval
 
 ```bash
+# Pokreni server u jednom terminalu, pa:
+
+# 4 standardna upita end-to-end
 python scripts/smoke_test.py
+
+# Pytest unit + integration (19 testova)
+python -m pytest tests/ -q
+
+# AI klasifikacija eval (36 upita, target ≥80%)
+python evals/run_categories.py
 ```
 
-Očekivani output:
-
-```
-BitLab smoke test → http://localhost:8000/api/chat
-──────────────────────────────────────────────────
-✓ [Pretraga proizvoda — SSD]
-  alati: ['search_products']
-  reply: Pronašao sam nekoliko SSD opcija...
-
-✓ [FAQ — dostava]
-  alati: ['get_faq']
-  reply: Dostava unutar BiH...
-
-✓ [B2B eskalacija]
-  alati: ['escalate_to_human']
-  reply: Naš prodajni tim će vam se javiti...
-
-✓ [Voice kanal — gaming monitor]
-  alati: ['search_products']
-  reply: Imamo nekoliko gaming monitora...
-
-──────────────────────────────────────────────────
-Rezultat: 4/4
-```
+Trenutni baseline: **94.4%** (34/36) na threshold 80%.
 
 ---
 
 ## 7. n8n Email Auto-Reply
 
-n8n radi **lokalno** na istoj mašini kao i FastAPI server — `/api/email` nije izložen javnom internetu.
+n8n radi **lokalno** na istoj mašini kao FastAPI — `/api/email` nije izložen javnom internetu.
 
 ```
 ┌─────────────────────────────────────────────────┐
 │  Tvoja mašina (laptop / VPS)                    │
-│                                                 │
 │  n8n (localhost:5678) ──► localhost:8000        │
 │  Gmail trigger           (FastAPI /api/email)   │
 └─────────────────────────────────────────────────┘
 ```
 
-### Opcija A: n8n Desktop (najlakše za lokalni demo)
+### Opcija A — n8n Desktop (lokalni demo)
 
-1. Preuzmi i instaliraj sa [n8n.io/download](https://n8n.io/download).
-2. Pokreni aplikaciju → otvori `http://localhost:5678`.
-3. **New Workflow → Import from JSON** → učitaj `n8n/email-autoreply.json`.
-4. U **HTTP: Pitaj AI Asistenta** nodu promijeni URL na:
-   ```
-   http://localhost:8000/api/email
-   ```
-5. **Credentials → New → Gmail OAuth2** → klikni `Sign in with Google`.
-6. **Activate** workflow (toggle gornji desni ugao).
-7. Test: pošalji email sa subject `Upit za SSD` — za ~60s stiže AI reply.
+1. [n8n.io/download](https://n8n.io/download) → instaliraj
+2. Pokreni → otvori `http://localhost:5678`
+3. **New Workflow → Import from JSON** → `n8n/email-autoreply.json`
+4. U **HTTP: Pitaj AI Asistenta** nodu URL: `http://localhost:8000/api/email`
+5. **Credentials → New → Gmail OAuth2** → Sign in with Google
+6. **Activate** workflow
 
-### Opcija B: n8n Docker (preporučeno za VPS / produkciju)
+### Opcija B — n8n Docker (VPS / produkcija)
 
 ```bash
-docker run -d \
-  --name n8n \
-  --restart always \
-  -p 5678:5678 \
-  -v n8n_data:/home/node/.n8n \
+docker run -d --name n8n --restart always \
+  -p 5678:5678 -v n8n_data:/home/node/.n8n \
   n8nio/n8n
 ```
 
-Otvori `http://localhost:5678` → **New Workflow → Import from JSON** → `n8n/email-autoreply.json`.
+URL u HTTP nodu: `http://host.docker.internal:8000/api/email` (za Docker), inače `localhost`.
 
-URL u HTTP Request nodu je već postavljen na `http://host.docker.internal:8000/api/email` — to je hostname koji Docker kontejner koristi za pristup hostu. **Ne mijenjaj** osim ako koristiš docker network mode=host (tada postavi `localhost`).
-
-**Credentials → New → Gmail OAuth2** → `Sign in with Google` → **Activate** workflow.
-
-### Fallback — IMAP poller (bez n8n)
-
-Ako n8n nije dostupan, lokalni poller radi isti posao:
+### Fallback — IMAP poller
 
 ```bash
-python -m app.email_poller
+python -m app.email_poller   # polluje INBOX svakih 60s
 ```
-
-Polluje INBOX svakih 60 sekundi. Zahtijeva popunjen `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD` u `.env`.
 
 ---
 
-## 8. Troškovi
+## 8. Troškovi (procena za 1.000 chat upita / mjesec)
 
-| Servis | Plan | Cijena | Za ~1.000 upita/mj |
-|--------|------|--------|---------------------|
-| Claude Haiku 4.5 (chat/voice) | Pay-as-you-go | $0.80/1M input tokena | ~$1.20 |
-| Claude Sonnet 4.6 (email) | Pay-as-you-go | $3/1M input tokena | ~$0.60 |
-| ElevenLabs (TTS) | Free tier | $0 | 10.000 znakova/mj |
-| Sentence-transformers (embeddings) | Lokalno | $0 | $0 uvijek |
+| Servis | Plan | Cijena | Procena |
+|---|---|---|---|
+| Claude Haiku 4.5 (chat/voice/compare) | Pay-as-you-go | $1/$5 per 1M | ~$1.50 |
+| Claude Sonnet 4.6 (email/compare drugi) | Pay-as-you-go | $3/$15 per 1M | ~$0.60 |
+| Azure Speech (TTS + STT) | Free tier | $0 | 500K znakova/mj TTS + 5h STT |
+| Groq Whisper (fallback STT) | Free tier | $0 | 7.200s/dan |
+| Sentence-transformers + faster-whisper | Lokalno | $0 | $0 uvijek |
 | n8n (lokalni Docker) | Self-hosted | $0 | bez limita |
-| **Ukupno** | | | **~$2–5/mj** |
+| VPS (Ubuntu, 2 vCPU / 2 GB RAM) | npr. Hetzner CX22 | ~€4 | fixna |
+| **Ukupno** | | | **~€6–9/mj** |
+
+Stvarni troškovi po requestu su vidljivi u **Stats** tab-u dashboard-a (cumulative + by-adapter).
 
 ---
 
 ## 9. Česti problemi
 
-**Server ne startuje — `products.index.npz` ne postoji**
-
-```bash
-python scripts/embed_products.py
-```
-
-**`anthropic.AuthenticationError: invalid x-api-key`**  
-Provjeri `.env` — format mora biti `ANTHROPIC_API_KEY=sk-ant-...` (sa `=`, ne `:`).
-
-**`Your credit balance is too low`**  
-Dodaj kredite na [console.anthropic.com](https://console.anthropic.com) → Plans & Billing.
-
-**TTS ne radi — `503 ElevenLabs nije konfigurisan`**  
-Postavi `ELEVENLABS_API_KEY` i `ELEVENLABS_VOICE_ID` u `.env`, pa restartuj server.
-
-**Voice HTML ne radi**  
-Web Speech API podržavaju samo Chrome i Edge. Firefox nije podržan.
-
-**`ModuleNotFoundError`**  
-Virtuelno okruženje nije aktivirano:
-```bash
-source .venv/bin/activate   # Linux/WSL2
-.\.venv\Scripts\Activate.ps1  # Windows PowerShell
-```
-
-**Port 8000 zauzet**
-
-```bash
-# WSL2/Linux
-fuser -k 8000/tcp
-# Windows PowerShell
-netstat -ano | findstr :8000
-# pronađi PID, pa:
-taskkill /F /PID <broj>
-```
-
----
-
-## 9.5 Logging dashboard (Sesija 8)
-
-Zasebna React + Vite + TS aplikacija u `dashboard/` direktorijumu — prikazuje
-**fine-grained AI workflow** umjesto black-box logova. Svaki request,
-svaki tool call (sa `input_json`, `output_text`, latency po koraku),
-ukupne tokene, cost, by-channel × by-model breakdown.
-
-**Stranice (6):**
-- **Live** — real-time stream sa polling-om 5s, fresh-row highlight
-- **History** — paginated, filteri po channel/status
-- **Compare** — fan-out istog upita kroz haiku + sonnet paralelno (`POST
-  /api/dashboard/compare`), side-by-side rezultati sa metrikama
-- **RequestDetail** — timeline svakog tool call-a u agent loop-u
-- **Stats** — top-line + by-adapter (channel × model) tabela
-- **Settings** — input za `DASHBOARD_API_KEY`
-
-**Backend:** `app/server/dashboard.py` pod `/api/dashboard/` sa Bearer auth.
-Storage: SQLite + SQLAlchemy async (`var/bitlab.db`), tabele `requests`
-i `tool_calls`. Tracker u `agent.py` snima svaki run agent loop-a.
-
-**Lokalno pokretanje:**
-```bash
-# Generiši DASHBOARD_API_KEY i dodaj u .env
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-
-# Init DB schema
-python scripts/init_db.py
-
-# Start FastAPI (port 8000)
-uvicorn app.main:app --reload
-
-# U drugom terminalu — start Vite dev server (port 5173 sa proxy na 8000)
-cd dashboard && pnpm install && pnpm dev
-```
-
-Otvori `http://localhost:5173/admin/`, idi na Settings, paste-uj
-`DASHBOARD_API_KEY`, save → svi tabovi rade.
-
-**Production build:** `cd dashboard && pnpm build` → `dashboard/dist/`
-(statički, servira nginx). Detalji u `deploy/README.md`.
+| Problem | Rješenje |
+|---|---|
+| Server ne starta — `products.index.npz` nedostaje | `python scripts/embed_products.py` |
+| `anthropic.AuthenticationError: invalid x-api-key` | `.env` format mora biti `KEY=value` (sa `=`, bez navodnika) |
+| `Your credit balance is too low` | [console.anthropic.com](https://console.anthropic.com) → Plans & Billing |
+| TTS ne radi — `503` | Postavi `AZURE_SPEECH_KEY` u `.env` ili koristi edge-tts fallback (default radi bez ključa) |
+| Voice HTML — mikrofon ne radi | Web Speech API podržavaju samo Chrome i Edge |
+| `ModuleNotFoundError` | Aktiviraj venv: `source .venv/bin/activate` |
+| Port 8000 zauzet | `fuser -k 8000/tcp` (Linux) ili `netstat -ano \| findstr :8000` (Windows) |
+| `/admin/*` vraća 401 | Unesi `DASHBOARD_API_KEY` u Settings tab → save → reload |
+| Dashboard build pada | Provjeri Node 20+ i pnpm; obriši `node_modules/` + `pnpm-lock.yaml` i `pnpm install` |
+| Prvi chat poziv vraća error | sentence-transformers preload na WSL2 traje 30–50s; sledeći ide normalno |
 
 ---
 
 ## 10. Deployment na server (VPS)
 
-> **Server-side install:** umjesto SSH iz lokalne, deploy radi Claude Code
-> instanca instalirana NA samom serveru sa direktnim shell pristupom.
-> Vidi **`deploy/README.md`** za kompletan checklist (uključuje TAČKA 0 —
-> server već hostuje 4 druge aplikacije, treba se prilagoditi njihovim
-> konvencijama prije install-a).
->
-> Brzi update flow: `sudo bash scripts/deploy.sh update`.
->
-> Stari vodič: `HOSTING.md` (i dalje koristan za nginx + certbot detalje).
+> **Server-side install pristup** (Sesija 8): umjesto SSH iz lokalne sesije,
+> deploy radi Claude Code instanca **instalirana NA samom serveru** sa
+> direktnim shell pristupom. Razlog: efikasnije za buduće mikro-servise
+> (n8n migracija, monitoring, dodatni adapteri) bez piping-a kroz lokalni env.
 
-**Preduslovi:** Ubuntu 22.04+, Python 3.11+, 1 GB RAM, domena usmjerena na VPS IP.
+### ⚠️ TAČKA 0 — Server hostuje 4 druge aplikacije
 
-### Korak 1 — Kloniranje i okruženje
+Naš deploy se prilagođava postojećim konvencijama (layout, service user-i,
+portovi, nginx struktura, SSL, logging) — NE obrnuto. Server-side Claude
+MORA prvo dobiti pravila od Ivana, pa tek onda izvršiti install.
 
-```bash
-ssh user@YOUR-VPS-IP
+Default-i u artefaktima koji vjerovatno trebaju promjenu:
+- `PROJECT_DIR=/opt/bitlab-ai`
+- `SERVICE_USER=bitlab`
+- Port `127.0.0.1:8000`
+- `DASHBOARD_DIST_TARGET=/var/www/bitlab-admin/`
+- nginx site u `/etc/nginx/sites-available/bitlab-ai`
 
-cd /opt
-sudo git clone https://github.com/tvoj-username/bitlab-ai-asistent.git
-sudo chown -R $USER:$USER /opt/bitlab-ai-asistent
-cd /opt/bitlab-ai-asistent
+Detaljan checklist: **`deploy/README.md`** (Sekcija 0 do 3).
 
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu
-```
-
-### Korak 2 — Konfiguracija
+### Brzi update flow (kad je install završen)
 
 ```bash
-cp .env.example .env
-nano .env   # popuni ANTHROPIC_API_KEY, ELEVENLABS_*, IMAP/SMTP, ALLOWED_ORIGINS
+ssh server
+cd /opt/bitlab-ai
+sudo bash scripts/deploy.sh update
 ```
 
-### Korak 3 — Generisanje indeksa
+Komanda radi: `git pull` → reinstall deps → regenerate `categories.json` →
+init DB (idempotentno) → rebuild dashboard → publish u nginx folder →
+restart `bitlab-ai.service` → smoke test.
 
-```bash
-# Kopiraj data/all-products.json na server, pa:
-python scripts/embed_products.py
-ls -lh data/products.index.npz data/products.meta.json  # provjera
-```
+Ostale komande:
+- `sudo bash scripts/deploy.sh install` — prvi install (kreira venv, systemd, nginx)
+- `sudo bash scripts/deploy.sh rebuild` — samo dashboard rebuild + publish
+- `sudo bash scripts/deploy.sh restart` — samo systemctl restart
 
-### Korak 4 — Systemd servis
+### Artefakti
 
-```bash
-sudo nano /etc/systemd/system/bitlab-ai.service
-```
+| Fajl | Šta sadrži |
+|---|---|
+| `scripts/deploy.sh` | Bash one-shot sa install/update/rebuild/restart komandama |
+| `deploy/bitlab-ai.service` | systemd unit (User=bitlab, venv ExecStart, ProtectSystem=strict, MemoryMax=900M) |
+| `deploy/nginx-site.conf` | Full nginx site (HTTP→HTTPS, SSL, /admin/ alias, /api/ proxy, gzip, body limit 30M za STT) |
+| `deploy/README.md` | Server-side checklist, troubleshooting, rollback |
 
-```ini
-[Unit]
-Description=BitLab AI Asistent
-After=network.target
+### Widget integracija na webshop
 
-[Service]
-Type=simple
-User=YOUR_USERNAME
-WorkingDirectory=/opt/bitlab-ai-asistent
-EnvironmentFile=/opt/bitlab-ai-asistent/.env
-ExecStart=/opt/bitlab-ai-asistent/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo sed -i "s/YOUR_USERNAME/$(whoami)/g" /etc/systemd/system/bitlab-ai.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now bitlab-ai
-curl http://127.0.0.1:8000/healthz   # provjera
-```
-
-### Korak 5 — Nginx + SSL
-
-```bash
-sudo apt install nginx certbot python3-certbot-nginx -y
-
-# Konfiguracija (zamijeni ai.bitlab.rs)
-sudo tee /etc/nginx/sites-available/bitlab-ai <<'EOF'
-server {
-    listen 80;
-    server_name ai.bitlab.rs;
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 120s;
-    }
-}
-EOF
-
-sudo ln -s /etc/nginx/sites-available/bitlab-ai /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
-
-# SSL — DNS mora biti aktivan (sačekaj 5-30 min propagaciju)
-sudo certbot --nginx -d ai.bitlab.rs
-curl https://ai.bitlab.rs/healthz   # provjera
-```
-
-### Korak 6 — n8n (email auto-reply)
-
-**Docker (preporučeno):**
-
-```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER && newgrp docker
-
-docker run -d \
-  --name n8n \
-  --restart always \
-  -p 5678:5678 \
-  -v n8n_data:/home/node/.n8n \
-  n8nio/n8n
-```
-
-Otvori `http://YOUR-VPS-IP:5678` → **New Workflow → Import from JSON** → `n8n/email-autoreply.json`.
-
-URL u HTTP Request nodu postavi na:
-```
-http://127.0.0.1:8000/api/email
-```
-
-**Credentials → Gmail OAuth2 → Sign in with Google → Activate workflow.**
-
-> Firewall: `sudo ufw allow from YOUR-OFFICE-IP to any port 5678` — n8n UI ne treba biti javno dostupan.
-
-### Korak 7 — Widget na webshop
+Posle uspješnog deploy-a, na `webshop.bitlab.rs` dodati pred `</body>`:
 
 ```html
-<!-- Dodati pred </body> na webshop sajtu -->
 <script src="https://ai.bitlab.rs/public/widget.js"></script>
 ```
 
-### Korak 8 — Auto-osvježavanje kataloga (cron, noću)
-
-```bash
-sudo crontab -e
-# Dodaj:
-0 3 * * * /opt/bitlab-ai-asistent/scripts/refresh_index.sh >> /var/log/bitlab-refresh.log 2>&1
-```
+Stari `HOSTING.md` (manuelni VPS vodič) ostaje u repo-u kao reference za nginx
++ certbot detalje.
 
 ---
 
-## 11. Kontakt
+## 11. Razvoj (kako doprinositi)
+
+### Grane i sesije
+
+| Grana | Status | Šta sadrži |
+|---|---|---|
+| `main` | stabilno | MVP do Sesije 7 (chat + voice + email + n8n + security review) |
+| `production-prep` | u review | Sesija 8: kategorije + dashboard + voice UX + deploy |
+
+Plan po sesijama: **`PRODUCTION-PREP-PLAN.md`** (Sesija 8) i **`BITLAB-MVP-PLAN.md`** (Sesije 0–7).
+
+### Workflow
+
+1. Branch sa `main`, ime u formatu `<sesija>-<short-name>` (npr. `9-monitoring`)
+2. Plan dokument na vrhu repo-a sa: model preporuka (Opus high / Sonnet medium), DoD, stop-loss
+3. Eval set ako diraš retrieval ili klasifikaciju (`evals/`)
+4. Pytest mora biti zelen prije PR-a
+5. PR opis ima Test plan sekciju i listu DoD ✅
+
+### Testovi
+
+```bash
+python -m pytest tests/ -q              # 19 testova, ~50s na WSL2
+python evals/run_categories.py          # 36 upita, 94.4% baseline
+python scripts/smoke_test.py            # 4 chat upita end-to-end (server mora raditi)
+cd dashboard && pnpm build              # TS check + Vite build (~1s)
+bash -n scripts/deploy.sh               # bash sintaksa
+```
+
+### Modeli — kad koristiti šta
+
+| Zadatak | Model | Razlog |
+|---|---|---|
+| Arhitekturne odluke (schema, abstraction layers) | **Opus 4.7 high** | Skupo se ispravlja kasnije |
+| Port iz drugog repo-a (poznat materijal) | **Opus 4.7 high** | Jedan precizan pass < više iteracija |
+| Polish, deploy, smoke, dokumentacija | **Sonnet 4.6 medium** | Obim posla, manje tokena |
+| Trivijalne izmjene (typo, bump verzije) | **Sonnet 4.6 low** | — |
+
+---
+
+## 12. Kontakt
 
 **BitLab d.o.o.** · Jevrejska 37, 78000 Banja Luka  
 prodaja@bitlab.rs · 066 516 174 · webshop.bitlab.rs  
