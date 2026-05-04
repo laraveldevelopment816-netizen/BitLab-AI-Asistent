@@ -7,11 +7,11 @@ Sledeći korak: automatizacija kroz `scripts/deploy.sh` + CI git runner.
 # Release folder + clone
 RELEASE=$(date +%Y%m%d_%H%M)
 
-mkdir -p /home/ai/aiasistent-staging/releases/$RELEASE
+mkdir -p /home/ai/aiasistent-prod/releases/$RELEASE
 
-git clone -b production-prep git@github.com:laraveldevelopment816-netizen/BitLab-AI-Asistent.git /home/ai/aiasistent-staging/releases/$RELEASE
+git clone -b production-prep git@github.com:laraveldevelopment816-netizen/BitLab-AI-Asistent.git /home/ai/aiasistent-prod/releases/$RELEASE
 
-cd /home/ai/aiasistent-staging/releases/$RELEASE
+cd /home/ai/aiasistent-prod/releases/$RELEASE
 
 # Python venv + deps (CPU torch obavezan)
 python3 -m venv .venv
@@ -21,9 +21,9 @@ source .venv/bin/activate
 pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Symlinks na shared resources (preživljavaju releaseve)
-ln -sfn /home/ai/aiasistent-staging/shared/.env .env
+ln -sfn /home/ai/aiasistent-prod/shared/.env .env
 
-ln -sfn /home/ai/aiasistent-staging/shared/var var
+ln -sfn /home/ai/aiasistent-prod/shared/var var
 
 # Index — SAMO prvi put (~5min CPU, ~5GB temp diska); preskoči ako postoji
 python scripts/embed_products.py
@@ -50,11 +50,11 @@ pnpm build
 cd ..
 
 # Atomic switch
-ln -sfn /home/ai/aiasistent-staging/releases/$RELEASE /home/ai/aiasistent-staging/current
+ln -sfn /home/ai/aiasistent-prod/releases/$RELEASE /home/ai/aiasistent-prod/current
 
 # Restart
-sudo systemctl restart aiasistent-staging
+sudo systemctl restart aiasistent-prod
 ```
 
 Prvi put: kopiraj `deploy/bitlab-ai.service` i `deploy/nginx-site.conf`, popuni `shared/.env`, Node 22, certbot.
-Rollback: `ln -sfn` na stari release + `sudo systemctl restart aiasistent-staging`.
+Rollback: `ln -sfn` na stari release + `sudo systemctl restart aiasistent-prod`.
