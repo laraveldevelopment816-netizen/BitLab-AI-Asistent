@@ -29,7 +29,12 @@ class Settings(BaseSettings):
                 "Dodaj: ANTHROPIC_API_KEY=sk-ant-..."
             )
         return v
-    chat_model: str = "claude-haiku-4-5-20251001"
+    # Sesija 8 hotfix: Haiku ne sluša "ne pitaj pojašnjenje" pravilo
+    # za upite sa typoom (npr. "lapatovoe" → tražio pojašnjenje umjesto
+    # search-a, čak je u sledećoj iteraciji halucinirao "nema laptopa").
+    # Sonnet 4.6 robusno hvata namjeru i kroz typoove. Vidi
+    # tests/test_typo_robustness.py i evals/category_eval.json (typo cases).
+    chat_model: str = "claude-sonnet-4-6"
     email_model: str = "claude-sonnet-4-6"
     max_tool_iterations: int = 5
     max_output_tokens: int = 1024

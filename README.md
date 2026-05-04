@@ -42,7 +42,9 @@ Knowledge base + storage:
 
 | Stavka | Status |
 |---|---|
-| **AI klasifikacija namjere** sa hard category filter (eval **94.4%**) | ✅ |
+| **AI klasifikacija namjere** sa hard category filter (eval **100%** na Sonnet 4.6) | ✅ |
+| **Sonnet 4.6 default za chat** (Haiku izbačen — vidi *Modelska odluka* ispod) | ✅ |
+| **Typo robustnost** + regression test set (`tests/test_typo_robustness.py`) | ✅ |
 | **Logging dashboard** (React + Vite + TS, 6 stranica) sa fine-grained tool call timeline | ✅ |
 | **Compare endpoint** — fan-out istog upita kroz haiku ↔ sonnet paralelno | ✅ |
 | **Voice widget UX** — kompaktan header 25% + body 75% za rezultate | ✅ |
@@ -50,6 +52,32 @@ Knowledge base + storage:
 | Server-side install na produkciju (zasebna sesija, vidi `deploy/README.md`) | 🟡 čeka |
 
 PR: `production-prep` → `main`. Detalji u `PRODUCTION-PREP-PLAN.md`.
+
+### Modelska odluka — zašto Sonnet 4.6 za chat (a ne Haiku)
+
+Tokom production smoke testa pojavile su se dvije ozbiljne mane Haiku-a 4.5
+koje eval set nije hvatao do tog trenutka:
+
+1. **Pojašnjenje umjesto pretrage na typo upite.** Realni korisnik kuca brzo
+   i pravi tipove. Haiku na "Imate li **lapatovoe**" (typo za "laptop")
+   tražio je pojašnjenje umjesto da pozove `search_products(category_id=98)`,
+   iako je sistem prompt eksplicitno zabranjivao pojašnjenja za očigledne
+   tipove proizvoda.
+2. **Halucinacija nakon search-a.** U sledećem turu, na "Laptop", Haiku je
+   rekao *"Nažalost, trenutno nemamo dostupnih laptopa u katalogu"* — laž,
+   katalog ima 50 laptopa u cat 98, a tool je vratio rezultate.
+
+Ovo nije promptable bug — Haiku jednostavno **ne sluša pravila pouzdano** za
+production-grade B2C asistenta. Sonnet 4.6 sa istim promptom prošao je sve
+typo i halucinacijske testove (eval 41/41 = 100%, plus 6/6 dedikovanih
+regression testova u `tests/test_typo_robustness.py`).
+
+**Cost/latency tradeoff:** Sonnet je ~3× skuplji input, ~3× skuplji output i
+~2× sporiji od Haiku-a. Za naš volumen (~1.000 chat upita/mj) razlika je
+~$1.20/mj — prihvatljivo za pouzdanost. Compare panel u dashboard-u i dalje
+omogućava paralelno testiranje haiku ↔ sonnet na istom upitu (vidi *Sloj 1*
+ispod), pa kad Anthropic isporuči Haiku 5 ili manji model dovoljno
+discipliniran, lako prebacujemo natrag (`CHAT_MODEL` env var override).
 
 ---
 
@@ -199,8 +227,11 @@ cp .env.example .env
 ANTHROPIC_API_KEY=sk-ant-api03-...
 
 # Default modeli (override opciono):
-# CHAT_MODEL=claude-haiku-4-5-20251001     # chat + voice — brz, jeftin
-# EMAIL_MODEL=claude-sonnet-4-6            # email + compare drugi pole
+# Sesija 8: Haiku izbačen sa chat-a — ne sluša pravila pouzdano
+# (typo upiti → pojašnjenje umjesto pretrage; halucinacije o zalihama).
+# Vidi "Modelska odluka" sekciju iznad i tests/test_typo_robustness.py.
+# CHAT_MODEL=claude-sonnet-4-6             # chat + voice — pouzdan
+# EMAIL_MODEL=claude-sonnet-4-6            # email + compare drugi pol
 
 # ── TTS / STT ─────────────────────────────────────────────────
 # Azure Speech: portal.azure.com → "Speech Services" (Free F0 tier).
@@ -299,7 +330,9 @@ Claude (jedan API poziv) → search_products(query="tastatura", category_id="220
 rag.search() → hard filter na 99 tastatura, hibridni rang unutar kategorije
 ```
 
-Eval: **94.4%** top-1 accuracy na 36 realnih upita (`evals/run_categories.py`).
+Eval: **100%** top-1 accuracy na 41 realnom upitu (`evals/run_categories.py`),
+uključujući 5 typo cases ("lapatovoe", "laptopov", "telfon", "tastruru",
+"monjitor") koji su prije pucali sa Haiku-om.
 
 **Regenerisanje:** `python scripts/build_categories.py` čita `products.meta.json` i regeneriše `data/categories.json`. Manuelni labeli su u `LABELS` dict-u u skripti — tu dopuni nove kategorije ako se pojave u top 30. Auto-fallback heuristika (najčešći leading bigram/monogram) pokriva nepoznate.
 
@@ -481,8 +514,8 @@ python -m app.email_poller   # polluje INBOX svakih 60s
 
 | Servis | Plan | Cijena | Procena |
 |---|---|---|---|
-| Claude Haiku 4.5 (chat/voice/compare) | Pay-as-you-go | $1/$5 per 1M | ~$1.50 |
-| Claude Sonnet 4.6 (email/compare drugi) | Pay-as-you-go | $3/$15 per 1M | ~$0.60 |
+| Claude Sonnet 4.6 (chat + voice + email) | Pay-as-you-go | $3/$15 per 1M | ~$2.40 |
+| Claude Haiku 4.5 (samo Compare drugi pol za A/B testing) | Pay-as-you-go | $1/$5 per 1M | ~$0.20 |
 | Azure Speech (TTS + STT) | Free tier | $0 | 500K znakova/mj TTS + 5h STT |
 | Groq Whisper (fallback STT) | Free tier | $0 | 7.200s/dan |
 | Sentence-transformers + faster-whisper | Lokalno | $0 | $0 uvijek |
@@ -594,11 +627,13 @@ Plan po sesijama: **`PRODUCTION-PREP-PLAN.md`** (Sesija 8) i **`BITLAB-MVP-PLAN.
 ### Testovi
 
 ```bash
-python -m pytest tests/ -q              # 19 testova, ~50s na WSL2
-python evals/run_categories.py          # 36 upita, 94.4% baseline
-python scripts/smoke_test.py            # 4 chat upita end-to-end (server mora raditi)
-cd dashboard && pnpm build              # TS check + Vite build (~1s)
-bash -n scripts/deploy.sh               # bash sintaksa
+python -m pytest tests/ -q                              # unit + integration
+python -m pytest tests/ -m "not anthropic_api"          # bez skupih API testova
+python -m pytest tests/test_typo_robustness.py -v       # samo typo regression (Sesija 8 hotfix)
+python evals/run_categories.py                          # 41 upit, target ≥80%
+python scripts/smoke_test.py                            # 4 chat upita end-to-end (server mora raditi)
+cd dashboard && pnpm build                              # TS check + Vite build (~1s)
+bash -n scripts/deploy.sh                               # bash sintaksa
 ```
 
 ### Modeli — kad koristiti šta

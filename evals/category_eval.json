@@ -34,5 +34,10 @@
   {"query": "zastitno staklo za samsung a53", "expected_category_id": "394", "category_label": "Maske/stakla"},
   {"query": "stalak za monitor", "expected_category_id": "165", "category_label": "Nosači za monitor"},
   {"query": "tv 55 inca smart", "expected_category_id": "163", "category_label": "Televizori"},
-  {"query": "bluetooth zvucnik vodootporan", "expected_category_id": "279", "category_label": "Bluetooth zvučnici"}
+  {"query": "bluetooth zvucnik vodootporan", "expected_category_id": "279", "category_label": "Bluetooth zvučnici"},
+  {"query": "Imate li lapatovoe", "expected_category_id": "98", "category_label": "Laptopi (typo)"},
+  {"query": "trazim laptopov", "expected_category_id": "98", "category_label": "Laptopi (BCS plural)"},
+  {"query": "trebamo masku za telfon", "expected_category_id": "394", "category_label": "Maske (typo telefon)"},
+  {"query": "dajte mi tastruru", "expected_category_id": "220", "category_label": "Tastature (typo)"},
+  {"query": "imate li monjitor", "expected_category_id": "224", "category_label": "Monitori (typo)"}
 ]

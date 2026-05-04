@@ -54,3 +54,6 @@ target-version = "py311"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "anthropic_api: integration tests koji zovu pravi Anthropic API (skup, ~$0.02 po test)",
+]
