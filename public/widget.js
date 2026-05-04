@@ -893,6 +893,70 @@ html.bl-scroll-lock body {
       .trim();
   }
 
+  // Sklopi multi-line product card u single-line. Defensive parser jer
+  // Claude (Sonnet 4.6) povremeno razbije format propisan promptom.
+  // Pattern koji tražimo (sa praznim redovima ili bez):
+  //   ![](image_url)        ← optional
+  //   **Name**
+  //   929 KM                ← cijena bilo gdje, "X[.,]Y KM"
+  //   Na lageru / Dobavljivo ← optional
+  //   [Pogledaj](url)        ← optional
+  function collapseMultiLineProducts(src) {
+    const lines = src.split('\n');
+    const out = [];
+    let i = 0;
+    const RE_IMG  = /^\s*!\[[^\]]*\]\((https?:\/\/[^)]+)\)\s*$/;
+    const RE_BOLD = /^\s*\*\*([^*]+?)\*\*\s*$/;
+    const RE_PRICE = /^\s*([0-9][\d.,]*)\s*KM\s*$/i;
+    const RE_AVAIL = /^\s*(na\s+lager[a-z]*|dobavljiv[a-z]*|na\s+stanju|po\s+narud(?:ž|z)bi)\s*$/i;
+    const RE_LINK  = /^\s*\[([^\]]+)\]\((https?:\/\/[^)]+)\)\s*$/;
+
+    while (i < lines.length) {
+      // Skip leading blanks before potential block
+      let j = i;
+      while (j < lines.length && lines[j].trim() === '') j++;
+
+      // Try parse block starting at j
+      let img = null, name = null, price = null, avail = null, href = null;
+      let k = j;
+      const skipBlanks = () => { while (k < lines.length && lines[k].trim() === '') k++; };
+
+      // Optional image line
+      const mImg = k < lines.length && lines[k].match(RE_IMG);
+      if (mImg) { img = mImg[1]; k++; skipBlanks(); }
+
+      // Required: bold name
+      const mBold = k < lines.length && lines[k].match(RE_BOLD);
+      if (!mBold) { out.push(lines[i]); i++; continue; }
+      name = mBold[1]; k++; skipBlanks();
+
+      // Required: price
+      const mPrice = k < lines.length && lines[k].match(RE_PRICE);
+      if (!mPrice) { out.push(lines[i]); i++; continue; }
+      price = mPrice[1]; k++; skipBlanks();
+
+      // Optional: availability
+      const mAvail = k < lines.length && lines[k].match(RE_AVAIL);
+      if (mAvail) { avail = mAvail[1]; k++; skipBlanks(); }
+
+      // Optional: link
+      const mLink = k < lines.length && lines[k].match(RE_LINK);
+      if (mLink) { href = { label: mLink[1], url: mLink[2] }; k++; }
+
+      // Sklopi single-line ekvivalent koji PROD_RE hvata
+      let line = '';
+      if (img) line += `![](${img}) `;
+      line += `**${name}** — ${price} KM`;
+      if (avail) line += ` — ${avail}`;
+      if (href) line += ` — [${href.label}](${href.url})`;
+      // Push leading blanks i sklopljenu liniju
+      for (let b = i; b < j; b++) out.push(lines[b]);
+      out.push(line);
+      i = k;
+    }
+    return out.join('\n');
+  }
+
   // Match a product line in markdown:
   //   - ![](image_url) **Name** — 389 KM — Na lageru — [Pogledaj](url)
   //   1. ![](image_url) **Name** — 389 KM — Na lageru — [Pogledaj](url)
@@ -934,8 +998,34 @@ html.bl-scroll-lock body {
   }
 
   function renderMarkdown(text) {
-    // 0) Globally strip "(N kom)" / "(N komada)" anywhere — defensive
-    text = String(text).replace(/\s*\(\s*\d+\s*kom(?:ada)?\.?\s*\)/gi, '');
+    text = String(text);
+
+    // 0a) DEFENSIVE: ukloni curajuće XML tagove iz voice channel-a
+    // (<voice>, <text>) koji su dizajnirani za TTS ekstrakciju u
+    // backend-u, ali ako parser pukne ne smiju doći u UI. Sesija 8 bug:
+    // Claude pošalje samo <voice> blok bez <text>, parser fallback-uje
+    // na cijeli text uključujući raw tagove. Belt-and-suspenders fix.
+    // Ako postoji <voice>...</voice>, ukloni cijeli blok (sadržaj
+    // ide u TTS, ne u UI). Ako postoji samo <text>...</text>, izvuci
+    // sadržaj.
+    const textMatch = text.match(/<text>([\s\S]*?)<\/text>/i);
+    if (textMatch) {
+      text = textMatch[1];
+    } else {
+      text = text.replace(/<voice>[\s\S]*?<\/voice>/gi, '');
+    }
+    // Ostaci nepar tagova (otvoreni bez zatvorenog ili obrnuto)
+    text = text.replace(/<\/?(?:voice|text)>/gi, '').trim();
+
+    // 0b) Globally strip "(N kom)" / "(N komada)" anywhere — defensive
+    text = text.replace(/\s*\(\s*\d+\s*kom(?:ada)?\.?\s*\)/gi, '');
+
+    // 0c) DEFENSIVE: Sonnet ponekad razbije product card u 4-5 odvojenih
+    // redova umjesto jednog (image, **name**, price KM, "Na lageru",
+    // [Pogledaj](url)). Sklopimo te blokove u single-line ekvivalent
+    // koji PROD_RE hvata. Ovo je hotfix za production demo bug
+    // (Sesija 8) gdje su slike izlazile iznad imena, layout razbijen.
+    text = collapseMultiLineProducts(text);
 
     // 1) Extract product card lines first → placeholder tokens
     const cards = [];

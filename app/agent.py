@@ -16,10 +16,27 @@ from .tools import ALL_TOOLS, dispatch
 
 
 def _parse_voice_xml(text: str) -> tuple[str, str]:
-    """Izvuci <text> i <voice> sekcije iz voice channel odgovora."""
+    """Izvuci <text> i <voice> sekcije iz voice channel odgovora.
+
+    Bug fix Sesija 8: kad Claude pošalje samo <voice>...</voice> blok bez
+    obavezujućeg <text>...</text> wrappera, prijašnja verzija je vraćala
+    cijeli original kao reply_text — što je značilo da raw <voice> tagovi
+    cure u UI. Sad ako nema <text>, izvučemo sve **van** <voice> bloka."""
     text_m  = re.search(r'<text>(.*?)</text>',   text, re.DOTALL)
     voice_m = re.search(r'<voice>(.*?)</voice>', text, re.DOTALL)
-    reply_text = text_m.group(1).strip() if text_m else text
+
+    if text_m:
+        reply_text = text_m.group(1).strip()
+    elif voice_m:
+        # Bez <text> wrappera, ali ima <voice> — sve van <voice> bloka
+        # je primary tekst za chat. Ukloni voice blok da ne curi u UI.
+        reply_text = re.sub(r'<voice>.*?</voice>', '', text, flags=re.DOTALL).strip()
+        if not reply_text:
+            # Edge: Claude poslao samo <voice> bez ičega prije/poslije —
+            # koristi voice tekst kao fallback za reply
+            reply_text = voice_m.group(1).strip()
+    else:
+        reply_text = text
 
     if voice_m:
         reply_voice = voice_m.group(1).strip()
@@ -52,6 +69,26 @@ def _trim_email_preamble(text: str) -> str:
     marker = "Poštovani"
     idx = text.find(marker)
     return text[idx:] if idx != -1 else text
+
+
+def _strip_voice_tags(text: str) -> str:
+    """Defensive: ukloni curajuće <voice>/<text> XML tagove iz finalnog
+    chat reply-ja. Idempotentno — ako Claude vrati clean output, no-op.
+
+    Logika:
+    - Ako postoji <text>...</text>, koristi sadržaj (Claude je ipak
+      poštovao voice format, ali smo u chat channel-u — uzmi text dio)
+    - Inače, ukloni <voice>...</voice> blok kompletno (sadržaj je za TTS,
+      ne za UI)
+    - Na kraju ukloni eventualne nepar otvorene/zatvorene tagove
+    """
+    text_m = re.search(r'<text>(.*?)</text>', text, re.DOTALL | re.IGNORECASE)
+    if text_m:
+        text = text_m.group(1)
+    else:
+        text = re.sub(r'<voice>.*?</voice>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'</?(?:voice|text)>', '', text, flags=re.IGNORECASE)
+    return text.strip()
 
 
 def _default_model_for_channel(channel: str) -> str:
@@ -171,6 +208,13 @@ def _finalize(
     else:
         reply = text
         reply_voice = ""
+
+    # Defensive: NIKAD ne smije procuriti raw <voice>/<text> XML tag u UI.
+    # Sesija 8 production bug: Sonnet povremeno pošalje <voice> blok čak i
+    # u chat channel-u (jer se pravila o tagovima ne smiju curiti iz
+    # VOICE_FORMAT prompt-a kad nije aktivan). Sanitizujemo na izlazu
+    # bez obzira šta je channel rekao.
+    reply = _strip_voice_tags(reply)
 
     return {
         "reply": reply,

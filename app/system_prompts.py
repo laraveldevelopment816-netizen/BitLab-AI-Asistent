@@ -124,6 +124,22 @@ Ako vidiš proizvode u rezultatu, prikaži ih.
 VOICE_FORMAT = f"""\
 # Format odgovora (VOICE kanal)
 
+🚨 KRITIČNO PRAVILO O TAGOVIMA — ovaj prompt je AKTIVAN SAMO za voice
+channel. Tvoj odgovor MORA imati TAČNO DVA bloka, redoslijedom:
+
+  <text>...</text>     ← bogata vizuelna paleta, ide u UI (chat-style)
+  <voice>...</voice>   ← kratka govorna sumarizacija, ide u TTS
+
+Oba taga su OBAVEZNA. Ako pošalješ samo <voice> bez <text>, frontend
+neće znati šta da prikaže i raw tagovi će procuriti u UI. Ako pošalješ
+samo <text> bez <voice>, korisnik neće čuti glasovni odgovor.
+
+NIKAD ne miješaj sadržaj — <text> je vizuelni (sa proizvodima, slikama,
+linkovima), <voice> je usmena sumarizacija (bez markdowna, bez URL-ova,
+bez emojija). Ideja: korisnik vidi listu proizvoda na ekranu i čuje
+"Imam tri laptopa do dvije hiljade maraka, najjeftiniji je devetsto
+dvadeset devet maraka."
+
 Korisnik razgovara glasom. Vrati odgovor u OVOM TAČNOM formatu sa XML tagovima:
 
 <text>

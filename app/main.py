@@ -252,14 +252,28 @@ def _normalize_for_tts(text: str) -> str:
         "", text
     )
 
-    # Cijene: "1.450,00 KM" / "389,00 KM" / "389.00 KM" / "389 KM"
+    # Cijene: "1.450,00 KM" / "1.936 KM" / "389,00 KM" / "389.00 KM" / "389 KM"
+    # Bug fix Sesija 8: u BCS formatu "1.936 KM" tačka je separator hiljada,
+    # ne decimalni. Prije fix-a int(float("1.936")) = 1, pa TTS čita
+    # "jedna marka" umjesto "hiljadu devetsto trideset šest maraka".
     def _price(m):
         raw = m.group(1)
-        # Evropski format: 1.450,00 → ukloni točku-hiljade, zamijeni zarez s točkom
         if "." in raw and "," in raw:
+            # Evropski format sa centima: 1.450,00 → 1450.00
             raw = raw.replace(".", "").replace(",", ".")
+        elif "." in raw and "," not in raw:
+            # Tačka bez zareza — tipično separator hiljada (1.936) ili
+            # decimalna (3.50GHz, ali ovdje smo u KM kontekstu).
+            # Heuristika: ako se sve grupe nakon prve tačke imaju tačno
+            # 3 cifre, to je separator hiljada → ukloni tačke. Inače
+            # ostavi kao decimalni.
+            parts = raw.split(".")
+            if all(len(p) == 3 for p in parts[1:]) and len(parts[0]) <= 3:
+                raw = raw.replace(".", "")
+            # else: ostavi raw, float() će ga parse-ovati kao decimalni
         elif "," in raw and raw.index(",") == len(raw) - 3:
-            raw = raw.replace(",", ".")  # 389,00 → 389.00
+            # 389,00 → 389.00
+            raw = raw.replace(",", ".")
         try:
             val = int(float(raw))
         except ValueError:
