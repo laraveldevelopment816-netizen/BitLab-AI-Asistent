@@ -168,13 +168,43 @@ def run_agent(
     t_start = time.monotonic()
 
     for iteration in range(1, settings.max_tool_iterations + 1):
-        response = client.messages.create(
-            model=model,
-            max_tokens=settings.max_output_tokens,
-            system=sys_prompt,
-            tools=ALL_TOOLS,
-            messages=current_messages,
-        )
+        try:
+            response = client.messages.create(
+                model=model,
+                max_tokens=settings.max_output_tokens,
+                system=sys_prompt,
+                tools=ALL_TOOLS,
+                messages=current_messages,
+            )
+        except anthropic.BadRequestError as exc:
+            err_msg = str(exc)
+            print(f"[AGENT] Anthropic 400: {err_msg}")
+            if "credit balance" in err_msg.lower() or "billing" in err_msg.lower():
+                ui_msg = (
+                    "Trenutno imamo tehnički zastoj sa AI sistemom. Molimo "
+                    "kontaktirajte prodajni tim direktno:\n\n"
+                    "📞 066 516 174 (Viber/tel)\n✉️ prodaja@bitlab.rs"
+                )
+                voice_msg = (
+                    "Trenutno imamo tehnički zastoj. Molim vas kontaktirajte "
+                    "prodajni tim na 066 516 174."
+                )
+            else:
+                ui_msg = (
+                    "Žao mi je, AI servis privremeno nije dostupan. "
+                    "Pokušajte za par minuta ili nas kontaktirajte na "
+                    "066 516 174."
+                )
+                voice_msg = (
+                    "AI servis privremeno nije dostupan. Pokušajte za par minuta."
+                )
+            return _graceful_return(channel, ui_msg, voice_msg, tools_used, escalated,
+                                     iteration, model, total_in, total_out, t_start, trace_calls)
+        except (anthropic.RateLimitError, anthropic.APIConnectionError) as exc:
+            print(f"[AGENT] Anthropic transient: {type(exc).__name__}: {exc}")
+            ui_msg = "Mreža je trenutno preopterećena. Pokušajte ponovo za par sekundi."
+            return _graceful_return(channel, ui_msg, ui_msg, tools_used, escalated,
+                                     iteration, model, total_in, total_out, t_start, trace_calls)
 
         # Akumuliraj usage iz svakog API poziva
         usage = getattr(response, "usage", None)
@@ -230,6 +260,28 @@ def run_agent(
         fallback, channel, tools_used, escalated, settings.max_tool_iterations,
         model, total_in, total_out, t_start, trace_calls,
     )
+
+
+def _graceful_return(
+    channel: str, ui_msg: str, voice_msg: str,
+    tools_used: list[str], escalated: bool, iterations: int,
+    model: str, total_in: int, total_out: int, t_start: float,
+    trace_calls: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Vrati strukturisanu fallback poruku kad Anthropic API nije dostupan.
+    Za voice channel, voice_msg ide u TTS (bez emojija/URL-ova)."""
+    return {
+        "reply": ui_msg,
+        "reply_voice": voice_msg if channel == "voice" else "",
+        "tools_used": tools_used,
+        "escalated": escalated,
+        "iterations": iterations,
+        "_trace": {
+            "model": model, "tokens_in": total_in, "tokens_out": total_out,
+            "latency_ms": int((time.monotonic() - t_start) * 1000),
+            "tool_calls": trace_calls,
+        },
+    }
 
 
 def _finalize(
