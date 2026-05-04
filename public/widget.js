@@ -185,6 +185,20 @@
 .bl-header__info { flex: 1; min-width: 0; }
 .bl-header__title {
   font-size: 15px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2;
+  display: flex; align-items: center; gap: 8px;
+}
+.bl-beta-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 6px;
+  font-size: 9.5px; font-weight: 700; letter-spacing: .06em;
+  background: rgba(251,191,36,.18);
+  color: #fbbf24;
+  border: 1px solid rgba(251,191,36,.45);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.bl-beta-badge::before {
+  content: '⚠'; font-size: 10px;
 }
 .bl-header__sub {
   margin-top: 2px; font-size: 12px; opacity: .7;
@@ -349,6 +363,17 @@
   font-size: 13px; color: var(--bl-text-2);
   line-height: 1.45; max-width: 300px;
 }
+.bl-beta-notice {
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  background: rgba(251,191,36,.08);
+  border: 1px solid rgba(251,191,36,.32);
+  border-radius: 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--bl-text-2);
+}
+.bl-beta-notice strong { color: var(--bl-text); font-weight: 700; }
 .bl-welcome__suggest {
   width: 100%; display: flex; flex-direction: column;
   gap: 8px; margin-top: 8px;
@@ -528,7 +553,10 @@ html.bl-scroll-lock body {
 }
 #bl-vheader-avatar svg { width: 18px; height: 18px; }
 #bl-vheader-info { flex: 1; min-width: 0; }
-.bl-vtitle { font-size: 14px; font-weight: 700; }
+.bl-vtitle {
+  font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
 #bl-vstate {
   font-size: 11px; opacity: .75; margin-top: 2px;
   display: flex; align-items: center; gap: 6px; min-height: 14px;
@@ -779,9 +807,14 @@ html.bl-scroll-lock body {
     <div class="bl-header__row">
       <div class="bl-header__avatar">${I.bot}</div>
       <div class="bl-header__info">
-        <div class="bl-header__title">BitLab Asistent</div>
+        <div class="bl-header__title">
+          BitLab Asistent
+          <span class="bl-beta-badge" title="Sistem je u testiranju — informacije provjerite sa prodajnim timom">
+            BETA
+          </span>
+        </div>
         <div class="bl-header__sub">
-          <span class="bl-dot"></span>Online · Odgovara odmah
+          <span class="bl-dot"></span>Online · U testiranju, moguće greške
         </div>
       </div>
       <div class="bl-header__actions">
@@ -822,7 +855,12 @@ html.bl-scroll-lock body {
     <div id="bl-vheader">
       <div id="bl-vheader-avatar">${I.mic}</div>
       <div id="bl-vheader-info">
-        <div class="bl-vtitle">Voice Asistent</div>
+        <div class="bl-vtitle">
+          Voice Asistent
+          <span class="bl-beta-badge" title="Sistem je u testiranju — informacije provjerite sa prodajnim timom">
+            BETA
+          </span>
+        </div>
         <div id="bl-vstate"><span id="bl-vstate-dot"></span><span id="bl-vstate-text">Inicijalizacija...</span></div>
       </div>
       <button id="bl-voice-close-btn" class="bl-icon-btn" aria-label="Zatvori">${I.close}</button>
@@ -886,6 +924,12 @@ html.bl-scroll-lock body {
       <div>
         <div class="bl-welcome__title">Pozdrav<span>.</span></div>
         <div class="bl-welcome__sub">Pitaj me bilo šta o našim proizvodima, dostavi ili garanciji.</div>
+      </div>
+      <div class="bl-beta-notice">
+        <strong>⚠ Sistem je u testiranju (BETA).</strong>
+        Informacije koje dobijete su orijentaciono tačne, ali mogu sadržavati greške.
+        Za važne odluke (B2B ponuda, narudžba većih količina, garancija) provjerite
+        sa prodajnim timom — <strong>066 516 174</strong> ili <strong>prodaja@bitlab.rs</strong>.
       </div>
       <div class="bl-welcome__suggest"></div>
     `;
