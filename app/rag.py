@@ -181,36 +181,49 @@ class ProductIndex:
         query: str,
         top_k: int = 5,
         max_price_km: float | None = None,
+        category_id: str | None = None,
     ) -> list[dict[str, Any]]:
+        """Hibridna pretraga sa opcionim hard filter po kategoriji.
+
+        `category_id` (kad je zadat od strane Claude-a u tool callu) drastično
+        smanjuje accessory šum (npr. "torba za laptop" izlazi van prilikom
+        upita za "laptop"). Bez category_id-a, ponašanje je kao prije
+        (intent-detekcija + boost iz `category_terms.json`)."""
         q_vec = self._embed(query)
         vec_scores = self.embeddings @ q_vec             # dot product (embeddings su normirani)
         bm25_raw = np.array(self.bm25.get_scores(_tokenize(query)), dtype=np.float32)
 
         fused = 0.6 * _norm01(vec_scores) + 0.4 * _norm01(bm25_raw)
 
-        # Category boost — pomjeri proizvode iz match-ed kategorija u top.
-        # Bonus 0.25 (na 0-1 skali) je dovoljno da nadjača density tokena u
-        # accessory imenima ("Torba za notebook ... Laptop") ali ne toliko
-        # da preuzme rezultate od relevantnih konkurenata u istoj kategoriji.
-        intent_cats = self._detect_intent_categories(query)
-        if intent_cats:
-            boost = np.zeros_like(fused)
-            for i, cat in enumerate(self._idx_to_cat):
-                if cat in intent_cats:
-                    boost[i] = 0.25
-            fused = fused + boost
+        # Hard category filter (kad AI klasifikuje upit u kategoriju) ima
+        # prednost nad mekim boost-om. Boost se ipak primjenjuje za "near miss"
+        # case-ove (kad AI ne pošalje category_id, ali query implicira jednu).
+        if category_id is None:
+            intent_cats = self._detect_intent_categories(query)
+            if intent_cats:
+                boost = np.zeros_like(fused)
+                for i, cat in enumerate(self._idx_to_cat):
+                    if cat in intent_cats:
+                        boost[i] = 0.25
+                fused = fused + boost
 
         ranked = np.argsort(-fused)
 
-        # Prikupi buffer kandidata (4× top_k) da re-sort ne osiromasi rezultate
+        # Prikupi buffer kandidata (4× top_k) da re-sort ne osiromasi rezultate.
+        # Kad je hard filter aktivan, povećamo buffer jer filter čisti puno.
+        buffer_mult = 8 if category_id else 4
         candidates: list[tuple[dict[str, Any], float]] = []
         for idx in ranked:
-            if len(candidates) >= top_k * 4:
+            if len(candidates) >= top_k * buffer_mult:
                 break
             pid = str(int(self.ids[idx]))
             meta = self._products.get(pid)
             if not meta:
                 continue
+            if category_id is not None:
+                # Hard filter — preskoči sve van zadate kategorije
+                if (meta.get("categories_id") or "").strip() != category_id:
+                    continue
             if max_price_km is not None:
                 price = meta.get("price_km")
                 if price is not None and float(price) > max_price_km:
