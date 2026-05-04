@@ -6,14 +6,79 @@ import { C, channelColor, modelColor } from '../tokens'
 import { TopBar, SectionLabel, Tag } from '../components/atoms'
 
 export function Overview() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['overview'],
     queryFn: () => api.getOverview(),
     refetchInterval: 10_000,
+    retry: false,  // ne retry-uj 401/404 — odmah pokaži pravi razlog
   })
 
   if (isLoading) return <div style={{ padding: 28, color: C.textMute, fontSize: 12 }}>⠋ učitavam…</div>
-  if (!data) return <div style={{ padding: 28, color: C.err, fontSize: 12 }}>Pregled nije dostupan (provjeri API ključ u Podešavanjima).</div>
+  if (error || !data) return <ErrorPanel error={error} />
+
+  return (
+    <OverviewContent data={data} />
+  )
+}
+
+function ErrorPanel({ error }: { error: unknown }) {
+  // axios greške imaju response sa status / data
+  const err = error as any
+  const status = err?.response?.status
+  const detail = err?.response?.data?.detail
+  const isAuth = status === 401 || status === 503
+  const isNotFound = status === 404
+  const isNetwork = !err?.response && (err?.code === 'ERR_NETWORK' || err?.message === 'Network Error')
+
+  let title = 'Pregled nije dostupan'
+  let body: React.ReactNode = (
+    <span>Greška: {detail || err?.message || 'nepoznat razlog'}</span>
+  )
+  let hint: React.ReactNode = null
+
+  if (isAuth) {
+    title = 'Nedostaje API ključ'
+    body = <span>Server zahtijeva autorizaciju ({status}). {detail || ''}</span>
+    hint = <span>Idi u <Link to="/settings" style={{ color: C.accent }}>Podešavanja</Link> i unesi <code style={codeStyle}>DASHBOARD_API_KEY</code> iz <code style={codeStyle}>.env</code> fajla.</span>
+  } else if (isNotFound) {
+    title = 'Endpoint /overview nije nađen'
+    body = <span>Backend možda nije pokrenut sa najnovijim kodom.</span>
+    hint = <span>Restartuj <code style={codeStyle}>uvicorn app.main:app --reload</code> ili pokreni novi build poslije <code style={codeStyle}>git pull</code>.</span>
+  } else if (isNetwork) {
+    title = 'Nema konekcije sa serverom'
+    body = <span>Backend nije dostupan na <code style={codeStyle}>/api/dashboard</code>.</span>
+    hint = <span>Provjeri da li <code style={codeStyle}>uvicorn</code> radi na portu 8000.</span>
+  }
+
+  return (
+    <div style={{ padding: 28, maxWidth: 640 }}>
+      <div style={{
+        background: C.panel, border: `1px solid ${C.border}`,
+        borderLeft: `3px solid ${C.err}`,
+        borderRadius: 6, padding: '16px 18px',
+      }}>
+        <div style={{ color: C.err, fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+          {title}
+        </div>
+        <div style={{ color: C.text, fontSize: 13, lineHeight: 1.5, marginBottom: hint ? 10 : 0 }}>
+          {body}
+        </div>
+        {hint && (
+          <div style={{ color: C.textDim, fontSize: 12.5, lineHeight: 1.5, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+            {hint}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const codeStyle: React.CSSProperties = {
+  background: C.panelLo, padding: '1px 6px', borderRadius: 3,
+  fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
+}
+
+function OverviewContent({ data }: { data: import('../api').OverviewResponse }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

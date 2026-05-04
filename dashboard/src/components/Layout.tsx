@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import { C } from '../tokens'
 
 const NAV = [
@@ -23,7 +23,12 @@ export function Layout({ children }: { children: ReactNode }) {
         overflow: 'hidden',
       }}>
         <div style={{ padding: '20px 18px 18px', borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Link to="/overview" style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            textDecoration: 'none', color: 'inherit',
+          }}
+            title="Idi na Pregled"
+          >
             <BitlabMark />
             <div>
               <div style={{
@@ -39,7 +44,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 v0.8 · pregled rada
               </div>
             </div>
-          </div>
+          </Link>
         </div>
 
         <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
