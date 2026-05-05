@@ -290,7 +290,7 @@ sudo systemctl status $PROJECT_NAME --no-pager
 | Komanda                  | Pokriva     | Status |
 |--------------------------|-------------|--------|
 | `deploy.sh release`      | A.2 → A.10  | `[auto]` end-to-end test 2026-05-05 — release `20260505_1526` na staging-u prošao u jednom pozivu (~3 min) |
-| `deploy.sh rollback`     | Rollback    | `[auto]` logika napisana — end-to-end test: TODO |
+| `deploy.sh rollback`     | Rollback    | `[auto]` end-to-end test 2026-05-05 — ciklus `_1611 → _1526 → _1611` (forward kroz `ln -sfn` direktno) |
 | `deploy.sh setup-domain` | B.1 → B.9   | `[ ]` Faza B |
 
 ### Kako koristiti — `release`

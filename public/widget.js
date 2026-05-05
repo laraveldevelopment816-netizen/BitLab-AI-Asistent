@@ -1515,26 +1515,16 @@ html.bl-scroll-lock body {
   }
 
   function addVoiceMsg(role, content) {
-    // Prvi rezultat → skupi orb iz fullscreen u compact header (animacija 350ms)
-    const wasFullscreen = voiceFullscreenActive;
     if (voiceFullscreenActive) setVoiceFullscreen(false);
     vEls.trans.classList.remove('bl-hidden');
     const div = document.createElement('div');
     div.className = 'bl-msg ' + (role === 'user' ? 'user' : 'bot');
     div.innerHTML = role === 'user' ? escHtml(content) : renderMarkdown(content);
     vEls.trans.appendChild(div);
-    // Scroll na VRH novog AI odgovora (korisnik želi prvi rezultat na
-    // početku). Prvi put posle fullscreen→compact CSS tranzicije (350ms)
-    // treba sačekati da layout završi prije nego skrolujemo, inače
-    // skrolujemo na poziciju koja se onda pomjeri tokom tranzicije.
+    // Identicno tekst chat addMsg (linija ~1300): bot poruke skroluju na vrh,
+    // user poruke (kratke) ostaju bottom-scroll standardno.
     if (role === 'bot') {
-      const delay = wasFullscreen ? 400 : 0;
-      setTimeout(() => {
-        const rect = div.getBoundingClientRect();
-        const containerRect = vEls.trans.getBoundingClientRect();
-        const targetTop = vEls.trans.scrollTop + (rect.top - containerRect.top);
-        vEls.trans.scrollTo({ top: targetTop, behavior: 'smooth' });
-      }, delay);
+      setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     } else {
       vEls.trans.scrollTop = vEls.trans.scrollHeight;
     }
@@ -1707,7 +1697,7 @@ html.bl-scroll-lock body {
       const { replyText, replyVoice } = await chatVoiceApi(transcript);
       if (!voiceModeActive) return;
 
-      addVoiceMsg('ai', replyText);
+      addVoiceMsg('bot', replyText);
       addMsg(replyText, 'bot');
       history.push({ role: 'assistant', content: replyText });
 
