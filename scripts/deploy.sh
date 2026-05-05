@@ -1,263 +1,231 @@
 #!/usr/bin/env bash
-# BitLab AI Asistent — server-side deploy/update skripta
+# scripts/deploy.sh — release-symlink deploy za projekte na ai.bitlab.rs
 #
-# Uloga: ne SSH iz lokalne, ovo se izvršava NA SERVERU od strane
-# server-side Claude sesije ili ručno preko sudo bash scripts/deploy.sh.
+# Pattern: /home/ai/<PROJECT>/{releases/<TS>/, shared/, current → releases/<TS>}
+# Detalji: docs/operations/server-conventions.md
 #
-# Usage:
-#   bash scripts/deploy.sh install    # prvi install — kreira venv, build, systemd
-#   bash scripts/deploy.sh update     # git pull + reinstall deps + rebuild + restart
-#   bash scripts/deploy.sh rebuild    # samo dashboard rebuild + nginx reload
-#   bash scripts/deploy.sh restart    # samo systemctl restart bitlab-ai
+# Komande:
+#   release    Novi release: clone → simlinkuj → install → migracije → build → switch → restart → health → cleanup
+#   rollback   Switch na prethodni release + restart
 #
-# Pretpostavke (provjeri prije install):
-# - Linux Debian/Ubuntu (apt-based)
-# - Python 3.11+ na sistemu
-# - sudo dostupan
-# - /opt/bitlab-ai sadrži ovaj git checkout
-# - /opt/bitlab-ai/.env popunjen (ANTHROPIC_API_KEY, DASHBOARD_API_KEY...)
+# Required env:
+#   PROJECT_NAME   Folder pod /home/ai/ (npr. aiasistent-staging)
+#   DOMAIN         FQDN za health check (npr. staging.aiasistent.bitlab.rs)
+#   PORT           App port (127.0.0.1 only, npr. 8001)
+#   REPO_URL       Git URL (SSH preferable)
+#   BRANCH         Git branch
+#
+# Optional env:
+#   KEEP_RELEASES  Koliko release-ova zadržati u releases/ (default 5)
+#
+# Primjer:
+#   PROJECT_NAME=aiasistent-staging \
+#   DOMAIN=staging.aiasistent.bitlab.rs \
+#   PORT=8001 \
+#   REPO_URL=git@github.com:laraveldevelopment816-netizen/BitLab-AI-Asistent.git \
+#   BRANCH=production-prep \
+#   bash scripts/deploy.sh release
 
 set -euo pipefail
 
-PROJECT_DIR="${PROJECT_DIR:-/opt/bitlab-ai}"
-SERVICE_USER="${SERVICE_USER:-bitlab}"
-DASHBOARD_DIST_TARGET="${DASHBOARD_DIST_TARGET:-/var/www/bitlab-admin}"
-SERVICE_NAME="bitlab-ai"
+# ── Required env ────────────────────────────────────────────────
+: "${PROJECT_NAME:?PROJECT_NAME nije set}"
+: "${DOMAIN:?DOMAIN nije set}"
+: "${PORT:?PORT nije set}"
+: "${REPO_URL:?REPO_URL nije set}"
+: "${BRANCH:?BRANCH nije set}"
 
-cd "$PROJECT_DIR"
+PROJECT_DIR="/home/ai/$PROJECT_NAME"
+SHARED_DIR="$PROJECT_DIR/shared"
+RELEASES_DIR="$PROJECT_DIR/releases"
+KEEP_RELEASES="${KEEP_RELEASES:-5}"
+
+# Globalne (popunjavaju se u clone_release)
+RELEASE=""
+RELEASE_DIR=""
 
 # ── Helpers ─────────────────────────────────────────────────────
-
 log()  { printf '\e[1;36m▶ %s\e[0m\n' "$*"; }
 ok()   { printf '\e[1;32m✓ %s\e[0m\n' "$*"; }
 warn() { printf '\e[1;33m⚠ %s\e[0m\n' "$*"; }
 err()  { printf '\e[1;31m✗ %s\e[0m\n' "$*" >&2; exit 1; }
 
-require_sudo() {
-    if [[ $EUID -ne 0 ]]; then
-        err "Pokreni preko sudo: sudo bash scripts/deploy.sh $*"
+# ── Pre-checks ──────────────────────────────────────────────────
+pre_checks() {
+    log "Pre-checks za $PROJECT_NAME"
+    [[ -d "$PROJECT_DIR" ]]      || err "$PROJECT_DIR ne postoji — pokreni setup-domain prvo (Faza B)"
+    [[ -L "$PROJECT_DIR/current" ]] || err "$PROJECT_DIR/current symlink ne postoji — projekat nije inicijalizovan"
+    [[ -f "$SHARED_DIR/.env" ]]  || err "$SHARED_DIR/.env ne postoji"
+    [[ -d "$SHARED_DIR/var" ]]   || err "$SHARED_DIR/var ne postoji"
+    if ! systemctl is-active --quiet "$PROJECT_NAME"; then
+        warn "$PROJECT_NAME servis nije aktivan trenutno — restart u koraku 8"
     fi
+    ok "current → $(basename "$(readlink -f "$PROJECT_DIR/current")")"
 }
 
-# ── Steps ───────────────────────────────────────────────────────
-
-ensure_user() {
-    if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
-        log "Kreiram service user-a $SERVICE_USER"
-        useradd --system --shell /usr/sbin/nologin --home-dir "$PROJECT_DIR" \
-                --no-create-home "$SERVICE_USER"
-        ok "User $SERVICE_USER kreiran"
-    fi
+# ── A.2 Clone ───────────────────────────────────────────────────
+clone_release() {
+    RELEASE=$(date +%Y%m%d_%H%M)
+    RELEASE_DIR="$RELEASES_DIR/$RELEASE"
+    [[ -d "$RELEASE_DIR" ]] && err "$RELEASE_DIR već postoji (sačekaj minut)"
+    log "Clone $BRANCH u releases/$RELEASE"
+    git clone --quiet -b "$BRANCH" "$REPO_URL" "$RELEASE_DIR"
+    ok "Clone done — $(cd "$RELEASE_DIR" && git log -1 --oneline)"
 }
 
-ensure_venv() {
-    if [[ ! -d "$PROJECT_DIR/.venv" ]]; then
-        log "Kreiram venv u .venv/"
-        python3 -m venv "$PROJECT_DIR/.venv"
-    fi
-    ok "venv ok"
+# ── A.3 Symlinkovi shared resources ─────────────────────────────
+link_shared() {
+    log "Symlink shared resources"
+    ln -sfn "$SHARED_DIR/.env" "$RELEASE_DIR/.env"
+    ln -sfn "$SHARED_DIR/var" "$RELEASE_DIR/var"
+    ln -sfn "$SHARED_DIR/var/products.index.npz" "$RELEASE_DIR/data/products.index.npz"
+    ln -sfn "$SHARED_DIR/var/products.meta.json" "$RELEASE_DIR/data/products.meta.json"
+    ok "Simlinkovi: .env, var, data/products.{index.npz,meta.json}"
 }
 
+# ── A.4 Python venv + deps ──────────────────────────────────────
 install_python_deps() {
-    log "Install Python deps (CPU-only torch, ~3 min prvi put)"
-    "$PROJECT_DIR/.venv/bin/pip" install --upgrade pip wheel >/dev/null
-    "$PROJECT_DIR/.venv/bin/pip" install \
-        torch --index-url https://download.pytorch.org/whl/cpu \
-        >/dev/null 2>&1 || warn "torch install — ako već instaliran, ignoriši"
-    "$PROJECT_DIR/.venv/bin/pip" install -e .
-    ok "Python deps OK"
+    log "Python venv + deps (CPU torch ~2-3 min prvi put)"
+    cd "$RELEASE_DIR"
+    python3 -m venv .venv
+    .venv/bin/pip install --upgrade pip wheel >/dev/null
+    .venv/bin/pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu >/dev/null
+    ok "deps OK ($(du -sh .venv | cut -f1))"
 }
 
-ensure_data_files() {
-    if [[ ! -f "$PROJECT_DIR/data/products.index.npz" ]]; then
-        warn "Nedostaje data/products.index.npz"
-        warn "Pokreni: $PROJECT_DIR/.venv/bin/python scripts/embed_products.py"
-        warn "(ovo traje ~5 min prvi put — preuzima sentence-transformer model)"
-    fi
-    if [[ ! -f "$PROJECT_DIR/data/categories.json" ]]; then
-        log "Generišem data/categories.json"
-        "$PROJECT_DIR/.venv/bin/python" scripts/build_categories.py
-    fi
-    ok "Data files ok"
+# ── A.5 Migracije ───────────────────────────────────────────────
+run_migrations() {
+    log "Migracije"
+    cd "$RELEASE_DIR"
+    .venv/bin/python scripts/init_db.py
+    .venv/bin/python scripts/migrate_session_id.py
+    .venv/bin/python scripts/build_categories.py
+    ok "Migracije done"
 }
 
-init_database() {
-    log "Init dashboard DB schema"
-    mkdir -p "$PROJECT_DIR/var"
-    "$PROJECT_DIR/.venv/bin/python" scripts/init_db.py
-    ok "DB schema ok"
-}
-
+# ── A.6 Dashboard build ─────────────────────────────────────────
 build_dashboard() {
     if ! command -v pnpm >/dev/null 2>&1; then
-        if [[ -d "$PROJECT_DIR/dashboard/dist" ]]; then
-            warn "pnpm not found — koristim postojeći dashboard/dist (rsync-ovan ručno?)"
-            return 0
-        fi
-        err "pnpm not installed i nema pre-built dist. Install: npm i -g pnpm"
+        err "pnpm nije instaliran (sudo corepack enable; sudo corepack prepare pnpm@10 --activate)"
     fi
-    log "Build dashboard (Vite + tsc)"
-    cd "$PROJECT_DIR/dashboard"
-    pnpm install --frozen-lockfile >/dev/null
+    log "Dashboard build (Vite)"
+    cd "$RELEASE_DIR/dashboard"
+    pnpm install --frozen-lockfile --silent
     pnpm build
-    cd "$PROJECT_DIR"
-    ok "dashboard/dist build OK"
+    [[ -f dist/index.html ]] || err "build pao — nema dist/index.html"
+    ok "dashboard/dist OK ($(du -sh dist | cut -f1))"
 }
 
-publish_dashboard() {
-    require_sudo "$@"
-    log "Publish dashboard u $DASHBOARD_DIST_TARGET"
-    mkdir -p "$DASHBOARD_DIST_TARGET"
-    rsync -a --delete "$PROJECT_DIR/dashboard/dist/" "$DASHBOARD_DIST_TARGET/"
-    chown -R www-data:www-data "$DASHBOARD_DIST_TARGET"
-    ok "Dashboard published"
+# ── A.7 Atomic switch ──────────────────────────────────────────
+atomic_switch() {
+    local prev
+    prev=$(basename "$(readlink -f "$PROJECT_DIR/current" 2>/dev/null || echo none)")
+    log "Atomic switch: $prev → $RELEASE"
+    ln -sfn "$RELEASE_DIR" "$PROJECT_DIR/current"
+    ok "current → $RELEASE"
 }
 
-install_systemd() {
-    require_sudo "$@"
-    log "Install systemd unit"
-    cp "$PROJECT_DIR/deploy/bitlab-ai.service" /etc/systemd/system/
-    systemctl daemon-reload
-    systemctl enable "$SERVICE_NAME"
-    ok "systemd unit installed + enabled"
-}
-
-install_nginx() {
-    require_sudo "$@"
-    if [[ ! -f /etc/nginx/sites-available/bitlab-ai ]]; then
-        warn "nginx site nije postojao — kopiram template"
-        warn "MORAŠ ručno zameniti AI_DOMAIN_PLACEHOLDER sa pravim domenom!"
-        cp "$PROJECT_DIR/deploy/nginx-site.conf" /etc/nginx/sites-available/bitlab-ai
-        warn "Editiraj: sudo nano /etc/nginx/sites-available/bitlab-ai"
-    fi
-    [[ -L /etc/nginx/sites-enabled/bitlab-ai ]] || \
-        ln -s /etc/nginx/sites-available/bitlab-ai /etc/nginx/sites-enabled/
-
-    if nginx -t 2>&1 | grep -q "syntax is ok"; then
-        systemctl reload nginx
-        ok "nginx reload"
-    else
-        warn "nginx config ima sintaksnu grešku — provjeri sudo nginx -t"
-    fi
-}
-
+# ── A.8 Restart ─────────────────────────────────────────────────
 restart_service() {
-    require_sudo "$@"
-    log "Restart $SERVICE_NAME"
-    systemctl restart "$SERVICE_NAME"
-    sleep 3
-    if systemctl is-active --quiet "$SERVICE_NAME"; then
-        ok "$SERVICE_NAME active"
+    log "Restart $PROJECT_NAME"
+    sudo systemctl restart "$PROJECT_NAME"
+    sleep 5
+    if systemctl is-active --quiet "$PROJECT_NAME"; then
+        ok "$PROJECT_NAME active (PID $(systemctl show -p MainPID --value "$PROJECT_NAME"))"
     else
-        warn "Service nije active — provjeri: journalctl -u $SERVICE_NAME -n 50"
-        exit 1
+        sudo journalctl -u "$PROJECT_NAME" -n 30 --no-pager
+        err "Servis nije aktivan posle restart-a"
     fi
 }
 
-smoke_test() {
-    log "Smoke test"
-    if curl -fsS http://127.0.0.1:8000/healthz | grep -q '"status":"ok"'; then
-        ok "/healthz OK"
-    else
-        warn "/healthz nije ok"
-        return 1
-    fi
-    if [[ -n "${DASHBOARD_API_KEY:-}" ]]; then
-        if curl -fsS -H "Authorization: Bearer $DASHBOARD_API_KEY" \
-             http://127.0.0.1:8000/api/dashboard/stats | grep -q "total_requests"; then
-            ok "/api/dashboard/stats OK (auth radi)"
+# ── A.9 Health check ───────────────────────────────────────────
+health_check() {
+    log "Health check"
+    local resp
+    resp=$(curl -sf "http://127.0.0.1:$PORT/healthz") || err "/healthz lokalno FAIL"
+    resp=$(curl -sf "https://$DOMAIN/healthz") || err "/healthz HTTPS FAIL"
+    echo "  → $resp"
+    echo "$resp" | grep -q '"products_index_present":true' \
+        && ok "products_index" \
+        || warn "products_index NIJE prisutan"
+
+    # Dashboard stats (auth + DB konekcija)
+    local key
+    key=$(grep ^DASHBOARD_API_KEY "$SHARED_DIR/.env" 2>/dev/null | cut -d= -f2 || echo "")
+    if [[ -n "$key" ]]; then
+        if curl -sf -H "Authorization: Bearer $key" "http://127.0.0.1:$PORT/api/dashboard/stats" >/dev/null; then
+            ok "Dashboard stats endpoint OK (auth + DB)"
         else
-            warn "/api/dashboard/stats — provjeri DASHBOARD_API_KEY"
+            warn "Dashboard stats failuje — provjeri DASHBOARD_API_KEY i DB"
         fi
+    fi
+
+    # Errori u logu od restart-a
+    if sudo journalctl -u "$PROJECT_NAME" --since "1 min ago" --no-pager 2>/dev/null \
+         | grep -iqE 'error|traceback'; then
+        warn "Errori u logu zadnji minut — provjeri: sudo journalctl -u $PROJECT_NAME -n 50"
     else
-        warn "DASHBOARD_API_KEY nije u env-u (probaj: source .env)"
+        ok "Logovi clean (zadnji minut)"
     fi
 }
 
-# ── Commands ───────────────────────────────────────────────────
-
-cmd_install() {
-    require_sudo "$@"
-    log "FRESH INSTALL u $PROJECT_DIR"
-    ensure_user
-    chown -R "$SERVICE_USER:$SERVICE_USER" "$PROJECT_DIR"
-    sudo -u "$SERVICE_USER" bash -c "
-        cd $PROJECT_DIR
-        $(declare -f log ok warn err ensure_venv install_python_deps ensure_data_files init_database)
-        ensure_venv
-        install_python_deps
-        ensure_data_files
-        init_database
-    "
-    build_dashboard
-    publish_dashboard
-    install_systemd
-    install_nginx
-    restart_service
-    smoke_test
-    ok "INSTALL DONE"
-    echo
-    echo "Sledeći koraci:"
-    echo "  1. sudo nano /etc/nginx/sites-available/bitlab-ai  (zameni AI_DOMAIN_PLACEHOLDER)"
-    echo "  2. sudo certbot --nginx -d <tvoj-domen>"
-    echo "  3. sudo systemctl reload nginx"
-    echo "  4. https://<tvoj-domen>/admin/  → unesi DASHBOARD_API_KEY u Settings"
+# ── A.10 Cleanup ───────────────────────────────────────────────
+cleanup_old() {
+    log "Cleanup — držimo zadnjih $KEEP_RELEASES release-ova"
+    local to_delete count=0
+    to_delete=$(ls -t "$RELEASES_DIR" | tail -n +$((KEEP_RELEASES + 1)))
+    if [[ -z "$to_delete" ]]; then
+        ok "Manje od $KEEP_RELEASES release-ova — ništa se ne briše"
+        return
+    fi
+    while IFS= read -r d; do
+        rm -rf "${RELEASES_DIR:?}/$d"
+        ok "Obrisan release $d"
+        count=$((count + 1))
+    done <<< "$to_delete"
+    ok "Cleanup done ($count obrisano)"
 }
 
-cmd_update() {
-    require_sudo "$@"
-    log "UPDATE flow"
-    sudo -u "$SERVICE_USER" git -C "$PROJECT_DIR" pull --ff-only
-    sudo -u "$SERVICE_USER" bash -c "
-        cd $PROJECT_DIR
-        $(declare -f log ok warn err install_python_deps ensure_data_files init_database)
-        install_python_deps
-        ensure_data_files
-        init_database
-    "
-    build_dashboard
-    publish_dashboard
-    restart_service
-    smoke_test
-    ok "UPDATE DONE"
-}
-
-cmd_rebuild() {
-    require_sudo "$@"
-    log "REBUILD dashboard only"
-    build_dashboard
-    publish_dashboard
-    ok "REBUILD DONE"
-}
-
-cmd_restart() {
-    require_sudo "$@"
-    restart_service
-    smoke_test
+# ── Rollback ───────────────────────────────────────────────────
+do_rollback() {
+    log "Rollback $PROJECT_NAME"
+    [[ -L "$PROJECT_DIR/current" ]] || err "current symlink ne postoji"
+    local current_release prev
+    current_release=$(basename "$(readlink -f "$PROJECT_DIR/current")")
+    prev=$(ls -t "$RELEASES_DIR" | grep -v "^${current_release}\$" | head -1)
+    [[ -n "$prev" ]] || err "Nema prethodnog release-a (samo $current_release postoji)"
+    log "Switch: $current_release → $prev"
+    ln -sfn "$RELEASES_DIR/$prev" "$PROJECT_DIR/current"
+    sudo systemctl restart "$PROJECT_NAME"
+    sleep 5
+    systemctl is-active --quiet "$PROJECT_NAME" && ok "Rollback aktivan ($prev)" \
+        || err "Servis nije aktivan posle rollback-a"
+    curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null && ok "Health check OK" \
+        || warn "Health check failuje"
 }
 
 # ── Main ───────────────────────────────────────────────────────
-
 case "${1:-}" in
-    install) shift; cmd_install "$@" ;;
-    update)  shift; cmd_update  "$@" ;;
-    rebuild) shift; cmd_rebuild "$@" ;;
-    restart) shift; cmd_restart "$@" ;;
+    release)
+        log "RELEASE flow za $PROJECT_NAME ($BRANCH)"
+        pre_checks
+        clone_release
+        link_shared
+        install_python_deps
+        run_migrations
+        build_dashboard
+        atomic_switch
+        restart_service
+        health_check
+        cleanup_old
+        echo
+        ok "RELEASE $RELEASE AKTIVAN — https://$DOMAIN/healthz"
+        ;;
+    rollback)
+        do_rollback
+        ;;
     *)
-        cat <<EOF
-Usage: sudo bash scripts/deploy.sh <command>
-
-Commands:
-  install   Prvi install (venv, deps, systemd, nginx)
-  update    git pull + reinstall + rebuild + restart
-  rebuild   Samo rebuild dashboard-a + publish
-  restart   Samo systemctl restart bitlab-ai
-
-Environment overrides:
-  PROJECT_DIR             default: /opt/bitlab-ai
-  SERVICE_USER            default: bitlab
-  DASHBOARD_DIST_TARGET   default: /var/www/bitlab-admin
-EOF
+        sed -n '2,30p' "$0"
         exit 1
         ;;
 esac
