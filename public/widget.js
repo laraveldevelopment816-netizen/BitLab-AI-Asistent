@@ -14,6 +14,7 @@
   const CHAT_URL = API_BASE + '/api/chat';
   const STT_URL  = API_BASE + '/api/stt';
   const TTS_URL  = API_BASE + '/api/tts';
+  const VOICE_STATUS_URL = API_BASE + '/api/voice/status';
 
   const QUICK_REPLIES = [
     { label: 'Dostava',   icon: 'truck',  q: 'Kakve su opcije dostave i načini plaćanja?' },
@@ -1321,7 +1322,6 @@ html.bl-scroll-lock body {
     history.push({ role: 'user', content: text });
     const typing = addTyping();
     $('bl-send').disabled = true;
-    startThinkingSound();  // soft tone dok čekamo odgovor
 
     try {
       const resp = await fetch(CHAT_URL, {
@@ -1339,7 +1339,6 @@ html.bl-scroll-lock body {
       typing.remove();
       addMsg('Greška mreže: ' + err.message, 'bot');
     } finally {
-      stopThinkingSound();
       $('bl-send').disabled = false;
       $('bl-input').focus();
     }
@@ -1516,19 +1515,26 @@ html.bl-scroll-lock body {
   }
 
   function addVoiceMsg(role, content) {
-    // Prvi rezultat → skupi orb iz fullscreen u compact header (animacija)
+    // Prvi rezultat → skupi orb iz fullscreen u compact header (animacija 350ms)
+    const wasFullscreen = voiceFullscreenActive;
     if (voiceFullscreenActive) setVoiceFullscreen(false);
     vEls.trans.classList.remove('bl-hidden');
     const div = document.createElement('div');
     div.className = 'bl-msg ' + (role === 'user' ? 'user' : 'bot');
     div.innerHTML = role === 'user' ? escHtml(content) : renderMarkdown(content);
     vEls.trans.appendChild(div);
-    // Scroll na VRH novog AI odgovora — korisnik želi prvi rezultat na
-    // početku, pa skroluje dolje za ostale. Za user poruke (kratke)
-    // ostaje bottom-scroll standardno.
+    // Scroll na VRH novog AI odgovora (korisnik želi prvi rezultat na
+    // početku). Prvi put posle fullscreen→compact CSS tranzicije (350ms)
+    // treba sačekati da layout završi prije nego skrolujemo, inače
+    // skrolujemo na poziciju koja se onda pomjeri tokom tranzicije.
     if (role === 'bot') {
-      // setTimeout 0 da se DOM render završi prije scroll-a
-      setTimeout(() => { div.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 0);
+      const delay = wasFullscreen ? 400 : 0;
+      setTimeout(() => {
+        const rect = div.getBoundingClientRect();
+        const containerRect = vEls.trans.getBoundingClientRect();
+        const targetTop = vEls.trans.scrollTop + (rect.top - containerRect.top);
+        vEls.trans.scrollTo({ top: targetTop, behavior: 'smooth' });
+      }, delay);
     } else {
       vEls.trans.scrollTop = vEls.trans.scrollHeight;
     }
@@ -1902,5 +1908,23 @@ html.bl-scroll-lock body {
   $('bl-voice-close-btn').addEventListener('click', () => closeVoiceMode());
   $('bl-vstop').addEventListener('click', () => closeVoiceMode());
   $('bl-vpause').addEventListener('click', () => togglePause());
+
+  // Pre-flight: provjeri da li je Groq STT dostupan. Ako nije, sakri voice button.
+  // Server cache-uje rezultat 60s — bezbjedan poziv pri svakom widget mountu.
+  (async () => {
+    const btn = $('bl-voice-btn');
+    if (!btn) return;
+    try {
+      const r = await fetch(VOICE_STATUS_URL, { method: 'GET' });
+      const data = await r.json();
+      if (!data.voice_available) {
+        btn.style.display = 'none';
+        console.warn('[BitLab] Voice mode disabled —', data.reason || 'unknown');
+      }
+    } catch (e) {
+      btn.style.display = 'none';
+      console.warn('[BitLab] Voice status check failed —', e);
+    }
+  })();
 
 })();

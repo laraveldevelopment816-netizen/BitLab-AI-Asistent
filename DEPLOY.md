@@ -289,9 +289,9 @@ sudo systemctl status $PROJECT_NAME --no-pager
 
 | Komanda                  | Pokriva     | Status |
 |--------------------------|-------------|--------|
-| `deploy.sh release`      | A.2 → A.10  | `[auto]` (testirano 2026-05-05 ručno korak po korak; end-to-end test skripte: TODO sledeći release) |
-| `deploy.sh rollback`     | Rollback    | `[auto]` (logika napisana, end-to-end test: TODO) |
-| `deploy.sh setup-domain` | B.1 → B.9   | `[ ]` (Faza B) |
+| `deploy.sh release`      | A.2 → A.10  | `[auto]` end-to-end test 2026-05-05 — release `20260505_1526` na staging-u prošao u jednom pozivu (~3 min) |
+| `deploy.sh rollback`     | Rollback    | `[auto]` logika napisana — end-to-end test: TODO |
+| `deploy.sh setup-domain` | B.1 → B.9   | `[ ]` Faza B |
 
 ### Kako koristiti — `release`
 
