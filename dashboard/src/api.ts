@@ -4,9 +4,21 @@ import axios from 'axios'
 // Prod: dashboard-dist se servira sa istog hosta kao API.
 const http = axios.create({ baseURL: '/api/dashboard' })
 
-// Bearer token iz localStorage. Settings stranica ga upisuje.
+// Bearer token iz dva izvora:
+//   1. window.__BITLAB_KEY — server-injected u dist/index.html pri release-u
+//      (placeholder se zamijeni u deploy.sh sa DASHBOARD_API_KEY iz shared/.env)
+//   2. localStorage — lokalni dev / fallback ako auto-inject nije pokrenut.
+// Settings stranica i dalje radi kao manuelni override.
+declare global { interface Window { __BITLAB_KEY?: string } }
+
+function getDashboardKey(): string | null {
+  const injected = window.__BITLAB_KEY
+  if (injected && !injected.includes('PLACEHOLDER')) return injected
+  return localStorage.getItem('bitlab.dashboardKey')
+}
+
 http.interceptors.request.use((config) => {
-  const key = localStorage.getItem('bitlab.dashboardKey')
+  const key = getDashboardKey()
   if (key) config.headers.Authorization = `Bearer ${key}`
   return config
 })

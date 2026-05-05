@@ -103,7 +103,7 @@ run_migrations() {
     ok "Migracije done"
 }
 
-# ── A.6 Dashboard build ─────────────────────────────────────────
+# ── A.6 Dashboard build + API key injection ────────────────────
 build_dashboard() {
     if ! command -v pnpm >/dev/null 2>&1; then
         err "pnpm nije instaliran (sudo corepack enable; sudo corepack prepare pnpm@10 --activate)"
@@ -113,6 +113,22 @@ build_dashboard() {
     pnpm install --frozen-lockfile --silent
     pnpm build
     [[ -f dist/index.html ]] || err "build pao — nema dist/index.html"
+
+    # Inject DASHBOARD_API_KEY u dist/index.html (auto-config za /admin/).
+    # Placeholder __BITLAB_DASHBOARD_KEY_PLACEHOLDER__ je u dashboard/index.html.
+    local key
+    key=$(grep ^DASHBOARD_API_KEY "$SHARED_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'")
+    if [[ -z "$key" ]]; then
+        warn "DASHBOARD_API_KEY nije u shared/.env — dashboard će tražiti ručni paste u Settings"
+    else
+        sed -i "s|__BITLAB_DASHBOARD_KEY_PLACEHOLDER__|$key|" "$RELEASE_DIR/dashboard/dist/index.html"
+        if grep -q "__BITLAB_DASHBOARD_KEY_PLACEHOLDER__" "$RELEASE_DIR/dashboard/dist/index.html"; then
+            warn "Placeholder još uvijek u dist/index.html — provjeri sed output"
+        else
+            ok "DASHBOARD_API_KEY injektovan u dist/index.html"
+        fi
+    fi
+
     ok "dashboard/dist OK ($(du -sh dist | cut -f1))"
 }
 
