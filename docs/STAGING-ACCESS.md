@@ -1,13 +1,8 @@
-<table border="0">
-<tr>
-<td width="110"><img src="https://staging.aiasistent.bitlab.rs/public/assets/img/bitlabLogo.png" width="90" /></td>
-<td><h1>BitLab AI Asistent</h1>Staging pristup</td>
-</tr>
-</table>
+# BitLab AI Asistent
 
 AI prodajni asistent za **webshop.bitlab.rs** — chat widget + voice mode + email auto-reply, sa logging dashboard-om za nadzor.
 
-Staging server: `ai.bitlab.rs` (Hetzner VPS), release-symlink deploy + systemd + nginx + Let's Encrypt.
+Staging server: `staging.aiasistent.bitlab.rs` (Hetzner VPS), release-symlink deploy + systemd + nginx + Let's Encrypt.
 
 ---
 
