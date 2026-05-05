@@ -22,7 +22,7 @@ export PROJECT_NAME="aiasistent-staging"        # ili aiasistent-prod
 export DOMAIN="staging.aiasistent.bitlab.rs"    # ili aiasistent.bitlab.rs
 export PORT="8001"                              # iz port mape — staging:8001, prod:8000
 export REPO_URL="git@github.com:laraveldevelopment816-netizen/BitLab-AI-Asistent.git"
-export BRANCH="production-prep"
+export BRANCH="staging"                         # `staging` za staging server, `main` za prod (kad se merge-uje)
 ```
 
 ### A.1 Pre-checks `[x]` — validirano 2026-05-05 na `aiasistent-staging`
@@ -303,8 +303,10 @@ export PROJECT_NAME="aiasistent-staging"
 export DOMAIN="staging.aiasistent.bitlab.rs"
 export PORT="8001"
 export REPO_URL="git@github.com:laraveldevelopment816-netizen/BitLab-AI-Asistent.git"
-export BRANCH="production-prep"
+export BRANCH="staging"
 ```
+
+Branch konvencija: **staging server prati `staging` granu, production će pratiti `main`.** Workflow je: rad → `staging` granu → deploy na staging server → merge `staging` → `main` → deploy na prod server.
 
 Onda za novi release:
 

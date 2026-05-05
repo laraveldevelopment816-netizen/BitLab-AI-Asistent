@@ -23,7 +23,7 @@
 #   DOMAIN=staging.aiasistent.bitlab.rs \
 #   PORT=8001 \
 #   REPO_URL=git@github.com:laraveldevelopment816-netizen/BitLab-AI-Asistent.git \
-#   BRANCH=production-prep \
+#   BRANCH=staging \
 #   bash scripts/deploy.sh release
 
 set -euo pipefail
