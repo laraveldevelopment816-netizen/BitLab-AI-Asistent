@@ -14,6 +14,7 @@
   const CHAT_URL = API_BASE + '/api/chat';
   const STT_URL  = API_BASE + '/api/stt';
   const TTS_URL  = API_BASE + '/api/tts';
+  const VOICE_STATUS_URL = API_BASE + '/api/voice/status';
 
   const QUICK_REPLIES = [
     { label: 'Dostava',   icon: 'truck',  q: 'Kakve su opcije dostave i načini plaćanja?' },
@@ -59,7 +60,6 @@
     send:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.45-7.48a1 1 0 0 0 0-1.84L3.4 3.6a1 1 0 0 0-1.4.92V9.5L15 12 2 14.5v4.98a1 1 0 0 0 1.4.92z"/></svg>',
     close:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     minus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg>',
-    attach: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.38a2 2 0 0 1-2.83-2.83l8.49-8.49"/></svg>',
     laptop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M2 20h20"/></svg>',
     truck:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="13" height="11" rx="1"/><path d="M14 9h4l3 4v4h-7V9zM6 21a2 2 0 100-4 2 2 0 000 4zM18 21a2 2 0 100-4 2 2 0 000 4z"/></svg>',
     shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 9.5-8 10-4.5-.5-8-5-8-10V6z"/></svg>',
@@ -185,6 +185,23 @@
 .bl-header__info { flex: 1; min-width: 0; }
 .bl-header__title {
   font-size: 15px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2;
+  display: flex; align-items: center; gap: 8px;
+}
+.bl-beta-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 7px; border-radius: 4px;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-size: 9.5px; font-weight: 600; letter-spacing: .08em;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.78);
+  border: 1px solid rgba(255,255,255,.18);
+  text-transform: uppercase;
+  flex-shrink: 0;
+  cursor: help;
+}
+.bl-beta-badge::before {
+  content: ''; width: 5px; height: 5px; border-radius: 99px;
+  background: #7dd3fc; box-shadow: 0 0 0 2px rgba(125,211,252,.18);
 }
 .bl-header__sub {
   margin-top: 2px; font-size: 12px; opacity: .7;
@@ -349,6 +366,18 @@
   font-size: 13px; color: var(--bl-text-2);
   line-height: 1.45; max-width: 300px;
 }
+.bl-beta-notice {
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  background: var(--bl-bg-soft);
+  border: 1px solid var(--bl-line);
+  border-left: 3px solid #7dd3fc;
+  border-radius: 8px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--bl-text-3);
+}
+.bl-beta-notice strong { color: var(--bl-text); font-weight: 600; }
 .bl-welcome__suggest {
   width: 100%; display: flex; flex-direction: column;
   gap: 8px; margin-top: 8px;
@@ -430,15 +459,6 @@
   height: 100%; min-width: 0;
 }
 #bl-input::placeholder { color: var(--bl-text-3); }
-.bl-attach {
-  width: 32px; height: 32px; background: transparent;
-  border: none; border-radius: 99px;
-  color: var(--bl-text-3); cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; padding: 0;
-}
-.bl-attach:hover { color: var(--bl-text); background: var(--bl-line); }
-.bl-attach svg { width: 18px; height: 18px; }
 #bl-voice-btn {
   width: 42px; height: 42px; border-radius: 99px;
   background: var(--bl-bg-soft);
@@ -480,13 +500,86 @@
 }
 .bl-footer strong { color: var(--bl-orange); font-weight: 700; }
 
-/* ───── Mobile ───── */
-@media (max-width: 440px) {
-  #bl-window {
-    right: 8px; left: 8px; bottom: 88px;
-    width: auto; height: auto; max-height: calc(100vh - 100px);
+/* ───── Mobile (chat widget) ───── */
+@media (max-width: 560px) {
+  /* Launcher: full bottom-right, smjestiti u safe-area iOS-a */
+  #bl-launcher {
+    right: 14px; bottom: 14px;
+    width: 56px; height: 56px;
+    bottom: max(14px, env(safe-area-inset-bottom, 14px));
   }
-  #bl-launcher { right: 16px; bottom: 16px; }
+  #bl-launcher__badge {
+    width: 18px; height: 18px; font-size: 10px;
+  }
+
+  /* Chat window — full screen sa safe-area paddingom */
+  #bl-window {
+    right: 0; left: 0; top: 0; bottom: 0;
+    width: 100%; max-width: 100%;
+    height: 100%; max-height: 100%;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* Header — kompaktan, manji avatar */
+  #bl-header { padding: 14px 14px 12px; }
+  .bl-header__avatar { width: 38px; height: 38px; border-radius: 12px; }
+  .bl-header__avatar svg { width: 19px; height: 19px; }
+  .bl-header__title { font-size: 14.5px; gap: 6px; }
+  .bl-header__sub { font-size: 11.5px; }
+  .bl-icon-btn { width: 36px; height: 36px; }  /* veći touch target ≥44px sa paddingom */
+
+  /* Header chips — horizontal scroll umjesto wrap */
+  .bl-header__chips {
+    overflow-x: auto; white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    margin: 10px -14px 0; padding: 0 14px;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+  }
+  .bl-header__chips::-webkit-scrollbar { display: none; }
+  .bl-header__chip { flex-shrink: 0; }
+
+  /* Welcome — manji padding */
+  .bl-welcome { padding: 18px 16px; gap: 12px; }
+  .bl-welcome__avatar { width: 56px; height: 56px; border-radius: 16px; }
+  .bl-welcome__title { font-size: 26px; }
+  .bl-welcome__sub { font-size: 14px; }
+  .bl-suggest { padding: 12px 14px; }
+  .bl-beta-notice { font-size: 12px; padding: 9px 11px; }
+
+  /* Messages — širi balončići */
+  .bl-msg { max-width: 92%; font-size: 14.5px; padding: 10px 13px; }
+
+  /* Input area — veći touch target-i (≥44px) */
+  #bl-input-area { padding: 10px 12px 12px; gap: 8px; }
+  #bl-input {
+    height: 46px; font-size: 16px; /* 16px sprečava iOS auto-zoom */
+    padding: 0 14px;
+  }
+  #bl-voice-btn, #bl-send {
+    width: 46px; height: 46px;
+    flex-shrink: 0;
+  }
+  #bl-voice-btn svg, #bl-send svg { width: 20px; height: 20px; }
+
+  .bl-footer { font-size: 10.5px; padding: 8px 12px; }
+
+  /* Product cards — kompaktniji na mobilnom */
+  .bl-prod { padding: 8px; gap: 10px; }
+  .bl-prod__img { width: 56px; height: 56px; flex-shrink: 0; }
+  .bl-prod__name { font-size: 13px; line-height: 1.35; }
+  .bl-prod__price { font-size: 14.5px; }
+  .bl-prod__avail { font-size: 11px; }
+}
+
+/* Even smaller — vrlo uski telefoni (320-340px) */
+@media (max-width: 340px) {
+  .bl-header__avatar { width: 34px; height: 34px; }
+  .bl-header__title { font-size: 13.5px; }
+  .bl-msg { max-width: 95%; font-size: 14px; }
+  .bl-prod__img { width: 48px; height: 48px; }
 }
 
 /* ───── Voice modal ───── */
@@ -505,7 +598,8 @@ html.bl-scroll-lock body {
   overscroll-behavior: contain;
 }
 #bl-voice-panel {
-  width: 460px; max-width: 100%; max-height: 92vh;
+  width: 460px; max-width: 100%;
+  height: 80vh; max-height: 720px; min-height: 520px;
   background: #fff; border-radius: 24px;
   box-shadow: var(--bl-shadow-3);
   display: flex; flex-direction: column; overflow: hidden;
@@ -527,7 +621,10 @@ html.bl-scroll-lock body {
 }
 #bl-vheader-avatar svg { width: 18px; height: 18px; }
 #bl-vheader-info { flex: 1; min-width: 0; }
-.bl-vtitle { font-size: 14px; font-weight: 700; }
+.bl-vtitle {
+  font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
 #bl-vstate {
   font-size: 11px; opacity: .75; margin-top: 2px;
   display: flex; align-items: center; gap: 6px; min-height: 14px;
@@ -543,16 +640,52 @@ html.bl-scroll-lock body {
   box-shadow: 0 0 0 3px rgba(34,197,94,.25);
 }
 
-/* Stage with orb */
+/* Compact stage with orb — header section ~25% panela. Animirana
+   tranzicija iz fullscreen state-a (vp-fullscreen) u compact state
+   triger-uje se kad stigne prvi rezultat i transcript dobije sadržaj. */
 #bl-vstage {
-  padding: 36px 24px 24px;
-  display: flex; flex-direction: column; align-items: center; gap: 22px;
+  padding: 14px 18px 14px;
+  display: flex; flex-direction: row; align-items: center; gap: 14px;
   background: linear-gradient(180deg, #fff 0%, var(--bl-bg-softer) 100%);
+  border-bottom: 1px solid var(--bl-line);
+  flex-shrink: 0;
+  transition: padding 0.35s cubic-bezier(.2,.8,.3,1),
+              gap     0.35s cubic-bezier(.2,.8,.3,1);
 }
 .bl-orb {
-  position: relative; width: 160px; height: 160px;
+  position: relative; width: 64px; height: 64px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  transition: width 0.35s cubic-bezier(.2,.8,.3,1),
+              height 0.35s cubic-bezier(.2,.8,.3,1);
+}
+
+/* Fullscreen orb state — aktivan dok nema transkripta (idle / listening /
+   processing prvo dok nije stigao prvi result). Orb je VELIK i CENTRIRAN
+   preko cijelog widgeta. Kad addVoiceMsg pozove prvi put, JS skida klasu
+   pa CSS animira prelaz u compact state. */
+#bl-voice-panel.vp-fullscreen #bl-vstage {
+  flex-direction: column;
+  padding: 36px 24px 28px;
+  gap: 20px;
+  flex: 1;
+  justify-content: center;
+  border-bottom: 0;
+}
+#bl-voice-panel.vp-fullscreen .bl-orb {
+  width: 160px; height: 160px;
+}
+#bl-voice-panel.vp-fullscreen .bl-orb__core {
+  width: 96px; height: 96px;
+}
+#bl-voice-panel.vp-fullscreen .bl-orb__core svg {
+  width: 38px; height: 38px;
+}
+#bl-voice-panel.vp-fullscreen #bl-vstage-info {
+  align-items: center; text-align: center;
+}
+#bl-voice-panel.vp-fullscreen #bl-vtline {
+  font-size: 16px;
 }
 .bl-orb__ring {
   position: absolute; inset: 0; border-radius: 50%;
@@ -568,17 +701,18 @@ html.bl-scroll-lock body {
   100% { transform: scale(1.3); opacity: 0; }
 }
 .bl-orb__core {
-  width: 96px; height: 96px; border-radius: 50%;
+  width: 48px; height: 48px; border-radius: 50%;
   background: linear-gradient(135deg, var(--bl-orange) 0%, var(--bl-orange-600) 100%);
   box-shadow:
-    0 12px 32px rgba(251,109,59,.45),
+    0 6px 16px rgba(251,109,59,.4),
     inset 0 2px 4px rgba(255,255,255,.3),
-    inset 0 -4px 12px rgba(224,81,31,.4);
+    inset 0 -3px 8px rgba(224,81,31,.4);
   display: flex; align-items: center; justify-content: center;
   color: #fff; position: relative; z-index: 1;
+  cursor: pointer;
   transition: background .3s, box-shadow .3s;
 }
-.bl-orb__core svg { width: 38px; height: 38px; }
+.bl-orb__core svg { width: 22px; height: 22px; }
 .bl-orb--listening .bl-orb__core,
 .bl-orb--recording .bl-orb__core {
   background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
@@ -598,10 +732,10 @@ html.bl-scroll-lock body {
 }
 /* 3-dot loader inside orb during PROCESSING (zamjenjuje mic ikonu) */
 .bl-orb__loader {
-  display: flex; gap: 7px; align-items: center; justify-content: center;
+  display: flex; gap: 4px; align-items: center; justify-content: center;
 }
 .bl-orb__loader span {
-  width: 11px; height: 11px; border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background: #fff;
   animation: bl-orb-loader-dot 1.3s infinite ease-in-out;
 }
@@ -617,44 +751,69 @@ html.bl-scroll-lock body {
 }
 .bl-orb--paused .bl-orb__ring { animation: none; opacity: 0; }
 
+/* Stage tekst — kompaktan, lijevo poravnat (orb je lijevo) */
+#bl-vstage-info {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
 #bl-vtline {
-  font-size: 18px; font-weight: 500;
-  color: var(--bl-text); text-align: center; line-height: 1.4;
-  letter-spacing: -.01em; max-width: 380px; min-height: 50px;
+  font-size: 13px; font-weight: 600;
+  color: var(--bl-text); line-height: 1.35;
+  letter-spacing: -.01em;
 }
 #bl-vtline em { color: var(--bl-text-3); font-style: normal; font-weight: 400; }
 
 .bl-wave {
-  display: flex; align-items: center; gap: 3px;
-  height: 36px; min-height: 36px;
+  display: flex; align-items: center; gap: 2px;
+  height: 18px; min-height: 18px;
 }
 .bl-wave span {
-  width: 3px; border-radius: 2px;
+  width: 2px; border-radius: 2px;
   background: var(--bl-orange); opacity: .85;
   animation: bl-wave 1.2s ease-in-out infinite;
 }
 #bl-voice-panel.vp-speaking .bl-wave span { background: #2563eb; }
 @keyframes bl-wave {
-  0%,100% { height: 6px; }
-  50%     { height: 32px; }
+  0%,100% { height: 4px; }
+  50%     { height: 16px; }
 }
 #bl-vwave.bl-hidden, #bl-vhint.bl-hidden, #bl-vtranscript.bl-hidden,
 .bl-orb__ring.bl-hidden { display: none !important; }
 
 #bl-vhint {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; color: var(--bl-text-3);
-  background: var(--bl-bg-soft);
-  padding: 8px 14px; border-radius: 99px;
-  border: 1px solid var(--bl-line);
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--bl-text-3);
+  padding: 0;
 }
-#bl-vhint svg { width: 12px; height: 12px; }
+#bl-vhint svg { width: 11px; height: 11px; flex-shrink: 0; }
 
-/* Transcript bubbles below stage */
+/* Transcript / rezultati — glavna body sekcija (~75% panela u compact
+   stanju). U fullscreen stanju (prije prvog rezultata), kompletno je
+   skriven da orb zauzme cijeli widget. */
 #bl-vtranscript {
-  padding: 0 18px 14px;
+  padding: 14px 18px 14px;
   display: flex; flex-direction: column; gap: 10px;
-  max-height: 220px; overflow-y: auto;
+  flex: 1; min-height: 0; overflow-y: auto;
+  background: var(--bl-bg-softer);
+  animation: bl-transcript-in 0.4s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes bl-transcript-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Hidden u fullscreen mode-u — orb zauzima cijeli prostor */
+#bl-voice-panel.vp-fullscreen #bl-vtranscript {
+  display: none !important;
+}
+/* Bez fullscreen klase ali sa bl-hidden — empty state placeholder */
+#bl-voice-panel:not(.vp-fullscreen) #bl-vtranscript.bl-hidden {
+  display: flex !important;
+  align-items: center; justify-content: center;
+}
+#bl-voice-panel:not(.vp-fullscreen) #bl-vtranscript.bl-hidden::before {
+  content: 'Pričaj sa asistentom — rezultati će se prikazati ovdje';
+  color: var(--bl-text-3); font-size: 12px; text-align: center;
+  padding: 0 24px;
 }
 #bl-vtranscript::-webkit-scrollbar { width: 5px; }
 #bl-vtranscript::-webkit-scrollbar-thumb {
@@ -685,15 +844,59 @@ html.bl-scroll-lock body {
 .bl-vbtn--danger:hover { background: #fee2e2; }
 .bl-vbtn svg { width: 14px; height: 14px; }
 
-@media (max-width: 480px) {
+/* ───── Mobile (voice modal) ───── */
+@media (max-width: 560px) {
   #bl-voice-overlay { padding: 0; align-items: stretch; }
   #bl-voice-panel {
-    width: 100%; max-height: 100vh; height: 100vh;
-    border-radius: 0;
+    width: 100%; max-width: 100%;
+    height: 100vh; max-height: 100vh; min-height: 100vh;
+    border-radius: 0; border: 0;
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
-  .bl-orb { width: 140px; height: 140px; }
-  .bl-orb__core { width: 84px; height: 84px; }
-  .bl-orb__core svg { width: 32px; height: 32px; }
+
+  /* Voice header (compact stanje, poslije prvog rezultata) */
+  #bl-vheader { padding: 14px 14px; gap: 10px; }
+  #bl-vheader-avatar { width: 32px; height: 32px; border-radius: 10px; }
+  #bl-vheader-avatar svg { width: 16px; height: 16px; }
+  .bl-vtitle { font-size: 13.5px; gap: 6px; }
+  #bl-vstate { font-size: 10.5px; }
+
+  /* Compact stage (poslije prvog rezultata) — mali orb desno */
+  #bl-vstage { padding: 10px 14px; gap: 12px; }
+  .bl-orb { width: 56px; height: 56px; }
+  .bl-orb__core { width: 44px; height: 44px; }
+  .bl-orb__core svg { width: 20px; height: 20px; }
+  #bl-vtline { font-size: 12.5px; }
+
+  /* Fullscreen stage (idle, prije prvog rezultata) — orb veliki, centriran */
+  #bl-voice-panel.vp-fullscreen #bl-vstage {
+    padding: 30px 24px;
+    gap: 18px;
+  }
+  #bl-voice-panel.vp-fullscreen .bl-orb { width: 130px; height: 130px; }
+  #bl-voice-panel.vp-fullscreen .bl-orb__core { width: 76px; height: 76px; }
+  #bl-voice-panel.vp-fullscreen .bl-orb__core svg { width: 30px; height: 30px; }
+  #bl-voice-panel.vp-fullscreen #bl-vtline { font-size: 15px; }
+
+  /* Transcript — full width, kompaktan */
+  #bl-vtranscript { padding: 12px 14px; gap: 8px; }
+  #bl-vtranscript .bl-msg { font-size: 14px; max-width: 94%; }
+
+  /* Controls — veći touch target-i */
+  #bl-vcontrols { padding: 12px 14px; gap: 8px; }
+  .bl-vbtn { height: 48px; font-size: 14px; padding: 0 14px; }
+  .bl-vbtn svg { width: 16px; height: 16px; }
+
+  /* Wave (visualizer) — manje energije na malom ekranu */
+  .bl-wave { height: 16px; min-height: 16px; }
+}
+
+/* Even smaller — vrlo uski (320-340px) */
+@media (max-width: 340px) {
+  #bl-voice-panel.vp-fullscreen .bl-orb { width: 110px; height: 110px; }
+  #bl-voice-panel.vp-fullscreen .bl-orb__core { width: 64px; height: 64px; }
+  .bl-vbtn { font-size: 13px; padding: 0 10px; }
 }
 `;
 
@@ -713,7 +916,12 @@ html.bl-scroll-lock body {
     <div class="bl-header__row">
       <div class="bl-header__avatar">${I.bot}</div>
       <div class="bl-header__info">
-        <div class="bl-header__title">BitLab Asistent</div>
+        <div class="bl-header__title">
+          BitLab Asistent
+          <span class="bl-beta-badge" title="BETA verzija — sistem je u stalnom unapređenju. Za važne odluke kontaktirajte prodajni tim.">
+            BETA
+          </span>
+        </div>
         <div class="bl-header__sub">
           <span class="bl-dot"></span>Online · Odgovara odmah
         </div>
@@ -740,7 +948,6 @@ html.bl-scroll-lock body {
   <div id="bl-input-area">
     <div class="bl-input-wrap">
       <input id="bl-input" type="text" placeholder="Postavi pitanje..." autocomplete="off">
-      <button class="bl-attach" title="Priloži" aria-label="Priloži">${I.attach}</button>
     </div>
     <button id="bl-voice-btn" title="Voice mode" aria-label="Voice mode">${I.mic}</button>
     <button id="bl-send" aria-label="Pošalji">${I.send}</button>
@@ -756,7 +963,12 @@ html.bl-scroll-lock body {
     <div id="bl-vheader">
       <div id="bl-vheader-avatar">${I.mic}</div>
       <div id="bl-vheader-info">
-        <div class="bl-vtitle">Voice Asistent</div>
+        <div class="bl-vtitle">
+          Voice Asistent
+          <span class="bl-beta-badge" title="BETA verzija — sistem je u stalnom unapređenju. Za važne odluke kontaktirajte prodajni tim.">
+            BETA
+          </span>
+        </div>
         <div id="bl-vstate"><span id="bl-vstate-dot"></span><span id="bl-vstate-text">Inicijalizacija...</span></div>
       </div>
       <button id="bl-voice-close-btn" class="bl-icon-btn" aria-label="Zatvori">${I.close}</button>
@@ -769,13 +981,14 @@ html.bl-scroll-lock body {
         <span class="bl-orb__ring"></span>
         <div id="bl-vorb-large" class="bl-orb__core">${I.mic}</div>
       </div>
-      <div id="bl-vtline"><em>Spremno za razgovor...</em></div>
-      <div id="bl-vwave" class="bl-wave bl-hidden">
-        ${Array.from({ length: 15 }, (_, i) =>
-          `<span style="animation-delay:${(i * 0.08).toFixed(2)}s"></span>`
-        ).join('')}
+      <div id="bl-vstage-info">
+        <div id="bl-vtline"><em>Spremno za razgovor...</em></div>
+        <div id="bl-vwave" class="bl-wave bl-hidden">
+          ${Array.from({ length: 12 }, (_, i) =>
+            `<span style="animation-delay:${(i * 0.08).toFixed(2)}s"></span>`
+          ).join('')}
+        </div>
       </div>
-      <div id="bl-vhint">${I.lock} Mikrofon se aktivira tek na klik</div>
     </div>
 
     <div id="bl-vtranscript" class="bl-hidden"></div>
@@ -820,6 +1033,12 @@ html.bl-scroll-lock body {
         <div class="bl-welcome__title">Pozdrav<span>.</span></div>
         <div class="bl-welcome__sub">Pitaj me bilo šta o našim proizvodima, dostavi ili garanciji.</div>
       </div>
+      <div class="bl-beta-notice">
+        <strong>BETA verzija — u stalnom unapređenju.</strong>
+        Za važne odluke (B2B ponude, veće narudžbe, reklamacije) najbrže je
+        kontaktirati prodajni tim direktno: <strong>066 516 174</strong> ili
+        <strong>prodaja@bitlab.rs</strong>.
+      </div>
       <div class="bl-welcome__suggest"></div>
     `;
     const suggestWrap = wrap.querySelector('.bl-welcome__suggest');
@@ -856,6 +1075,25 @@ html.bl-scroll-lock body {
   const history = [];
   let chatOpened = false;
 
+  // Session ID — UUID generisan jednom po widget instanci, dijeli se između
+  // chat i voice mode-a. Server koristi za grupisanje requesta u Sessions
+  // tab dashboarda. sessionStorage se briše kad se browser tab zatvori,
+  // što odgovara životnom ciklusu razgovora.
+  function _uuid() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    // Fallback za starije browser-e
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+  let sessionId = sessionStorage.getItem('bitlab.sessionId');
+  if (!sessionId) {
+    sessionId = _uuid();
+    sessionStorage.setItem('bitlab.sessionId', sessionId);
+  }
+
   // ── Markdown + product card post-processor ───────────────────────
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -868,6 +1106,80 @@ html.bl-scroll-lock body {
       .replace(/\s*[—–-]\s*\d+\s*kom(?:ada)?\.?(?=\s|$)/gi, '')
       .replace(/\s*\b\d+\s*kom(?:ada)?\.?(?=\s|$)/gi, '')
       .trim();
+  }
+
+  // Sklopi multi-line product card u single-line. **Konzervativan**
+  // defensive parser — sklapa SAMO ako su sva 3 obavezna elementa
+  // (slika, **bold ime ≥8 znakova**, cijena) prisutna u susjednim
+  // linijama. Bez slike ne sklapa (rizik false positive — npr. plain
+  // **bold tekst** sa cijenom u sledećem redu nije produkt).
+  //
+  // Sa pojačanim promptom (Sesija 8) Sonnet 4.6 vraća čist single-line
+  // format pa je ovo no-op u 99% slučajeva. Drži se za backstop.
+  function collapseMultiLineProducts(src) {
+    const lines = src.split('\n');
+    const out = [];
+    let i = 0;
+    const RE_IMG  = /^\s*!\[[^\]]*\]\((https?:\/\/[^)]+)\)\s*$/;
+    const RE_BOLD = /^\s*\*\*([^*]+?)\*\*\s*$/;
+    const RE_PRICE = /^\s*([0-9][\d.,]*)\s*KM\s*$/i;
+    const RE_AVAIL = /^\s*(na\s+lager[a-z]*|dobavljiv[a-z]*|na\s+stanju|po\s+narud(?:ž|z)bi)\s*$/i;
+    const RE_LINK  = /^\s*\[([^\]]+)\]\((https?:\/\/[^)]+)\)\s*$/;
+    // Linije koje preskočimo između product elemenata: prazne, horizontal
+    // rules (---/***/___), te BCS bullet-i koji se ponekad uvuku.
+    const RE_FILLER = /^\s*(?:[-*_]{3,}|)$/;
+    const isFiller = (line) => RE_FILLER.test(line);
+
+    while (i < lines.length) {
+      let j = i;
+      while (j < lines.length && isFiller(lines[j])) j++;
+
+      let img = null, name = null, price = null, avail = null, href = null;
+      let k = j;
+      const skipFiller = () => {
+        while (k < lines.length && isFiller(lines[k])) k++;
+      };
+
+      // Konzervativan guard: bez slike ne sklapamo (smanjuje false positive
+      // gdje bi plain **bold tekst** sa brojem u sledećem redu izgledao
+      // kao produkt — npr. "**Pažnja**: 500 KM minimalno za besplatnu dostavu").
+      const mImg = k < lines.length && lines[k].match(RE_IMG);
+      if (!mImg) { out.push(lines[i]); i++; continue; }
+      img = mImg[1]; k++; skipFiller();
+
+      const mBold = k < lines.length && lines[k].match(RE_BOLD);
+      // Drugi guard: bold ime mora biti ≥8 znakova (ime proizvoda nikad
+      // nije kraće od toga; npr. "**SSD**: 240 GB" ne kvalifikuje).
+      if (!mBold || mBold[1].trim().length < 8) {
+        out.push(lines[i]); i++; continue;
+      }
+      name = mBold[1]; k++; skipFiller();
+
+      const mPrice = k < lines.length && lines[k].match(RE_PRICE);
+      if (!mPrice) { out.push(lines[i]); i++; continue; }
+      price = mPrice[1]; k++; skipFiller();
+
+      const mAvail = k < lines.length && lines[k].match(RE_AVAIL);
+      if (mAvail) { avail = mAvail[1]; k++; skipFiller(); }
+
+      const mLink = k < lines.length && lines[k].match(RE_LINK);
+      if (mLink) { href = { label: mLink[1], url: mLink[2] }; k++; }
+
+      let line = '';
+      if (img) line += `![](${img}) `;
+      line += `**${name}** — ${price} KM`;
+      if (avail) line += ` — ${avail}`;
+      if (href) line += ` — [${href.label}](${href.url})`;
+
+      // Filler linije između i i j zadržavamo (ali samo prazne, ne `---`
+      // jer su `---` izvor vizualnog šuma kad razdvajaju proizvode).
+      for (let b = i; b < j; b++) {
+        if (lines[b].trim() === '') out.push(lines[b]);
+      }
+      out.push(line);
+      i = k;
+    }
+    return out.join('\n');
   }
 
   // Match a product line in markdown:
@@ -911,8 +1223,34 @@ html.bl-scroll-lock body {
   }
 
   function renderMarkdown(text) {
-    // 0) Globally strip "(N kom)" / "(N komada)" anywhere — defensive
-    text = String(text).replace(/\s*\(\s*\d+\s*kom(?:ada)?\.?\s*\)/gi, '');
+    text = String(text);
+
+    // 0a) DEFENSIVE: ukloni curajuće XML tagove iz voice channel-a
+    // (<voice>, <text>) koji su dizajnirani za TTS ekstrakciju u
+    // backend-u, ali ako parser pukne ne smiju doći u UI. Sesija 8 bug:
+    // Claude pošalje samo <voice> blok bez <text>, parser fallback-uje
+    // na cijeli text uključujući raw tagove. Belt-and-suspenders fix.
+    // Ako postoji <voice>...</voice>, ukloni cijeli blok (sadržaj
+    // ide u TTS, ne u UI). Ako postoji samo <text>...</text>, izvuci
+    // sadržaj.
+    const textMatch = text.match(/<text>([\s\S]*?)<\/text>/i);
+    if (textMatch) {
+      text = textMatch[1];
+    } else {
+      text = text.replace(/<voice>[\s\S]*?<\/voice>/gi, '');
+    }
+    // Ostaci nepar tagova (otvoreni bez zatvorenog ili obrnuto)
+    text = text.replace(/<\/?(?:voice|text)>/gi, '').trim();
+
+    // 0b) Globally strip "(N kom)" / "(N komada)" anywhere — defensive
+    text = text.replace(/\s*\(\s*\d+\s*kom(?:ada)?\.?\s*\)/gi, '');
+
+    // 0c) DEFENSIVE: Sonnet ponekad razbije product card u 4-5 odvojenih
+    // redova umjesto jednog (image, **name**, price KM, "Na lageru",
+    // [Pogledaj](url)). Sklopimo te blokove u single-line ekvivalent
+    // koji PROD_RE hvata. Ovo je hotfix za production demo bug
+    // (Sesija 8) gdje su slike izlazile iznad imena, layout razbijen.
+    text = collapseMultiLineProducts(text);
 
     // 1) Extract product card lines first → placeholder tokens
     const cards = [];
@@ -930,12 +1268,17 @@ html.bl-scroll-lock body {
 
     // 2) Standard markdown
     html = html
+      // Ukloni horizontal rules (---/***/___) na vlastitom redu — vizualni
+      // šum u chat balon-u, separator nije potreban kad imamo product cards.
+      .replace(/^[ \t]*[-*_]{3,}[ \t]*$/gm, '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g,
         '<img src="$2" alt="$1" loading="lazy" onerror="this.style.display=\'none\'">')
       .replace(/\[([^\]]+)\]\(((?:https?|mailto):[^)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      // Stišaj višestruke prazne redove (>2 \n → 2)
+      .replace(/\n{3,}/g, '\n\n')
       .replace(/\n/g, '<br>');
 
     // 3) Restore cards (HTML-encoded tokens preserved through escaping)
@@ -950,7 +1293,14 @@ html.bl-scroll-lock body {
     div.className = 'bl-msg ' + role;
     div.innerHTML = role === 'bot' ? renderMarkdown(text) : escHtml(text);
     messagesEl.appendChild(div);
-    scrollBottom();
+    // Bot odgovori (često sadrže listu proizvoda) — skroluj na VRH nove
+    // poruke da se prvi rezultat vidi prvi. User poruke (kratke) ostaju
+    // bottom-scroll standardno.
+    if (role === 'bot') {
+      setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    } else {
+      scrollBottom();
+    }
     return div;
   }
 
@@ -977,7 +1327,7 @@ html.bl-scroll-lock body {
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: history.slice(0, -1), channel: 'chat' }),
+        body: JSON.stringify({ message: text, history: history.slice(0, -1), channel: 'chat', session_id: sessionId }),
       });
       typing.remove();
       if (!resp.ok) { addMsg('Greška servera. Pokušaj ponovo.', 'bot'); return; }
@@ -1012,7 +1362,6 @@ html.bl-scroll-lock body {
     statusTxt:$('bl-vstate-text'),
     tline:    $('bl-vtline'),
     wave:     $('bl-vwave'),
-    hint:     $('bl-vhint'),
     trans:    $('bl-vtranscript'),
     pauseBtn: $('bl-vpause'),
     pauseLbl: $('bl-vpause-label'),
@@ -1020,13 +1369,108 @@ html.bl-scroll-lock body {
 
   const ORB_LOADER_HTML = '<span class="bl-orb__loader"><span></span><span></span><span></span></span>';
 
+  // Fullscreen state — orb je velik i centriran preko cijelog widget-a
+  // dok ne stigne prvi rezultat (animirano se skuplja u compact header).
+  // Trigger: addVoiceMsg() poziv prvi put → skida vp-fullscreen klasu.
+  let voiceFullscreenActive = false;
+
+  // ── Thinking sound (kao ChatGPT / Claude.ai) ─────────────────────
+  // ISPREKIDAN ritam ("tu-ru-ru" pattern): triple soft pulses, kratka pauza,
+  // ponavlja. Korisnik je tražio "ne kontinuirano nego isprekidano kao
+  // tu-ru-ru tu-ru-ru". Implementacija: setInterval scheduluje grupu
+  // 3 kratka tone-a (40ms ON / 100ms OFF / 40ms ON / 100ms OFF / 40ms
+  // ON), pa pauza ~700ms, pa repeat. Trostruki harmonijum 220/330/495 Hz.
+  let thinkingAudioCtx = null;
+  let thinkingState = null;  // { interval, stopped }
+
+  function _playPulse(ctx, freq, startAt, durMs) {
+    // Glavni sine ton
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const g = ctx.createGain();
+    const dur = durMs / 1000;
+    const peak = 0.07;  // pojačano sa 0.04 — donji opseg traži više gain-a
+    g.gain.setValueAtTime(0, startAt);
+    g.gain.linearRampToValueAtTime(peak, startAt + 0.012);  // 12ms attack
+    g.gain.setValueAtTime(peak, startAt + dur - 0.025);
+    g.gain.linearRampToValueAtTime(0, startAt + dur);        // 25ms release (mekše "nu")
+    osc.connect(g).connect(ctx.destination);
+    osc.start(startAt);
+    osc.stop(startAt + dur + 0.02);
+
+    // Sub-oktava (1 oktava ispod) sa nižim gain — daje "tunu" tijelo
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.value = freq / 2;
+    const sg = ctx.createGain();
+    sg.gain.setValueAtTime(0, startAt);
+    sg.gain.linearRampToValueAtTime(0.05, startAt + 0.012);
+    sg.gain.setValueAtTime(0.05, startAt + dur - 0.025);
+    sg.gain.linearRampToValueAtTime(0, startAt + dur);
+    sub.connect(sg).connect(ctx.destination);
+    sub.start(startAt);
+    sub.stop(startAt + dur + 0.02);
+  }
+
+  function startThinkingSound() {
+    if (thinkingState) return;  // već svira
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!thinkingAudioCtx) thinkingAudioCtx = new Ctx();
+      if (thinkingAudioCtx.state === 'suspended') thinkingAudioCtx.resume();
+
+      const ctx = thinkingAudioCtx;
+      // "tunu nu" pattern: 3 pulsa, nizak opseg sa donjom oktavom
+      // za bass tijelo (110 → 165 → 247 Hz, oktava niže nego prije).
+      // Trajanje 75ms da "nu" zazvuči mekše, razmak 140ms.
+      const PULSE_DUR = 75;
+      const PULSE_GAP = 140;
+      const GROUP_PAUSE = 700;
+      const FREQS = [110, 165, 247];
+
+      const scheduleGroup = () => {
+        if (!thinkingState || thinkingState.stopped) return;
+        const now = ctx.currentTime;
+        FREQS.forEach((f, i) => {
+          _playPulse(ctx, f, now + i * (PULSE_GAP / 1000), PULSE_DUR);
+        });
+      };
+
+      scheduleGroup();  // odmah prva grupa
+      const totalGroupMs = (FREQS.length - 1) * PULSE_GAP + PULSE_DUR + GROUP_PAUSE;
+      const interval = setInterval(scheduleGroup, totalGroupMs);
+      thinkingState = { interval, stopped: false };
+    } catch (e) {
+      // Audio nije dostupan — graceful fail
+    }
+  }
+
+  function stopThinkingSound() {
+    if (!thinkingState) return;
+    thinkingState.stopped = true;
+    clearInterval(thinkingState.interval);
+    thinkingState = null;
+  }
+
   const STATE_MAP = {
-    [VS.IDLE]:       { mod: '',           status: 'Spremno · pritisni mikrofon', tline: '<em>Postavi pitanje glasom.</em><br><em>Govori bosanski, srpski ili hrvatski.</em>', wave: false, hint: true },
-    [VS.LISTENING]:  { mod: 'listening',  status: 'Slušam...',                   tline: '<em>Govori — pauzom šalješ poruku</em>',                                            wave: false, hint: true },
-    [VS.RECORDING]:  { mod: 'recording',  status: 'Snimam...',                   tline: '<em>Govori...</em>',                                                                wave: true,  hint: false },
-    [VS.PROCESSING]: { mod: 'processing', status: 'Razmišljam...',               tline: '<em>Tražim odgovor...</em>',                                                        wave: false, hint: false },
-    [VS.SPEAKING]:   { mod: '',           status: 'Govorim...',                  tline: '<em>Asistent govori...</em>',                                                       wave: true,  hint: false },
+    [VS.IDLE]:       { mod: '',           status: 'Spremno', tline: '<em>Pritisni mikrofon i počni razgovor.</em>', wave: false },
+    [VS.LISTENING]:  { mod: 'listening',  status: 'Slušam...', tline: '<em>Slušam...</em>',                          wave: false },
+    [VS.RECORDING]:  { mod: 'recording',  status: 'Snimam...', tline: '<em>Govori...</em>',                          wave: true  },
+    [VS.PROCESSING]: { mod: 'processing', status: 'Razmišljam...', tline: '<em>Razmišljam...</em>',                  wave: false },
+    [VS.SPEAKING]:   { mod: '',           status: 'Govorim...', tline: '<em>Asistent govori...</em>',                wave: true  },
   };
+
+  function _applyPanelClasses(stateClass, paused = false) {
+    // Sastavi panel className zadržavajući vp-fullscreen ako je aktivan.
+    // Sve ostale vp-* klase se prepisuju.
+    const classes = [];
+    if (paused) classes.push('vp-paused');
+    else if (stateClass) classes.push('vp-' + stateClass);
+    if (voiceFullscreenActive) classes.push('vp-fullscreen');
+    vEls.panel.className = classes.join(' ');
+  }
 
   function setVoiceState(s) {
     const prev = vState;
@@ -1039,12 +1483,14 @@ html.bl-scroll-lock body {
     }
     const cfg = STATE_MAP[s];
     vEls.orb.className = 'bl-orb' + (cfg.mod ? ' bl-orb--' + cfg.mod : '');
-    vEls.panel.className = 'vp-' + s;
+    _applyPanelClasses(s);
     vEls.statusTxt.textContent = cfg.status;
     vEls.tline.innerHTML = cfg.tline;
     vEls.wave.classList.toggle('bl-hidden', !cfg.wave);
-    vEls.hint.classList.toggle('bl-hidden', !cfg.hint);
     setOrbCoreContent(s === VS.PROCESSING ? 'loader' : 'mic');
+    // Thinking sound pri PROCESSING, stop u svim drugim stanjima
+    if (s === VS.PROCESSING) startThinkingSound();
+    else stopThinkingSound();
   }
 
   function setOrbCoreContent(kind) {
@@ -1055,21 +1501,33 @@ html.bl-scroll-lock body {
 
   function setPausedState() {
     vEls.orb.className = 'bl-orb bl-orb--paused';
-    vEls.panel.className = 'vp-paused';
+    _applyPanelClasses(null, true);
     vEls.statusTxt.textContent = 'Pauzirano';
     vEls.tline.innerHTML = '<em>Pauzirano — klikni "Nastavi" da nastaviš razgovor.</em>';
     vEls.wave.classList.add('bl-hidden');
-    vEls.hint.classList.add('bl-hidden');
     setOrbCoreContent('mic');
   }
 
+  function setVoiceFullscreen(on) {
+    voiceFullscreenActive = !!on;
+    if (on) vEls.panel.classList.add('vp-fullscreen');
+    else    vEls.panel.classList.remove('vp-fullscreen');
+  }
+
   function addVoiceMsg(role, content) {
+    if (voiceFullscreenActive) setVoiceFullscreen(false);
     vEls.trans.classList.remove('bl-hidden');
     const div = document.createElement('div');
     div.className = 'bl-msg ' + (role === 'user' ? 'user' : 'bot');
     div.innerHTML = role === 'user' ? escHtml(content) : renderMarkdown(content);
     vEls.trans.appendChild(div);
-    vEls.trans.scrollTop = vEls.trans.scrollHeight;
+    // Identicno tekst chat addMsg (linija ~1300): bot poruke skroluju na vrh,
+    // user poruke (kratke) ostaju bottom-scroll standardno.
+    if (role === 'bot') {
+      setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    } else {
+      vEls.trans.scrollTop = vEls.trans.scrollHeight;
+    }
   }
 
   // ── Mic open/close ───────────────────────────────────────────────
@@ -1239,7 +1697,7 @@ html.bl-scroll-lock body {
       const { replyText, replyVoice } = await chatVoiceApi(transcript);
       if (!voiceModeActive) return;
 
-      addVoiceMsg('ai', replyText);
+      addVoiceMsg('bot', replyText);
       addMsg(replyText, 'bot');
       history.push({ role: 'assistant', content: replyText });
 
@@ -1270,7 +1728,7 @@ html.bl-scroll-lock body {
     const resp = await fetch(CHAT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history: history.slice(0, -1), channel: 'voice' }),
+      body: JSON.stringify({ message, history: history.slice(0, -1), channel: 'voice', session_id: sessionId }),
     });
     if (!resp.ok) throw new Error('Chat greška ' + resp.status);
     const data = await resp.json();
@@ -1314,6 +1772,13 @@ html.bl-scroll-lock body {
       Object.assign(document.createElement('span'), { innerHTML: I.pause }).firstChild
     );
 
+    // Reset transkripta + aktiviraj fullscreen orb (orb VELIK i centriran).
+    // Skupljanje u compact header animira se kad addVoiceMsg pozove prvi
+    // put (poslije API odgovora).
+    vEls.trans.innerHTML = '';
+    vEls.trans.classList.add('bl-hidden');
+    setVoiceFullscreen(true);
+
     setVoiceState(VS.IDLE);
     vEls.statusTxt.textContent = 'Zahtijevam pristup mikrofonu...';
     voiceModeActive = true;
@@ -1354,6 +1819,7 @@ html.bl-scroll-lock body {
     cancelAnimationFrame(vadRafId);
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     closeMic();
+    setVoiceFullscreen(false);   // reset za sledeće otvaranje
     setVoiceState(VS.IDLE);
     $('bl-voice-overlay').classList.remove('open');
     document.documentElement.classList.remove('bl-scroll-lock');
@@ -1432,5 +1898,23 @@ html.bl-scroll-lock body {
   $('bl-voice-close-btn').addEventListener('click', () => closeVoiceMode());
   $('bl-vstop').addEventListener('click', () => closeVoiceMode());
   $('bl-vpause').addEventListener('click', () => togglePause());
+
+  // Pre-flight: provjeri da li je Groq STT dostupan. Ako nije, sakri voice button.
+  // Server cache-uje rezultat 60s — bezbjedan poziv pri svakom widget mountu.
+  (async () => {
+    const btn = $('bl-voice-btn');
+    if (!btn) return;
+    try {
+      const r = await fetch(VOICE_STATUS_URL, { method: 'GET' });
+      const data = await r.json();
+      if (!data.voice_available) {
+        btn.style.display = 'none';
+        console.warn('[BitLab] Voice mode disabled —', data.reason || 'unknown');
+      }
+    } catch (e) {
+      btn.style.display = 'none';
+      console.warn('[BitLab] Voice status check failed —', e);
+    }
+  })();
 
 })();

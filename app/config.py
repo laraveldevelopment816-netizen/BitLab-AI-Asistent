@@ -29,7 +29,12 @@ class Settings(BaseSettings):
                 "Dodaj: ANTHROPIC_API_KEY=sk-ant-..."
             )
         return v
-    chat_model: str = "claude-haiku-4-5-20251001"
+    # Sesija 8 hotfix: Haiku ne sluša "ne pitaj pojašnjenje" pravilo
+    # za upite sa typoom (npr. "lapatovoe" → tražio pojašnjenje umjesto
+    # search-a, čak je u sledećoj iteraciji halucinirao "nema laptopa").
+    # Sonnet 4.6 robusno hvata namjeru i kroz typoove. Vidi
+    # tests/test_typo_robustness.py i evals/category_eval.json (typo cases).
+    chat_model: str = "claude-sonnet-4-6"
     email_model: str = "claude-sonnet-4-6"
     max_tool_iterations: int = 5
     max_output_tokens: int = 1024
@@ -68,6 +73,12 @@ class Settings(BaseSettings):
     smtp_user: str | None = None
     smtp_password: str | None = None
 
+    # Eskalacija notifikacija — ako popunjeno, escalate_to_human tool
+    # šalje email na ovu adresu. Default je smtp_user (sami sebi).
+    # Bez SMTP config-a, tool vraća "upit zabilježen" umjesto laži
+    # "tim obaviješten".
+    escalation_email_to: str | None = None
+
     # ── Webshop ───────────────────────────────────────────────
     webshop_base_url: str = "https://webshop.bitlab.rs"
     product_url_template: str = "https://webshop.bitlab.rs/proizvod/{urlhash}"
@@ -83,6 +94,19 @@ class Settings(BaseSettings):
     allowed_origins: list[str] = Field(
         default_factory=lambda: ["https://webshop.bitlab.rs", "http://localhost:8000"]
     )
+
+    # ── Dashboard / logging (Sesija 8) ────────────────────────
+    # Bearer token za /api/dashboard/*. Bez ključa endpointi vraćaju 401.
+    # Generiši: python -c "import secrets; print(secrets.token_urlsafe(32))"
+    dashboard_api_key: str | None = None
+    # Mapa "short-name -> full Anthropic model id" — koristi se za
+    # POST /api/dashboard/compare {"models": ["haiku","sonnet"]}.
+    @property
+    def model_registry(self) -> dict[str, str]:
+        return {
+            "haiku": self.chat_model,
+            "sonnet": self.email_model,
+        }
 
 
 settings = Settings()

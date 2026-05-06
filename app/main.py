@@ -3,6 +3,7 @@ FastAPI aplikacija — entry point.
 """
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 import httpx
@@ -17,6 +18,8 @@ from slowapi.util import get_remote_address
 
 from .config import PROJECT_ROOT, settings
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,6 +33,10 @@ async def lifespan(app: FastAPI):
         from .rag import get_index
         idx = get_index()  # učitava .npz + meta.json — brzo
         asyncio.create_task(asyncio.to_thread(idx.preload_model))
+
+    # Dashboard storage init — idempotentno
+    from .storage.db import init_db
+    await init_db()
 
     yield
 
@@ -59,6 +66,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Dashboard router (logging + compare). Pod /api/dashboard/* sa bearer auth.
+from .server.dashboard import router as dashboard_router  # noqa: E402
+
+app.include_router(dashboard_router)
+
 
 # ── Static (widget, voice demo) ──────────────────────────────
 public_dir = PROJECT_ROOT / "public"
@@ -78,6 +90,10 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=20)
     channel: str = Field(default="chat", pattern="^(chat|voice|email)$")
+    # UUID generisan klijent-side u widget.js — grupiše sve poruke jednog
+    # razgovora pod jednu sesiju (Sessions tab u dashboard-u). Opciono za
+    # backward compat sa starim klijentima.
+    session_id: str | None = Field(default=None, max_length=36)
 
 
 class ToolCallTrace(BaseModel):
@@ -141,12 +157,21 @@ async def healthz():
 @limiter.limit("30/minute")
 async def api_chat(request: Request, req: ChatRequest) -> ChatResponse:
     """Glavni endpoint — koristi se i iz widget-a i iz voice mode-a."""
+    import asyncio
     from .agent import run_agent
+    from .config import settings as _settings
+    from .server.dashboard import _persist_trace
 
     messages = [{"role": m.role, "content": m.content} for m in req.history]
     messages.append({"role": "user", "content": req.message})
 
-    result = run_agent(messages, channel=req.channel)
+    result = await asyncio.to_thread(run_agent, messages, req.channel)
+    # Persist trace fire-and-forget — ne blokira response klijentu
+    model = (result.get("_trace", {}) or {}).get("model") or _settings.chat_model
+    asyncio.create_task(_persist_trace(
+        channel=req.channel, model=model, prompt=req.message, result=result,
+        session_id=req.session_id,
+    ))
     return ChatResponse(
         reply=result["reply"],
         reply_voice=result.get("reply_voice", ""),
@@ -161,7 +186,10 @@ async def api_chat(request: Request, req: ChatRequest) -> ChatResponse:
 @limiter.limit("10/minute")
 async def api_email(request: Request, req: EmailRequest) -> EmailResponse:
     """Endpoint koji n8n zove kad stigne novi email; vraća draft replyja."""
+    import asyncio
     from .agent import run_agent
+    from .config import settings as _settings
+    from .server.dashboard import _persist_trace
 
     # Sklopi poruku sa kontekstom emaila.
     # Body se obavija u <email_body> tagove — system prompt nalaže Claude-u da
@@ -174,10 +202,13 @@ async def api_email(request: Request, req: EmailRequest) -> EmailResponse:
         f"Predmet: {req.subject}\n\n"
         f"<email_body>\n{safe_body}\n</email_body>"
     )
-    result = run_agent(
-        [{"role": "user", "content": message}],
-        channel="email",
+    result = await asyncio.to_thread(
+        run_agent, [{"role": "user", "content": message}], "email",
     )
+    model = (result.get("_trace", {}) or {}).get("model") or _settings.email_model
+    asyncio.create_task(_persist_trace(
+        channel="email", model=model, prompt=message, result=result,
+    ))
     return EmailResponse(
         reply=result["reply"],
         escalated=result["escalated"],
@@ -229,14 +260,28 @@ def _normalize_for_tts(text: str) -> str:
         "", text
     )
 
-    # Cijene: "1.450,00 KM" / "389,00 KM" / "389.00 KM" / "389 KM"
+    # Cijene: "1.450,00 KM" / "1.936 KM" / "389,00 KM" / "389.00 KM" / "389 KM"
+    # Bug fix Sesija 8: u BCS formatu "1.936 KM" tačka je separator hiljada,
+    # ne decimalni. Prije fix-a int(float("1.936")) = 1, pa TTS čita
+    # "jedna marka" umjesto "hiljadu devetsto trideset šest maraka".
     def _price(m):
         raw = m.group(1)
-        # Evropski format: 1.450,00 → ukloni točku-hiljade, zamijeni zarez s točkom
         if "." in raw and "," in raw:
+            # Evropski format sa centima: 1.450,00 → 1450.00
             raw = raw.replace(".", "").replace(",", ".")
+        elif "." in raw and "," not in raw:
+            # Tačka bez zareza — tipično separator hiljada (1.936) ili
+            # decimalna (3.50GHz, ali ovdje smo u KM kontekstu).
+            # Heuristika: ako se sve grupe nakon prve tačke imaju tačno
+            # 3 cifre, to je separator hiljada → ukloni tačke. Inače
+            # ostavi kao decimalni.
+            parts = raw.split(".")
+            if all(len(p) == 3 for p in parts[1:]) and len(parts[0]) <= 3:
+                raw = raw.replace(".", "")
+            # else: ostavi raw, float() će ga parse-ovati kao decimalni
         elif "," in raw and raw.index(",") == len(raw) - 3:
-            raw = raw.replace(",", ".")  # 389,00 → 389.00
+            # 389,00 → 389.00
+            raw = raw.replace(",", ".")
         try:
             val = int(float(raw))
         except ValueError:
@@ -347,73 +392,13 @@ async def api_tts(request: Request, req: TtsRequest):
     raise HTTPException(status_code=503, detail="TTS provideri nedostupni. Pokušaj ponovo.")
 
 
-# ── Audio decoder (WebM/OGG/MP3 → WAV PCM 16kHz mono) ────────
-# Koristi PyAV (već dependency od faster-whisper) sa bundled ffmpeg lib-ovima.
-# Azure STT REST oficijalno prihvata samo WAV i OGG-Opus — WebM kontejner odbija.
-def _decode_to_wav_pcm16(audio_bytes: bytes, target_rate: int = 16000) -> bytes | None:
-    """Dekoduje bilo koji audio format u WAV PCM s16le mono na target_rate.
-    Vraća None ako dekodiranje pukne (caller pada na fallback chain)."""
-    try:
-        import av
-        import io
-        import wave
-
-        in_buf = io.BytesIO(audio_bytes)
-        in_container = av.open(in_buf, mode="r")
-        try:
-            audio_streams = [s for s in in_container.streams if s.type == "audio"]
-            if not audio_streams:
-                return None
-            resampler = av.audio.resampler.AudioResampler(
-                format="s16", layout="mono", rate=target_rate
-            )
-            pcm_chunks: list[bytes] = []
-            for frame in in_container.decode(audio=0):
-                for resampled in resampler.resample(frame):
-                    pcm_chunks.append(bytes(resampled.planes[0]))
-            # Flush resampler — bitno za zadnji partial frame
-            for resampled in resampler.resample(None):
-                pcm_chunks.append(bytes(resampled.planes[0]))
-        finally:
-            in_container.close()
-
-        pcm_data = b"".join(pcm_chunks)
-        if not pcm_data:
-            return None
-
-        out_buf = io.BytesIO()
-        with wave.open(out_buf, "wb") as wav:
-            wav.setnchannels(1)
-            wav.setsampwidth(2)  # 16-bit
-            wav.setframerate(target_rate)
-            wav.writeframes(pcm_data)
-        return out_buf.getvalue()
-    except Exception:
-        return None
-
-
-# ── Whisper STT ──────────────────────────────────────────────
-_whisper_model = None
-
-
-def _get_whisper():
-    global _whisper_model
-    if _whisper_model is None:
-        from faster_whisper import WhisperModel
-        # "small" model: ~150MB, dobar za BCS; "tiny" brži ali slabiji
-        _whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
-    return _whisper_model
-
-
 @app.post("/api/stt")
 @limiter.limit("20/minute")
 async def api_stt(request: Request, audio: UploadFile = File(...)):
-    """Transkribuje audio. Koristi Groq Whisper API ako je GROQ_API_KEY postavljen,
-    inače lokalni faster-whisper. Vraća {text, language, provider}.
+    """Transkribuje audio preko Groq Whisper API-ja. Vraća {text, language, provider="groq"}.
+    Ako Groq nije dostupan (no key, network, invalid key, non-200), vraća HTTP 503.
+    Pre-flight check: GET /api/voice/status (widget zove ovo prije pokretanja voice mode-a).
     """
-    import tempfile, os
-    from asyncio import get_event_loop
-
     _MAX_AUDIO = 25 * 1_048_576  # 25 MB
     content_length = request.headers.get("content-length")
     if content_length and int(content_length) > _MAX_AUDIO:
@@ -441,16 +426,9 @@ async def api_stt(request: Request, audio: UploadFile = File(...)):
         t = text.strip()
         return "" if t.lower() in _HALLUCINATIONS else t
 
-    # ── Prioritet STT provider-a ─────────────────────────────────
-    # Whisper-large-v3 (Groq) → daleko bolji za bs/hr/sr od Azure STT.
-    # Azure STT je dobar za major jezike (en/de/fr) ali ima slabiji recall za
-    # južnoslavenski govor. Zato:
-    #   1. Groq Whisper (besplatno 7200s/dan, najbolji kvalitet)
-    #   2. Azure (fallback, samo ako Groq pukne ili nema ključa)
-    #   3. Lokalni faster-whisper (offline fallback)
-
-    # Domain prompt — Whisper se prima na ove riječi i bolje hvata
-    # IT termine i lokalna imena. Funkcioniše kao bias hint, ne kao filter.
+    # Groq Whisper-large-v3 — JEDINI STT provider.
+    # Ako pukne, vraćamo 503 i widget gasi voice button (vidi /api/voice/status).
+    # Domain hint pomaže Whisper-u za IT termine i lokalna imena.
     _DOMAIN_HINT = (
         "Razgovor sa BitLab prodajnim asistentom o IT opremi u Banja Luci. "
         "Klijent pita za laptop, računar, monitor, SSD, RAM, GPU, miš, tastaturu, "
@@ -460,79 +438,74 @@ async def api_stt(request: Request, audio: UploadFile = File(...)):
         "Pita se i o dostavi, garanciji, plaćanju, MKD ratama, B2B fakturama."
     )
 
-    # ── Groq Whisper-large-v3 (primarno) ──────────────────────────
-    if settings.groq_api_key:
-        try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    "https://api.groq.com/openai/v1/audio/transcriptions",
-                    headers={"Authorization": f"Bearer {settings.groq_api_key}"},
-                    files={"file": (f"audio{suffix}", data, audio.content_type or "audio/webm")},
-                    data={
-                        "model": settings.groq_whisper_model,
-                        "language": "hr",
-                        "response_format": "json",
-                        "prompt": _DOMAIN_HINT,
-                        "temperature": "0",  # deterministicno, manje halucinacija
-                    },
-                )
-            if resp.status_code == 200:
-                text = _clean_stt(resp.json().get("text", ""))
-                if text:
-                    return {"text": text, "language": "hr", "provider": "groq"}
-        except Exception:
-            pass  # Groq nedostupan / prazan, padamo na Azure
-
-    # ── Azure Speech-to-Text (fallback) ──────────────────────────
-    if settings.azure_speech_key:
-        try:
-            from asyncio import get_event_loop as _loop
-            wav_bytes = await _loop().run_in_executor(None, _decode_to_wav_pcm16, data)
-            if wav_bytes:
-                async with httpx.AsyncClient(timeout=30) as client:
-                    resp = await client.post(
-                        f"https://{settings.azure_speech_region}.stt.speech.microsoft.com"
-                        "/speech/recognition/conversation/cognitiveservices/v1",
-                        params={
-                            "language": settings.azure_stt_language,
-                            "format": "simple",
-                            "profanity": "raw",
-                        },
-                        headers={
-                            "Ocp-Apim-Subscription-Key": settings.azure_speech_key,
-                            "Content-Type": "audio/wav; codecs=audio/pcm; samplerate=16000",
-                            "Accept": "application/json",
-                        },
-                        content=wav_bytes,
-                    )
-                if resp.status_code == 200:
-                    j = resp.json()
-                    text = _clean_stt(j.get("DisplayText", ""))
-                    if j.get("RecognitionStatus") == "Success" and text:
-                        return {"text": text, "language": settings.azure_stt_language[:2], "provider": "azure"}
-        except Exception:
-            pass  # Azure nedostupan, padamo na lokalni
-
-    # ── Lokalni faster-whisper (offline fallback) ────────────────
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(data)
-        tmp_path = tmp.name
+    if not settings.groq_api_key:
+        logger.warning("STT pozvan a GROQ_API_KEY nije postavljen")
+        raise HTTPException(status_code=503, detail="Voice nije dostupan")
 
     try:
-        loop = get_event_loop()
-        model = await loop.run_in_executor(None, _get_whisper)
-        segments, info = await loop.run_in_executor(
-            None,
-            lambda: model.transcribe(
-                tmp_path, language="hr", beam_size=5,
-                initial_prompt=_DOMAIN_HINT,
-                no_speech_threshold=0.6,
-                log_prob_threshold=-1.0,
-            ),
-        )
-        text = _clean_stt(" ".join(seg.text.strip() for seg in segments
-                                   if seg.no_speech_prob < 0.6))
-    finally:
-        os.unlink(tmp_path)
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                files={"file": (f"audio{suffix}", data, audio.content_type or "audio/webm")},
+                data={
+                    "model": settings.groq_whisper_model,
+                    "language": "hr",
+                    "response_format": "json",
+                    "prompt": _DOMAIN_HINT,
+                    "temperature": "0",
+                },
+            )
+    except Exception as e:
+        logger.warning("Groq STT zahtjev pukao: %r", e)
+        raise HTTPException(status_code=503, detail="Voice nije dostupan")
 
-    return {"text": text, "language": info.language, "provider": "local"}
+    if resp.status_code != 200:
+        logger.warning("Groq STT HTTP %s: %s", resp.status_code, resp.text[:200])
+        raise HTTPException(status_code=503, detail="Voice nije dostupan")
+
+    text = _clean_stt(resp.json().get("text", ""))
+    # Prazno = tišina ili poznata halucinacija — nije error, samo no-speech
+    return {"text": text, "language": "hr", "provider": "groq"}
+
+
+# ── Voice availability check (pre-flight za widget) ─────────────
+_voice_health: dict = {"checked_at": 0.0, "ok": False, "reason": "uninitialized"}
+_VOICE_HEALTH_TTL = 60.0  # sekundi
+
+
+@app.get("/api/voice/status")
+async def api_voice_status() -> dict:
+    """Pre-flight check za voice mode. Widget zove ovo na load i prikazuje
+    voice button samo ako je `voice_available: true`. Cache-uje rezultat 60s
+    da ne udara Groq sa svakim browser refresh-om."""
+    import time
+    now = time.time()
+
+    if not settings.groq_api_key:
+        return {"voice_available": False, "reason": "no_api_key"}
+
+    # Cache hit
+    if now - _voice_health["checked_at"] < _VOICE_HEALTH_TTL:
+        return {"voice_available": _voice_health["ok"], "reason": _voice_health["reason"]}
+
+    # Cache miss — ping Groq /v1/models (cheap GET, ~200 byte response)
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(
+                "https://api.groq.com/openai/v1/models",
+                headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+            )
+    except Exception as e:
+        _voice_health.update(checked_at=now, ok=False, reason="groq_unreachable")
+        logger.warning("Voice status check failed: %r", e)
+        return {"voice_available": False, "reason": "groq_unreachable"}
+
+    if resp.status_code == 200:
+        _voice_health.update(checked_at=now, ok=True, reason="ok")
+        return {"voice_available": True, "reason": "ok"}
+
+    reason = f"groq_http_{resp.status_code}"
+    _voice_health.update(checked_at=now, ok=False, reason=reason)
+    logger.warning("Voice status: Groq returned %s", resp.status_code)
+    return {"voice_available": False, "reason": reason}

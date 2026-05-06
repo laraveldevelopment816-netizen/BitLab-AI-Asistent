@@ -24,6 +24,10 @@ dependencies = [
     # Voice/audio (lazy-loaded u main.py — ne usporavaju startup)
     "faster-whisper>=1.1",
     "edge-tts>=7.0",
+    # Dashboard storage (Sesija 8 — async SQLAlchemy nad SQLite)
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",
+    "jinja2>=3.1",
 ]
 
 [project.optional-dependencies]
@@ -50,3 +54,6 @@ target-version = "py311"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "anthropic_api: integration tests koji zovu pravi Anthropic API (skup, ~$0.02 po test)",
+]

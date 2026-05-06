@@ -4,9 +4,29 @@ Anthropic tool use schema + handler implementacije.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from .contacts import EMAIL, TEL
+
+
+# ── Kategorije — load jednom pri import-u ────────────────────
+# AI vidi listu validnih cat_id-ova u tool description-u + kao enum,
+# tako da single-call zaokruži klasifikaciju + tool decision atomski.
+_CATEGORIES_PATH = Path(__file__).resolve().parent.parent / "data" / "categories.json"
+
+
+def _load_categories() -> dict[str, dict[str, Any]]:
+    if not _CATEGORIES_PATH.exists():
+        return {}
+    return json.loads(_CATEGORIES_PATH.read_text(encoding="utf-8"))
+
+
+CATEGORIES: dict[str, dict[str, Any]] = _load_categories()
+_CATEGORY_IDS: list[str] = list(CATEGORIES.keys())
+_CATEGORIES_BLOCK = "\n".join(
+    f"- {cid}: {info['label']}" for cid, info in CATEGORIES.items()
+)
 
 
 SEARCH_PRODUCTS: dict[str, Any] = {
@@ -16,7 +36,15 @@ SEARCH_PRODUCTS: dict[str, Any] = {
         "leksička). Koristi za sva pitanja o tome šta firma prodaje, koliko košta, "
         "šta ima na zalihi, uporedbe, ili 'imate li X'. Vraća listu proizvoda sa "
         "imenom, cijenom u KM, oznakom dostupnosti i URL-om. NE koristi za politike "
-        "(dostava, plaćanje, garancija) — za to koristi `get_faq`."
+        "(dostava, plaćanje, garancija) — za to koristi `get_faq`.\n\n"
+        "VALIDNE KATEGORIJE (popuni `category_id` kad je upit kategorijski):\n"
+        f"{_CATEGORIES_BLOCK}\n\n"
+        "Pravilo klasifikacije: ako je upit kategorijski (npr. 'tastatura', "
+        "'laptop do 1500 KM', 'monitor 27\"', 'gaming miš'), MORAŠ popuniti "
+        "`category_id` iz liste iznad — kategorijski filter drastično poboljšava "
+        "rezultate jer filtrira accessory šum (npr. torbe za laptop kad korisnik "
+        "traži laptop). Ako upit imenuje konkretan brand+model (npr. 'Patriot SSD "
+        "240GB', 'iPhone 15 Pro'), možeš preskočiti `category_id`."
     ),
     "input_schema": {
         "type": "object",
@@ -26,6 +54,14 @@ SEARCH_PRODUCTS: dict[str, Any] = {
                 "description": (
                     "Korisnikov upit. Može biti prirodni jezik ('brz disk za laptop'), "
                     "brand+model ('Patriot SSD 240GB'), ili kategorija ('SSD diskovi 1TB')."
+                ),
+            },
+            "category_id": {
+                "type": "string",
+                "enum": _CATEGORY_IDS,
+                "description": (
+                    "Opciono: ID kategorije iz liste validnih kategorija (vidi opis "
+                    "tool-a). Filtrira pretragu samo na proizvode iz te kategorije."
                 ),
             },
             "top_k": {
@@ -159,8 +195,14 @@ def handle_search_products(
     query: str,
     top_k: int = 5,
     max_price_km: float | None = None,
+    category_id: str | None = None,
 ) -> str:
-    results = _get_index().search(query, top_k=top_k, max_price_km=max_price_km)
+    results = _get_index().search(
+        query,
+        top_k=top_k,
+        max_price_km=max_price_km,
+        category_id=category_id,
+    )
     if not results:
         return "Nema proizvoda koji odgovaraju upitu."
     return json.dumps(results, ensure_ascii=False)
@@ -191,13 +233,55 @@ def handle_check_availability(sifra: str) -> str:
 
 
 def handle_escalate_to_human(reason: str, summary: str) -> str:
+    """Eskalacija u dashboard log + opciono stvarni email notifikacija.
+
+    Bug fix Sesija 8: ranije je tool vraćao "Prodajni tim je obaviješten"
+    iako ništa stvarno nije slano — laž koju je AI ponavljao korisniku.
+    Sad: ako je ESCALATION_EMAIL_TO + SMTP konfigurisan u .env, šaljemo
+    pravi email; inače honest tekst "vaš upit je zabilježen, kontaktirajte
+    tim direktno za brz odgovor"."""
+    from .config import settings
+
+    notified = False
+    notify_target = getattr(settings, "escalation_email_to", None) or settings.smtp_user
+    if notify_target and settings.smtp_host and settings.smtp_user and settings.smtp_password:
+        try:
+            import smtplib
+            from email.message import EmailMessage
+            msg = EmailMessage()
+            msg["From"] = settings.smtp_user
+            msg["To"] = notify_target
+            msg["Subject"] = f"[BitLab AI] Eskalacija: {reason}"
+            msg.set_content(
+                f"Razlog: {reason}\n\n"
+                f"Sažetak korisnikovog upita:\n{summary}\n\n"
+                f"-- automatski iz BitLab AI Asistenta"
+            )
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as smtp:
+                smtp.starttls()
+                smtp.login(settings.smtp_user, settings.smtp_password)
+                smtp.send_message(msg)
+            notified = True
+        except Exception as exc:
+            print(f"[ESCALATE] Email send failed: {exc!r}")
+            # Ne padaj — tool i dalje treba da vrati instrukcije korisniku
+
+    if notified:
+        notify_status = "Prodajni tim je obaviješten putem emaila — javit će se u toku radnog vremena."
+    else:
+        # Honest fallback: NE tvrdi obavještenje koje nije poslano
+        notify_status = (
+            "Vaš upit je zabilježen u sistemu. Za brz odgovor kontaktirajte tim DIREKTNO "
+            "(email notifikacija nije poslata)."
+        )
+
     return (
         f"Eskalacija inicirana — razlog: {reason}\n"
         f"Sažetak: {summary}\n\n"
         "Kontakti za korisnika:\n"
         f"• Viber / Tel: {TEL}\n"
         f"• Email: {EMAIL}\n"
-        "Prodajni tim je obaviješten i javit će se u toku radnog vremena."
+        f"{notify_status}"
     )
 
 

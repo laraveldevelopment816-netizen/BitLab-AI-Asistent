@@ -41,6 +41,13 @@ data/products.meta.json
 # Logs
 *.log
 
+# Dashboard storage (Sesija 8)
+var/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
 # Node (for future development)
 node_modules/
 dist/
