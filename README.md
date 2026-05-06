@@ -22,6 +22,8 @@
 - `main` — samo prod-spremno; merge **isključivo** iz staging-a; manual deploy na prod
 - `feature/*` — kratkotrajne grane, brišu se nakon merge-a u staging
 
+**Backmerge poslije svakog PR-a staging → main:** odmah nakon GitHub merge-a pokreni `git checkout staging && git pull origin main && git push origin staging` — donosi merge commit nazad u staging i drži grane u sync-u za sledeći ciklus.
+
 **OBAVEZAN pre-prod check** (pokreni prije svakog `setup-domain` ili `release` na prodi):
 
 ```bash
