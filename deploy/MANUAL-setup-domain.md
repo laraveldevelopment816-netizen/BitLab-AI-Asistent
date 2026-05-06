@@ -1,6 +1,6 @@
-# Manual setup-domain — 14 koraka
+# Manual setup-domain — 15 koraka
 
-`bash ~/deploy.sh setup-domain` razbijen na 14 funkcija. Pozivaj jednu po jednu, testiraj output, pa nastavljaj.
+`bash ~/deploy.sh setup-domain` razbijen na 15 funkcija. Pozivaj jednu po jednu, testiraj output, pa nastavljaj.
 
 ## Priprema
 
@@ -154,9 +154,27 @@ install_python_deps
 
 ---
 
-## Korak 7 — `run_migrations`
+## Korak 7 — `build_vector_index`
 
-Pokreće idempotente skripte ako postoje: `init_db.py`, `migrate_session_id.py`, `build_categories.py`. Skipuje ako nema.
+Generiše `products.index.npz` + `products.meta.json` u **shared/var/** (release-ov data/products.* su simlinkovi tamo). Idempotentno: skipuje ako oba fajla već postoje. **Trajanje:** ~3-5 min prvi put (skida ~120MB sentence-transformers model).
+
+```
+build_vector_index
+```
+
+**Verifikacija:**
+
+```
+ls -lh "$SHARED_DIR/var/products.index.npz" "$SHARED_DIR/var/products.meta.json"
+```
+
+Mora dati ~7MB i ~5MB. **MORA proći prije Koraka 8** — `build_categories.py` (u run_migrations) zavisi od `products.meta.json`.
+
+---
+
+## Korak 8 — `run_migrations`
+
+Pokreće idempotentne skripte ako postoje: `init_db.py` (kreira tabele), `migrate_session_id.py` (alter table, idempotent), `build_categories.py` (zavisi od `products.meta.json` iz Koraka 7).
 
 ```
 run_migrations
@@ -166,7 +184,7 @@ run_migrations
 
 ---
 
-## Korak 8 — `build_dashboard`
+## Korak 9 — `build_dashboard`
 
 Ako `release/dashboard/` postoji: `pnpm install && pnpm build`, pa `sed` za `__BITLAB_DASHBOARD_KEY_PLACEHOLDER__` → vrijednost iz `shared/.env`.
 
@@ -182,7 +200,7 @@ ls "$RELEASE_DIR/dashboard/dist/index.html" 2>/dev/null && echo "build OK"
 
 ---
 
-## Korak 9 — `atomic_switch`
+## Korak 10 — `atomic_switch`
 
 `ln -sfn $RELEASE_DIR ~/aiasistent-prod/current`.
 
@@ -200,7 +218,7 @@ Mora pokazati `releases/<TS>`.
 
 ---
 
-## Korak 10 — `setup_systemd`
+## Korak 11 — `setup_systemd`
 
 Generiše `/etc/systemd/system/aiasistent-prod.service` (Type=simple, uvicorn, EnvironmentFile=shared/.env), `daemon-reload`, `enable`.
 
@@ -216,7 +234,7 @@ systemctl cat aiasistent-prod | head -20
 
 ---
 
-## Korak 11 — `setup_systemd_start`
+## Korak 12 — `setup_systemd_start`
 
 `sudo systemctl start aiasistent-prod` + sleep 5 + active check.
 
@@ -228,7 +246,7 @@ setup_systemd_start
 
 ---
 
-## Korak 12 — `setup_nginx_http`
+## Korak 13 — `setup_nginx_http`
 
 Generiše `/etc/nginx/hosts/aiasistent-prod.conf` sa `listen 80; server_name $DOMAIN; location / { proxy_pass http://127.0.0.1:$PORT; }`. `nginx -t && reload`.
 
@@ -247,7 +265,7 @@ Drugi treba dati `200 OK` (kroz nginx → uvicorn).
 
 ---
 
-## Korak 13 — `setup_ssl`
+## Korak 14 — `setup_ssl`
 
 `certbot --nginx -d $DOMAIN --email $ADMIN_EMAIL --redirect`. Edituje nginx config (dodaje 443 + redirect). **Preskače ako `$SKIP_SSL=1`.**
 
@@ -264,7 +282,7 @@ curl -I https://aiasistent.bitlab.rs/
 
 ---
 
-## Korak 14 — `setup_health`
+## Korak 15 — `setup_health`
 
 Curl-uje `/healthz` lokalno (`127.0.0.1:8000`) i kroz HTTPS (`https://aiasistent.bitlab.rs`). Warning ako `/healthz` ne postoji ili 4xx/5xx.
 

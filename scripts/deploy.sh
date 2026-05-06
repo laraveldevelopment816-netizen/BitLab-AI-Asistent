@@ -98,10 +98,31 @@ install_python_deps() {
     ok "deps OK ($(du -sh .venv | cut -f1))"
 }
 
+build_vector_index() {
+    # Generiše products.index.npz + products.meta.json u shared/var/
+    # (release/data/products.* su simlinkovi → shared/var/products.*).
+    # Idempotentno: preskači ako oba fajla već postoje u shared/.
+    if [[ -f "$SHARED_DIR/var/products.index.npz" && -f "$SHARED_DIR/var/products.meta.json" ]]; then
+        ok "Vector index već postoji u shared/var/ — preskočeno"
+        return
+    fi
+    log "Vector index — embed_products.py (~3-5 min, prvi put skida ~120MB model)"
+    cd "$RELEASE_DIR"
+    if [[ ! -f scripts/embed_products.py ]]; then
+        warn "scripts/embed_products.py ne postoji — preskoči (servis vjerovatno neće raditi search)"
+        return
+    fi
+    .venv/bin/python scripts/embed_products.py
+    [[ -f "$SHARED_DIR/var/products.index.npz" ]] || err "embed_products.py završio ali products.index.npz ne postoji"
+    [[ -f "$SHARED_DIR/var/products.meta.json" ]] || err "embed_products.py završio ali products.meta.json ne postoji"
+    ok "Vector index generisan"
+}
+
 run_migrations() {
     log "Migracije"
     cd "$RELEASE_DIR"
-    # Idempotentne i opcione — preskači ako skripta ne postoji u projektu
+    # Redoslijed važan: embed_products MORA proći prije build_categories (zavisi od products.meta.json).
+    # Sve ostale skripte su idempotentne i opcione — preskači ako ne postoje.
     [[ -f scripts/init_db.py ]]            && .venv/bin/python scripts/init_db.py            || true
     [[ -f scripts/migrate_session_id.py ]] && .venv/bin/python scripts/migrate_session_id.py || true
     [[ -f scripts/build_categories.py ]]   && .venv/bin/python scripts/build_categories.py   || true
@@ -372,11 +393,32 @@ setup_nginx_http() {
     log "Generiši nginx config (HTTP only — certbot dodaje SSL)"
     local conf="/etc/nginx/hosts/$PROJECT_NAME.conf"
 
+    # Opcioni /admin/ blok ako release ima dashboard/ (aiasistent monolit)
+    # Static SPA serving + Basic Auth (.htpasswd opcioni)
+    local admin_block=""
+    if [[ -d "$RELEASE_DIR/dashboard" || -d "$PROJECT_DIR/current/dashboard" ]]; then
+        local auth_lines=""
+        if [[ -f "$SHARED_DIR/.htpasswd" ]]; then
+            auth_lines="
+        auth_basic \"$PROJECT_NAME Dashboard\";
+        auth_basic_user_file $SHARED_DIR/.htpasswd;"
+        else
+            warn "$SHARED_DIR/.htpasswd ne postoji — /admin/ bez Basic Auth-a"
+            warn "  Generiši: htpasswd -c $SHARED_DIR/.htpasswd <user>"
+        fi
+        admin_block="
+    location /admin/ {
+        alias $PROJECT_DIR/current/dashboard/dist/;
+        try_files \$uri \$uri/ /admin/index.html;$auth_lines
+    }
+"
+    fi
+
     sudo tee "$conf" >/dev/null <<EOF
 server {
     listen 80;
     server_name $DOMAIN;
-
+$admin_block
     location / {
         proxy_pass http://127.0.0.1:$PORT;
         proxy_http_version 1.1;
@@ -450,6 +492,7 @@ do_setup_domain() {
     clone_release
     link_shared
     install_python_deps
+    build_vector_index
     run_migrations
     build_dashboard
     atomic_switch
@@ -481,6 +524,7 @@ case "${1:-}" in
         clone_release
         link_shared
         install_python_deps
+        build_vector_index
         run_migrations
         build_dashboard
         atomic_switch
