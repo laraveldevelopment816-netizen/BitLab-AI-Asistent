@@ -1,5 +1,46 @@
 # BitLab AI Asistent
 
+## Git workflow
+
+```
+   feature/*
+       │
+       ▼  PR + review
+   ┌──────────┐
+   │ staging  │ ──── auto deploy ───▶ staging.aiasistent.bitlab.rs
+   └──────────┘
+       │
+       │  git merge staging   ◀── ⚠️ KRITIČNO PRIJE PROD DEPLOY-A
+       ▼
+   ┌──────────┐
+   │   main   │ ──── manual deploy ──▶ aiasistent.bitlab.rs
+   └──────────┘
+```
+
+**Branchevi:**
+- `staging` — aktivan razvoj, sve PR-ovi se mergaju ovdje, auto-deploy na staging server
+- `main` — samo prod-spremno; merge **isključivo** iz staging-a; manual deploy na prod
+- `feature/*` — kratkotrajne grane, brišu se nakon merge-a u staging
+
+**OBAVEZAN pre-prod check** (pokreni prije svakog `setup-domain` ili `release` na prodi):
+
+```bash
+git fetch origin
+git log origin/main..origin/staging --oneline
+```
+
+Ako lista nije prazna → **STOP**. Mergaj staging u main pa nastavi:
+
+```bash
+git checkout main
+git merge staging
+git push origin main
+```
+
+**Incident 2026-05-06:** prod aiasistent-a kloniran sa main koji nije imao mergovan staging — `dashboard/` folder nije postojao u main-u (pet commit-ova nedostajalo), `build_dashboard` skipovan, prod bez UI-ja. Pravilo gore je odgovor.
+
+---
+
 Multi-channel AI prodajni asistent za **webshop.bitlab.rs** sa fine-grained logging dashboard-om.
 
 Četiri kanala dijele istu bazu znanja (5.278 proizvoda + FAQ):
