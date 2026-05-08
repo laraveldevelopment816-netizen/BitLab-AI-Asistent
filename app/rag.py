@@ -21,6 +21,7 @@ from .config import settings
 # torch + transformers (~50s na WSL2 /mnt/c). Bez ovoga startup je nepodnošljiv.
 
 _CATEGORY_TERMS_PATH = settings.data_dir / "category_terms.json"
+_BRAND_PATH = settings.data_dir / "brend.json"
 _MISSING_IMAGES_PATH = settings.data_dir / "missing_images.json"
 
 
@@ -48,6 +49,39 @@ def _load_category_terms() -> dict[str, list[str]]:
         return {}
     raw = json.loads(_CATEGORY_TERMS_PATH.read_text(encoding="utf-8"))
     return {k: v for k, v in raw.items() if not k.startswith("_") and isinstance(v, list)}
+
+
+def _load_brands() -> list[dict[str, Any]]:
+    """Učitaj brendove iz phpMyAdmin export-a (data/brend.json). Vraća listu
+    {id, name, priority}. `priority` je 1–20 za top brendove (nullable)."""
+    if not _BRAND_PATH.exists():
+        return []
+    raw = json.loads(_BRAND_PATH.read_text(encoding="utf-8"))
+    for entry in raw:
+        if entry.get("type") == "table" and entry.get("name") == "brend":
+            data = entry.get("data", [])
+            out: list[dict[str, Any]] = []
+            for row in data:
+                bid = (row.get("id") or "").strip()
+                name = (row.get("name") or "").strip()
+                if not bid or not name:
+                    continue
+                pri_raw = row.get("priority")
+                priority = int(pri_raw) if pri_raw and pri_raw != "NULL" else None
+                out.append({"id": bid, "name": name, "priority": priority})
+            return out
+    return []
+
+
+# Generičke riječi koje se podudaraju sa imenom brenda ali NISU brand mention
+# u upitu — npr. "max" je dio "MAX PRINT", ali "max" u "max budget" nije brand.
+# Multi-token brendovi (COOLER MASTER, MAX PRINT, WESTERN DIGITAL, EZ COOL,
+# LIPA MILL, LC-POWER) zahtijevaju puno ime ili karakteristični prvi token —
+# ne damo da "cooler", "max", "western", "lipa" same triggeruju brand boost.
+_BRAND_FIRST_TOKEN_BLOCKLIST = frozenset({
+    "cooler", "western", "lipa", "max", "ez", "lc", "team",
+    "g", "sapphire",
+})
 
 
 def _strip_diacritics(s: str) -> str:
@@ -78,17 +112,28 @@ _BCS_STOP_WORDS = frozenset({
 
 def _is_term_match(token: str, term_keys: dict[str, set[str]]) -> set[str]:
     """Vrati cat_ids ako se token poklapa sa nekim term-om — direktno ili
-    prefix-match (laptopa→laptop, laptopovi→laptop). Pokriva BCS fleksije
-    bez pravog stemmera."""
-    # Direct hit
+    prefix-match u OBA smjera. Pokriva BCS fleksije bez pravog stemmera:
+    - Term je prefix tokena (laptop→laptopa, laptop→laptopovi).
+    - Token je prefix terma (monitor→monitori, miš→miševi, zvuk→zvučnik).
+    Drugi smjer je važan za singular query nasuprot plural CSV terma —
+    SEO meta_keywords je obično u množini ("monitori", "tastature"), a
+    korisnici tipkuju u jednini ("monitor 27\\""). Bez ovoga, head-noun
+    "monitor" ne match-uje term "monitori".
+    """
     if token in term_keys:
         return term_keys[token]
-    # Prefix-match: term je prefix tokena i token je do 5 char duži
-    # (npr. "laptopa", "laptopovi", "tvovi") — sprečava "laptopdjenotebookgore"
     for term, cats in term_keys.items():
         if " " in term:
             continue  # bigram terms riješavaju se zasebno
-        if len(term) >= 4 and token.startswith(term) and len(token) - len(term) <= 5:
+        if len(term) < 4 or len(token) < 4:
+            continue
+        # Smjer 1: term ⊆ token (laptop ⊆ laptopa)
+        if token.startswith(term) and len(token) - len(term) <= 5:
+            return cats
+        # Smjer 2: token ⊆ term (monitor ⊆ monitori) — len_diff ≤ 3 jer BCS
+        # plural sufiksi su kratki (i, e, ovi, ima); veći delta vodi false
+        # positive (npr. "tab" ⊆ "tablete" 4-char delta nije isti tip).
+        if term.startswith(token) and len(term) - len(token) <= 3:
             return cats
     return set()
 
@@ -145,6 +190,38 @@ class ProductIndex:
             for pid in self.ids
         ]
 
+        # Pripremi brand lookup-e
+        self._brands = _load_brands()
+        # id_brend → priority (None ako brend nema priority)
+        self._brand_priority: dict[str, int | None] = {
+            b["id"]: b["priority"] for b in self._brands
+        }
+        # brand_key (lowercased, no-diacritics) → id_brend
+        # Singleword brendovi: cijelo ime kao key. Multi-word brendovi: dodaj
+        # i pun višetokeni key (npr. "cooler master") + provjeravaj kao bigram
+        # u query-ju (single token "cooler" sam za sebe nije dovoljan — vidi
+        # _BRAND_FIRST_TOKEN_BLOCKLIST).
+        self._brand_key_to_id: dict[str, str] = {}
+        for b in self._brands:
+            name = b["name"]
+            if not name or name.lower() == "ostalo":
+                continue
+            key = _strip_diacritics(name.lower()).strip()
+            self._brand_key_to_id[key] = b["id"]
+            tokens = key.split()
+            # Single-token brendovi (apple, asus, hp, lg, dji…)
+            if len(tokens) == 1:
+                continue
+            # Multi-token brendovi: omogući i prvi token kao key — ali samo ako
+            # prvi token NIJE generička riječ (cooler, western, max…).
+            if tokens[0] not in _BRAND_FIRST_TOKEN_BLOCKLIST:
+                self._brand_key_to_id.setdefault(tokens[0], b["id"])
+        # idx → id_brend (za brzi brand lookup po vektorskoj poziciji)
+        self._idx_to_brand: list[str] = [
+            (self._products.get(str(int(pid)), {}).get("id_brend") or "").strip()
+            for pid in self.ids
+        ]
+
     def preload_model(self) -> None:
         """Pozovi pri startu da bi prvi upit bio brz. Skupo na WSL2 (~50s)."""
         if self._model is None:
@@ -160,6 +237,35 @@ class ProductIndex:
             convert_to_numpy=True,
         )[0].astype(np.float32)
 
+    def _detect_intent_brands(self, query: str) -> set[str]:
+        """Vrati set id_brend-ova koje query implicira preko brand imena.
+
+        Strategija:
+        - Tokenizuj query (sa diacritic strip).
+        - Provjeri svaki token: ako se točno poklapa sa brand_key, dodaj id.
+        - Provjeri bigrame: "cooler master", "western digital", "max print".
+        - Multi-word brendovi (cooler master) zahtijevaju puni bigram match —
+          single token "cooler" je u blocklisti jer bi blokirao "cpu cooler"
+          search false-positive.
+        """
+        q_norm = _strip_diacritics(query.lower())
+        tokens = _tokenize(q_norm)
+        if not tokens:
+            return set()
+        hits: set[str] = set()
+        # Direct token match (apple, asus, hp, lg…)
+        for tok in tokens:
+            bid = self._brand_key_to_id.get(tok)
+            if bid:
+                hits.add(bid)
+        # Bigram match (cooler master, western digital…)
+        for i in range(len(tokens) - 1):
+            bigram = f"{tokens[i]} {tokens[i+1]}"
+            bid = self._brand_key_to_id.get(bigram)
+            if bid:
+                hits.add(bid)
+        return hits
+
     def _detect_intent_categories(self, query: str) -> set[str]:
         """Vrati cat_ids koje query implicira preko `category_terms.json`.
 
@@ -167,10 +273,13 @@ class ProductIndex:
         - Filtrira BCS stop-riječi prije brojanja.
         - Aktivno za upite sa ≤4 NON-STOP tokena ("najbolji laptop do 1500 KM"
           → ["laptop", "1500"] = 2 non-stop, prošlo).
-        - **Boost samo ako prvi non-stop token match-uje term.** Ovo riješava
-          "mis za laptop" — head noun je "miš", ne "laptop"; ne smijemo gurnuti
-          laptopove iznad miševa.
-        - Prefix-match za BCS fleksiju ("laptopa", "laptopovi" → laptop).
+        - **Head-noun pravilo sa fallback-om**: prvi non-stop token koji
+          match-uje term je head. "miš za laptop" → head je "miš" (prvi).
+          "gaming miš" → first="gaming" (modifier, no match), fallback na
+          "miš" → cat 277. "samsung tv" → first="samsung" (brand, filtriran
+          iz term_keys), fallback na "tv" → cat 163.
+        - Bidirektioni prefix-match za BCS fleksiju (laptop↔laptopa,
+          monitor↔monitori).
         """
         q_norm = _strip_diacritics(query.lower())
         all_tokens = _tokenize(q_norm)
@@ -178,14 +287,22 @@ class ProductIndex:
         if not non_stop or len(non_stop) > 4:
             return set()
 
-        # Pravilo head-noun: provjeri samo prvi non-stop token.
-        first = non_stop[0]
-        hits = _is_term_match(first, self._term_to_cats)
+        # Head-noun fallback: probaj prvi koji match-uje. Ako prvi ne match-uje
+        # (modifier kao "gaming", brand kao "samsung"), pomjeri se dalje.
+        # Prestajemo na prvom match-u da izbjegnemo "miš za laptop" → laptop.
+        hits: set[str] = set()
+        for tok in non_stop:
+            head_hits = _is_term_match(tok, self._term_to_cats)
+            if head_hits:
+                hits |= head_hits
+                break
 
-        # Bigram check: ako prvi + drugi non-stop token formiraju multi-word term
-        # ("matična ploča", "fiksni telefon", "gift card")
-        if len(non_stop) >= 2:
-            bigram = first + " " + non_stop[1]
+        # Bigram check: prvi + drugi non-stop token kao multi-word term
+        # ("matična ploča", "fiksni telefon", "gift card"). Ne ograničavamo
+        # na prvi par — provjerimo sve uzastopne parove jer "samsung galaxy
+        # s24" head je "galaxy" tek na poziciji 2.
+        for i in range(len(non_stop) - 1):
+            bigram = f"{non_stop[i]} {non_stop[i+1]}"
             if bigram in self._term_to_cats:
                 hits |= self._term_to_cats[bigram]
 
@@ -202,22 +319,27 @@ class ProductIndex:
         top_k: int = 5,
         max_price_km: float | None = None,
         category_id: str | None = None,
+        brand_id: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Hibridna pretraga sa opcionim hard filter po kategoriji.
+        """Hibridna pretraga sa opcionim hard filter-ima.
 
-        `category_id` (kad je zadat od strane Claude-a u tool callu) drastično
-        smanjuje accessory šum (npr. "torba za laptop" izlazi van prilikom
-        upita za "laptop"). Bez category_id-a, ponašanje je kao prije
-        (intent-detekcija + boost iz `category_terms.json`)."""
+        - `category_id` (od Claude-a) — hard filter na `categories_id`,
+          drastično smanjuje accessory šum.
+        - `brand_id` (od Claude-a) — hard filter na `id_brend`. Korisno za
+          "Apple iPhone" tipa upite gdje korisnik eksplicitno traži brend.
+        - Bez hard filtera, intent-detekcija detektuje kategoriju I brend
+          iz query-ja i primijenjuje soft boost (kumulativno do +0.5 ako
+          oba match-uju)."""
         q_vec = self._embed(query)
         vec_scores = self.embeddings @ q_vec             # dot product (embeddings su normirani)
         bm25_raw = np.array(self.bm25.get_scores(_tokenize(query)), dtype=np.float32)
 
         fused = 0.6 * _norm01(vec_scores) + 0.4 * _norm01(bm25_raw)
 
-        # Hard category filter (kad AI klasifikuje upit u kategoriju) ima
-        # prednost nad mekim boost-om. Boost se ipak primjenjuje za "near miss"
-        # case-ove (kad AI ne pošalje category_id, ali query implicira jednu).
+        # Soft boost-ovi se primjenjuju samo kad AI nije dao hard filter.
+        # Cilj: katchup za "near miss" gdje AI ne pošalje filter, ali query
+        # implicira kategoriju ili brend. Boost je kumulativan (+0.25 cat,
+        # +0.25 brand), max +0.5.
         if category_id is None:
             intent_cats = self._detect_intent_categories(query)
             if intent_cats:
@@ -227,11 +349,19 @@ class ProductIndex:
                         boost[i] = 0.25
                 fused = fused + boost
 
+        if brand_id is None:
+            intent_brands = self._detect_intent_brands(query)
+            if intent_brands:
+                brand_boost = np.zeros_like(fused)
+                for i, bid in enumerate(self._idx_to_brand):
+                    if bid in intent_brands:
+                        brand_boost[i] = 0.25
+                fused = fused + brand_boost
+
         ranked = np.argsort(-fused)
 
-        # Prikupi buffer kandidata (4× top_k) da re-sort ne osiromasi rezultate.
-        # Kad je hard filter aktivan, povećamo buffer jer filter čisti puno.
-        buffer_mult = 8 if category_id else 4
+        # Prikupi buffer kandidata. Hard filter čisti puno → veći buffer.
+        buffer_mult = 8 if (category_id or brand_id) else 4
         candidates: list[tuple[dict[str, Any], float]] = []
         for idx in ranked:
             if len(candidates) >= top_k * buffer_mult:
@@ -241,8 +371,10 @@ class ProductIndex:
             if not meta:
                 continue
             if category_id is not None:
-                # Hard filter — preskoči sve van zadate kategorije
                 if (meta.get("categories_id") or "").strip() != category_id:
+                    continue
+            if brand_id is not None:
+                if (meta.get("id_brend") or "").strip() != brand_id:
                     continue
             if max_price_km is not None:
                 price = meta.get("price_km")
@@ -250,8 +382,22 @@ class ProductIndex:
                     continue
             candidates.append((meta, float(fused[idx])))
 
-        # Artikli na stanju dolaze prvi; unutar grupe zadržava se redosljed relevantnosti
-        candidates.sort(key=lambda x: (0 if (x[0].get("kolicina") or 0) > 0 else 1, -x[1]))
+        # Sort: na lageru prvi, zatim po relevantnosti. Brand priority je
+        # tie-breaker UNUTAR iste relevance grupe — kad search ne razlučuje
+        # između dva blizu-skor proizvoda, top-priority brand (Apple, ASUS,
+        # HP) ide prvi. Granularnost: zaokruži score na 2 decimale prije
+        # poređenja, da brand priority pobijedi samo kad je razlika minorna.
+        def _sort_key(item: tuple[dict[str, Any], float]) -> tuple:
+            meta, score = item
+            in_stock = 0 if (meta.get("kolicina") or 0) > 0 else 1
+            score_bucket = round(score, 2)  # group near-equal scores
+            bid = (meta.get("id_brend") or "").strip()
+            pri = self._brand_priority.get(bid)
+            # priority 1 = najtraženiji; None = ne ulazi u tie-break (rang 99)
+            priority_rank = pri if pri is not None else 99
+            return (in_stock, -score_bucket, priority_rank, -score)
+
+        candidates.sort(key=_sort_key)
 
         results: list[dict[str, Any]] = []
         for meta, _ in candidates[:top_k]:

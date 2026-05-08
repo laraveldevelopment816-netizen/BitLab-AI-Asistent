@@ -1,6 +1,6 @@
 {
   "394": {
-    "label": "Maske, futrole i zaštitna stakla za telefone",
+    "label": "Maske za mobitele i dodaci – Zaštita za sve modele",
     "count": 1274,
     "examples": [
       "ZAŠTITNA MASKA APPLE CASE MAGSAFE IPHONE 12 CYPRUS GREEN",
@@ -9,7 +9,7 @@
     ]
   },
   "277": {
-    "label": "Miševi",
+    "label": "Miševi i razni PC dodaci (USB hub, kablovi, docking)",
     "count": 535,
     "examples": [
       "Miš LOGITECH G502 HERO High Performance Gaming Mouse 910-0054708/910-005474",
@@ -27,7 +27,7 @@
     ]
   },
   "175": {
-    "label": "Mobiteli",
+    "label": "Mobilni telefoni – Najnoviji modeli",
     "count": 165,
     "examples": [
       "Telefon mobilni, 2,8\" zaslon, Dual SIM, Bluetooth",
@@ -45,7 +45,7 @@
     ]
   },
   "176": {
-    "label": "Bežične bluetooth slušalice (TWS)",
+    "label": "Bežične TWS slušalice, držači i punjači za mobitel",
     "count": 129,
     "examples": [
       "Silikonska futrola TPU SAMSUNG S6 EDGE black",
@@ -90,7 +90,7 @@
     ]
   },
   "220": {
-    "label": "Tastature",
+    "label": "Tastature – Mehaničke, membranske i gaming",
     "count": 99,
     "examples": [
       "Tastatura + miš GEMBIRD, KBS-UM-04, multimedia USB, USA layout",
@@ -99,7 +99,7 @@
     ]
   },
   "177": {
-    "label": "Pametni satovi (smartwatch)",
+    "label": "Pametni satovi – Smartwatch i fitness narukvice",
     "count": 99,
     "examples": [
       "Pametni sat CUBOT C5 crni",
@@ -108,7 +108,7 @@
     ]
   },
   "314": {
-    "label": "Punjači (zidni, auto, USB)",
+    "label": "USB punjači – Brzi punjači za mobitele i tablete",
     "count": 95,
     "examples": [
       "Auto Punjač ESPERANZA, micro USB, In 12/24V, Out 5V 1A, EZ109",
@@ -153,7 +153,7 @@
     ]
   },
   "163": {
-    "label": "Televizori",
+    "label": "Televizori – Smart TV, 4K UHD i OLED",
     "count": 67,
     "examples": [
       "TESLA TV 40\" 40E325BF FHD, D-LED. HDMI. DVB-T/T2/C/S/S2. Hotel Mode",
@@ -162,7 +162,7 @@
     ]
   },
   "307": {
-    "label": "Podloge za miš",
+    "label": "Podloge za miševe – Gaming i uredske podloge",
     "count": 62,
     "examples": [
       "Podloga za miš HyperX Pulsefire Mouse Pad M 4Z7X3AA",
@@ -171,7 +171,7 @@
     ]
   },
   "118": {
-    "label": "Računarska kućišta (case)",
+    "label": "Kućišta za PC – Midi Tower, Full Tower i Mini ITX",
     "count": 58,
     "examples": [
       "KUĆIŠTE GNC EZ COOL SA NAPAJANJEM 500W GO17-003 NP-680B/P",
@@ -180,7 +180,7 @@
     ]
   },
   "99": {
-    "label": "Tableti",
+    "label": "Tableti – Android, iPad i Windows tableti",
     "count": 57,
     "examples": [
       "Tablet Blackview Tab 6 LTE 3GB/32GB 8\" Macaron Blue",
@@ -216,7 +216,7 @@
     ]
   },
   "224": {
-    "label": "Monitori",
+    "label": "Monitori – IPS, VA i Gaming monitori",
     "count": 46,
     "examples": [
       "Monitor DELL UltraSharp U2724DE 27\" QHD IPS Antiglare HDMI, 2xTHB4 (DP/PD), 2xUSB-C, 4xUSB",
@@ -225,7 +225,7 @@
     ]
   },
   "309": {
-    "label": "Wi-Fi routeri i range extenderi",
+    "label": "Router-i – WiFi, 5G i gaming ruteri",
     "count": 46,
     "examples": [
       "ROUTER TP-Link TL-WR840N 300Mb ,5 dBi antene,WIRELESS N",
@@ -234,7 +234,7 @@
     ]
   },
   "270": {
-    "label": "Mrežni switchevi",
+    "label": "Switch-evi – Mrežni preklopnici",
     "count": 43,
     "examples": [
       "SWITCH TP-Link TL-SG105E 5-portni gigabitni Desktop Easy Smart, 5 10/100/1000Mbps RJ45 por",
@@ -252,7 +252,7 @@
     ]
   },
   "104": {
-    "label": "Torbe i ruksaci za laptop",
+    "label": "Poslovne torbe i rančevi za laptop",
     "count": 43,
     "examples": [
       "RANAC PULSE ROCK GRAY CATIONIC",
@@ -267,6 +267,186 @@
       "SSD HDD Caddy mobile za notebook univerzalni 9,5mm, 2,5\" SSD/HDD, GEMBIRD, MF-95-01",
       "SSD M.2 Caddy mobile za notebook univerzalni 12,7mm, GEMBIRD, A-SATA12M2-01",
       "SSD HDD Caddy mobile za notebook univerzalni 12mm 2,5\" SSD/HDD, GEMBIRD, MF-95-02"
+    ]
+  },
+  "230": {
+    "label": "Oprema za gaming – Gejming dodatak za konzole i PC",
+    "count": 37,
+    "examples": [
+      "Game Pad LOGITECH F310 Wired GamePad - BLACK - USB 940-000138",
+      "Game Pad ESPERANZA TROOPER, vibration, PS3/PC, USB, black/green, EGG107G",
+      "Volan SPEEDLINK TRAILBLAZER Racing, pedale, za PS4/XboxOne/PS3/PC, black SL-450500-BK"
+    ]
+  },
+  "201": {
+    "label": "Baterije (AA, AAA, 18650, alkalne)",
+    "count": 37,
+    "examples": [
+      "Baterija ANSMANN CR 1220 3V,AN 5020062",
+      "AN BATERIJA A-23 12V 1/1 ANSMANN,AN5015182",
+      "Gembird alkalne baterije AA 4kom LR6 1,5V EG-BA-AA4-01"
+    ]
+  },
+  "305": {
+    "label": "Papir za štampu – A4, foto papir i specijalni mediji",
+    "count": 33,
+    "examples": [
+      "PAPIR TTO SOLUTION A4,500/1 80gr",
+      "PAPIR EUROBASIC A4, WHITE, 80 gr 1/500",
+      "PAPIR COPY DELUXE FABRIANO A4,80 gr"
+    ]
+  },
+  "111": {
+    "label": "CPU Cooleri i termalne paste",
+    "count": 33,
+    "examples": [
+      "Pasta za CPU hladnjak GEMBIRD TG-G1.5-01",
+      "Pasta za CPU hladnjak GEMBIRD TG-G15-02, silicone thermal paste grease, 15 gr",
+      "Pasta za CPU hladnjak Everest TM-20 2g 3.05w/m.K Gold Thermal Paste, 34041"
+    ]
+  },
+  "115": {
+    "label": "SSD diskovi – Brzo pohranite podatke",
+    "count": 30,
+    "examples": [
+      "SAMSUNG SSD 870 EVO 1TB 2.5\"\" SATA3;V-NAND MLC 560MB/s read,530MB/s write, MZ-77E1T0B/EU",
+      "SSD ADATA 240GB 2,5\" SU650 ASU650SS-240GT-R",
+      "SSD Kingston 240GB A400 2,5 SA400S37/240GB"
+    ]
+  },
+  "313": {
+    "label": "USB hub-ovi – USB 3.0 i USB-C hub razvodnici",
+    "count": 28,
+    "examples": [
+      "USB HUB 3.1 (Gen 1) 4 port sa prekidacima GEMBIRD UHB-U3P4P-01",
+      "USB HUB ESPERANZA, 4 port, EA150B",
+      "USB HUB ESPERANZA, 4 PORT USB 2.0 EA116"
+    ]
+  },
+  "319": {
+    "label": "Mikrofoni – USB, kondenzatorski i gaming mikrofoni",
+    "count": 27,
+    "examples": [
+      "Mikrofon ESPERANZA STUDIO PRO, tripod, Crystal clear sound, EH182",
+      "Mikrofon SPEEDLINK CAPO for Desk & Hand, black, SL-8703-BK",
+      "Mikrofon SPEEDLINK SPES Clip-On Microphone, black, SL-8691-SBK-01"
+    ]
+  },
+  "166": {
+    "label": "Daljinski upravljači, TV box, Chromecast i ostala oprema za TV",
+    "count": 24,
+    "examples": [
+      "KONEKTOR BRZI",
+      "TPU ULTRA HUAWEI NOVA 11 PRO WHITE",
+      "MAGSAFE KOŽNA FUTROLA ZA IPHONE 14 RED"
+    ]
+  },
+  "295": {
+    "label": "Konektori i utičnice – Mrežni i koaksijalni",
+    "count": 24,
+    "examples": [
+      "Telefonski konektor RJ-11, GEMBIRD",
+      "UTP konektor GEMBIRD RJ45, 100 kom, 8P8C, 6u gold plated, PLUG3UP6/100",
+      "UTP konektor GEMBIRD RJ45, CAT6 gold plated, PLUG6SP/10, 10 kom"
+    ]
+  },
+  "287": {
+    "label": "Audio kablovi – 3.5mm, RCA, XLR i optički",
+    "count": 20,
+    "examples": [
+      "Audio kabl GEMBIRD CCA-458, 3,5mm stereo to 2 phono, 1,5m",
+      "Audio kabl GEMBIRD CCA-458-2.5M, 3,5mm stereo to 2 phono, 2.5m",
+      "Produžni kabl za slušalice i mik., GEMBIRD, 1m, CC-MIC-1"
+    ]
+  },
+  "225": {
+    "label": "Eksterni HDD – Prijenosni hard diskovi",
+    "count": 19,
+    "examples": [
+      "EXT.HDD 2TB Transcend 3.1 Gen 1 StoreJet 25M3G SJ25M3G Rugged External Hard Drive TS2TSJ25",
+      "EXT.HDD 2TB TOSHIBA CANVIO Advance 2TB, 2.5\", USB 3.2 Gen1 (5Gbit/s), Backup and Security ",
+      "EXT.HDD 2TB TOSHIBA USB3.2 2,5\" HDTB520EK3AA"
+    ]
+  },
+  "218": {
+    "label": "Procesori – Intel i AMD CPU",
+    "count": 19,
+    "examples": [
+      "CPU AMD A6-5400K, X2, FM2, 3.6GHz, BOX, DUAL CORE",
+      "AMD RYZEN 3 4100 AM4 BOX 4 cores, 8 threads, 3.8GHz,4MB L3",
+      "AMD Ryzen 5 5500 AM4 BOX 6 cores,12 threads,3.6GHz,16MB L3,65W"
+    ]
+  },
+  "125": {
+    "label": "Printeri (raznovrsni — Epson, HP, Canon)",
+    "count": 19,
+    "examples": [
+      "Printer Epson MFP EcoTank ITS L3270 print/scan/copy 33str/min BW. 15str/min color. rezoluc",
+      "Printer Epson MFP EcoTank ITS L3271 print/scan/copy 33str/min BW. 15str/min color. rezoluc",
+      "Printer HP MFP Deskjet 2320 (7WN42B) print/scan/copy 7,5st/min USB"
+    ]
+  },
+  "296": {
+    "label": "Kućanski aparati i bijela tehnika",
+    "count": 18,
+    "examples": [
+      "Samsung Galaxy Buds3 Pro Silver SM-R630",
+      "Filter za pročišćivač zraka ESPERANZA BORA H11 EHP003H11",
+      "Kućna vaga ESPERANZA 8in1 bluetooth scale BESTFIT white, EBS016W"
+    ]
+  },
+  "113": {
+    "label": "RAM memorija – DDR4 i DDR5",
+    "count": 18,
+    "examples": [
+      "G.SKILL Hladnjak za memoriju Turbulence III FTB-3500C5-DR",
+      "G.SKILL SO DIMM notebook DDR2 2GB(1X2GB) 800MHz F2-6400CL5S-2GBSQ",
+      "G.SKILL 2GB(1X2GB) DDR2-800MHZ, F2-6400CL5S-2GBNT"
+    ]
+  },
+  "173": {
+    "label": "Sportske kamere i dodaci – GoPro i akcijske kamere",
+    "count": 18,
+    "examples": [
+      "MEDIACOM THE ARM+ EXTENSION MOUNT M-ARMEXT",
+      "MEDIACOM SPORTCAM 360 ROTATION M-ROTATION",
+      "GoPro Handlebar mount AMHSM-001"
+    ]
+  },
+  "299": {
+    "label": "Napojni kablovi – Strujni kablovi za računare i uređaje",
+    "count": 18,
+    "examples": [
+      "Napojni kabl, 3 pin, 1,8m, C19, kockasti GEMBIRD PC-186-C19",
+      "Napojni kabl, PC-186, GEMBIRD, 1,8m",
+      "Napojni kabl, PC-186A-VDE, 90 stepeni GEMBIRD, 1,8m"
+    ]
+  },
+  "17": {
+    "label": "Računari – Desktop, Laptop i All-in-One",
+    "count": 18,
+    "examples": [
+      "15.6\" Gsan touchscreen GS-1531 display",
+      "x( 82X9001VSC )Lenovo IdeaPad 3 17IRU6, 17.3\"\" FHD (1920x1080) AG, Intel Core i5-1335U",
+      "x( N1002VNB5640EMEA01_UBU_PS-56 )Dell Vostro 5640, 16\" FHD+ (1920x1200), Intel Core i5-120"
+    ]
+  },
+  "310": {
+    "label": "Sredstva za održavanje računara i opreme",
+    "count": 18,
+    "examples": [
+      "Čistač CD, DVD, Blue Ray drajva, ESPERANZA, ES123, cleaning disc",
+      "Sprej sa komprimiranim zrakom ESPERANZA, 400ml, ES103",
+      "Usisivač i ispuhivač 2-in-1 portable vacuum cleaner GEMBIRD, suction/blower, CK-MVC-01"
+    ]
+  },
+  "108": {
+    "label": "Matične ploče – Intel i AMD platforme",
+    "count": 16,
+    "examples": [
+      "MB BIOSTAR TZ590-BTC DUO",
+      "MB BIOSTAR TB360-BTC PRO 2.0",
+      "MB BIOSTAR H610MHC 2.0, mATX, Soc 1700, DDR4, M.2, LAN, HDMI, VGA"
     ]
   }
 }

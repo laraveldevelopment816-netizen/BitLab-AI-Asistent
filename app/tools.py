@@ -10,10 +10,12 @@ from typing import Any
 from .contacts import EMAIL, TEL
 
 
-# ── Kategorije — load jednom pri import-u ────────────────────
-# AI vidi listu validnih cat_id-ova u tool description-u + kao enum,
-# tako da single-call zaokruži klasifikaciju + tool decision atomski.
-_CATEGORIES_PATH = Path(__file__).resolve().parent.parent / "data" / "categories.json"
+# ── Kategorije + brendovi — load jednom pri import-u ─────────
+# AI vidi listu validnih cat_id-ova i brand_id-ova u tool description-u +
+# kao enum, tako da single-call zaokruži klasifikaciju + tool decision atomski.
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_CATEGORIES_PATH = _DATA_DIR / "categories.json"
+_BRAND_PATH = _DATA_DIR / "brend.json"
 
 
 def _load_categories() -> dict[str, dict[str, Any]]:
@@ -22,10 +24,40 @@ def _load_categories() -> dict[str, dict[str, Any]]:
     return json.loads(_CATEGORIES_PATH.read_text(encoding="utf-8"))
 
 
+def _load_brands() -> list[dict[str, Any]]:
+    """phpMyAdmin export → lista {id, name, priority}. Sortirano po priority
+    (1–20), pa po imenu. Brendovi sa priority idu na vrh tool description-a
+    da AI brže nađe najtraženije."""
+    if not _BRAND_PATH.exists():
+        return []
+    raw = json.loads(_BRAND_PATH.read_text(encoding="utf-8"))
+    for entry in raw:
+        if entry.get("type") == "table" and entry.get("name") == "brend":
+            data = entry.get("data", [])
+            out: list[dict[str, Any]] = []
+            for row in data:
+                bid = (row.get("id") or "").strip()
+                name = (row.get("name") or "").strip()
+                if not bid or not name or name.lower() == "ostalo":
+                    continue
+                pri_raw = row.get("priority")
+                priority = int(pri_raw) if pri_raw and pri_raw != "NULL" else 999
+                out.append({"id": bid, "name": name, "priority": priority})
+            out.sort(key=lambda b: (b["priority"], b["name"]))
+            return out
+    return []
+
+
 CATEGORIES: dict[str, dict[str, Any]] = _load_categories()
 _CATEGORY_IDS: list[str] = list(CATEGORIES.keys())
 _CATEGORIES_BLOCK = "\n".join(
     f"- {cid}: {info['label']}" for cid, info in CATEGORIES.items()
+)
+
+BRANDS: list[dict[str, Any]] = _load_brands()
+_BRAND_IDS: list[str] = [b["id"] for b in BRANDS]
+_BRANDS_BLOCK = "\n".join(
+    f"- {b['id']}: {b['name']}" for b in BRANDS
 )
 
 
@@ -39,12 +71,18 @@ SEARCH_PRODUCTS: dict[str, Any] = {
         "(dostava, plaćanje, garancija) — za to koristi `get_faq`.\n\n"
         "VALIDNE KATEGORIJE (popuni `category_id` kad je upit kategorijski):\n"
         f"{_CATEGORIES_BLOCK}\n\n"
-        "Pravilo klasifikacije: ako je upit kategorijski (npr. 'tastatura', "
-        "'laptop do 1500 KM', 'monitor 27\"', 'gaming miš'), MORAŠ popuniti "
-        "`category_id` iz liste iznad — kategorijski filter drastično poboljšava "
-        "rezultate jer filtrira accessory šum (npr. torbe za laptop kad korisnik "
-        "traži laptop). Ako upit imenuje konkretan brand+model (npr. 'Patriot SSD "
-        "240GB', 'iPhone 15 Pro'), možeš preskočiti `category_id`."
+        "VALIDNI BRENDOVI (popuni `brand_id` kad korisnik imenuje brend):\n"
+        f"{_BRANDS_BLOCK}\n\n"
+        "Pravila klasifikacije:\n"
+        "1. **Kategorijski upit** ('tastatura', 'laptop do 1500 KM', 'monitor 27\"', "
+        "'gaming miš') — popuni `category_id`. Filter odsijeca accessory šum (npr. "
+        "torbe za laptop kad korisnik traži laptop).\n"
+        "2. **Brand-only upit** ('Apple', 'Asus', 'Xiaomi') — popuni `brand_id` ali "
+        "pusti `category_id` prazan (brendovi pokrivaju više kategorija).\n"
+        "3. **Brand + kategorija** ('Apple iPhone', 'Asus laptop', 'Samsung TV', "
+        "'Logitech miš') — popuni OBA: `category_id` + `brand_id`. Najtačniji rezultat.\n"
+        "4. **Brand + model** ('iPhone 15 Pro', 'Patriot SSD 240GB') — možeš dati "
+        "samo `brand_id` ili oba; `query` sa modelom najviše utiče."
     ),
     "input_schema": {
         "type": "object",
@@ -62,6 +100,17 @@ SEARCH_PRODUCTS: dict[str, Any] = {
                 "description": (
                     "Opciono: ID kategorije iz liste validnih kategorija (vidi opis "
                     "tool-a). Filtrira pretragu samo na proizvode iz te kategorije."
+                ),
+            },
+            "brand_id": {
+                "type": "string",
+                "enum": _BRAND_IDS,
+                "description": (
+                    "Opciono: ID brenda iz liste validnih brendova (vidi opis tool-a). "
+                    "Filtrira pretragu samo na proizvode tog brenda. Kombinuje se sa "
+                    "category_id za pretragu poput 'Apple iPhone' (cat=mobiteli, "
+                    "brand=APPLE). Ne popuni za 'Ostalo' brendove ili kad korisnik ne "
+                    "imenuje brend eksplicitno."
                 ),
             },
             "top_k": {
@@ -196,12 +245,14 @@ def handle_search_products(
     top_k: int = 5,
     max_price_km: float | None = None,
     category_id: str | None = None,
+    brand_id: str | None = None,
 ) -> str:
     results = _get_index().search(
         query,
         top_k=top_k,
         max_price_km=max_price_km,
         category_id=category_id,
+        brand_id=brand_id,
     )
     if not results:
         return "Nema proizvoda koji odgovaraju upitu."
