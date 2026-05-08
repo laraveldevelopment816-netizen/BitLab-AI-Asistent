@@ -84,19 +84,22 @@ Detalji: **[`docs/getting-started.md`](./docs/getting-started.md)**
 
 Sve detalje, dijagrame i feature-by-feature objašnjenja drži **[`docs/`](./docs/)** sa **[`docs/README.md`](./docs/README.md)** kao indexom.
 
-Često traženo:
+Često traženo (najnovije na vrhu):
 
-| | |
-|---|---|
-| Pokretanje lokalno | [`docs/getting-started.md`](./docs/getting-started.md) |
-| Stack i arhitektura | [`docs/architecture.md`](./docs/architecture.md) |
-| Kako radi voice mode | [`docs/features/voice-mode.md`](./docs/features/voice-mode.md) |
-| Kako radi dashboard | [`docs/features/logging-dashboard.md`](./docs/features/logging-dashboard.md) |
-| AI klasifikacija (kategorije) | [`docs/features/ai-classification.md`](./docs/features/ai-classification.md) |
-| Compare panel (haiku ↔ sonnet) | [`docs/features/compare.md`](./docs/features/compare.md) |
-| Česti problemi | [`docs/operations/troubleshooting.md`](./docs/operations/troubleshooting.md) |
-| Troškovi | [`docs/operations/costs.md`](./docs/operations/costs.md) |
-| Razvojni workflow + testovi | [`docs/development.md`](./docs/development.md) |
+| Datum | Tema | Link |
+|---|---|---|
+| 2026-05-08 | **AI search: brendovi + proširene kategorije** (NOVO) | [`docs/features/ai-search-improvements.md`](./docs/features/ai-search-improvements.md) |
+| 2026-05-04 | Pokretanje lokalno | [`docs/getting-started.md`](./docs/getting-started.md) |
+| 2026-05-04 | Stack i arhitektura | [`docs/architecture.md`](./docs/architecture.md) |
+| 2026-05-04 | Kako radi voice mode | [`docs/features/voice-mode.md`](./docs/features/voice-mode.md) |
+| 2026-05-04 | Kako radi dashboard | [`docs/features/logging-dashboard.md`](./docs/features/logging-dashboard.md) |
+| 2026-05-04 | AI klasifikacija (kategorije) | [`docs/features/ai-classification.md`](./docs/features/ai-classification.md) |
+| 2026-05-04 | Compare panel (haiku ↔ sonnet) | [`docs/features/compare.md`](./docs/features/compare.md) |
+| 2026-05-04 | Česti problemi | [`docs/operations/troubleshooting.md`](./docs/operations/troubleshooting.md) |
+| 2026-05-04 | Troškovi | [`docs/operations/costs.md`](./docs/operations/costs.md) |
+| 2026-05-04 | Razvojni workflow + testovi | [`docs/development.md`](./docs/development.md) |
+
+> Kompletan indeks svih dokumenata: [`docs/README.md`](./docs/README.md).
 
 ---
 

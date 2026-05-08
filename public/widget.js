@@ -949,7 +949,7 @@ html.bl-scroll-lock body {
     <div class="bl-input-wrap">
       <input id="bl-input" type="text" placeholder="Postavi pitanje..." autocomplete="off">
     </div>
-    <button id="bl-voice-btn" title="Voice mode" aria-label="Voice mode">${I.mic}</button>
+    <button id="bl-voice-btn" title="Voice mode" aria-label="Voice mode" style="display:none">${I.mic}</button>
     <button id="bl-send" aria-label="Pošalji">${I.send}</button>
   </div>
 
