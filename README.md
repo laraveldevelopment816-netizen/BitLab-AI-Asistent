@@ -48,7 +48,7 @@ Multi-channel AI prodajni asistent za **webshop.bitlab.rs** sa fine-grained logg
 Četiri kanala dijele istu bazu znanja (5.278 proizvoda + FAQ):
 - 💬 **Chat widget** — embed na webshop kroz `<script>` tag
 - 🎙️ **Voice mode** — STT (Groq Whisper) → agent → TTS (Azure neural)
-- 📧 **Email auto-reply** — n8n IMAP trigger → `/api/email`
+- 📧 **Email auto-reply** — n8n Gmail trigger → `/api/email`
 - 📊 **Dashboard** — `/admin/` sa fine-grained tool call timeline-om
 
 Backend: **FastAPI + Python 3.11+** · LLM: **Claude Sonnet 4.6** · Storage: **SQLite + SQLAlchemy async** · Dashboard: **React 19 + Vite 8 + TS** · Embed: **sentence-transformers MiniLM-L12-v2** (lokalno, BCS).
@@ -118,6 +118,25 @@ Server-side: **[`DEPLOY.md`](./DEPLOY.md)** (8 komandi, copy-paste).
 Server konvencije (Pattern A, port mapa): [`docs/operations/server-conventions.md`](./docs/operations/server-conventions.md).
 
 Trenutni deploy target: `aiasistent-prod` na `aiasistent.bitlab.rs`, `aiasistent-staging` na `staging.aiasistent.bitlab.rs`.
+
+---
+
+## n8n automatizacija
+
+n8n hostuje server-side workflow-e koji proširuju asistent (native npm + systemd, nije Docker — vidi [`docs/operations/n8n-setup.md`](./docs/operations/n8n-setup.md)).
+
+| Environment | URL (trenutno aktivan, subpath) | Port | Final URL (kad DNS bude live) |
+|---|---|---|---|
+| Staging | https://staging.aiasistent.bitlab.rs/n8n/ | 8031 | https://n8n-staging.bitlab.rs |
+| Production | https://aiasistent.bitlab.rs/n8n/ | 8030 | https://n8n.bitlab.rs |
+
+Aktivni / planirani workflow-i:
+- **Email auto-reply** (`n8n/email-autoreply.json`) — Gmail trigger → `/api/email` → AI reply. Filtrira po ključnim riječima u subject-u/snippet-u (upit, ponuda, cijen, dostava, garancija, …).
+- **Sales workflow za povećanje prodaje na webshop-u** — počev od **idu sedmice (2026-W20, 11.05.2026.)**. Detalji se dogovaraju; vjerovatno lead nurturing, abandoned-cart, follow-up sekvence.
+
+URL na koji workflow zove FastAPI app dolazi iz `AI_ASSISTANT_URL` env vara u systemd unit-u (`deploy/n8n-staging.service` → `http://127.0.0.1:8001`, `deploy/n8n-prod.service` → `http://127.0.0.1:8000`), pa se isti workflow JSON koristi na oba environmenta.
+
+Trenutno stanje, plan nastavka, workaround bez DNS-a — sve u [`docs/operations/n8n-odluka.md`](./docs/operations/n8n-odluka.md).
 
 ---
 

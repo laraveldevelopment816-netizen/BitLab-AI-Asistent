@@ -68,7 +68,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8000/api/email",
+        "url": "={{ $env.AI_ASSISTANT_URL }}/api/email",
         "sendBody": true,
         "contentType": "json",
         "bodyParameters": {
@@ -87,7 +87,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [680, 200],
-      "notes": "Šalje sender, subject, body (snippet) kao JSON. Vraća { reply, escalated, tools_used }."
+      "notes": "Šalje sender, subject, body (snippet) kao JSON. Vraća { reply, escalated, tools_used }. URL dolazi iz AI_ASSISTANT_URL env var-a u systemd unitu (staging: http://127.0.0.1:8001, prod: http://127.0.0.1:8000)."
     },
     {
       "parameters": {

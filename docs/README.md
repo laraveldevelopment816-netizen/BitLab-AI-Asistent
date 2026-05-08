@@ -12,6 +12,9 @@
 | Sessions tab (thread view razgovora) | [`features/sessions.md`](./features/sessions.md) |
 | Compare panel (haiku ↔ sonnet) | [`features/compare.md`](./features/compare.md) |
 | Server konvencije (Pattern A) | [`operations/server-conventions.md`](./operations/server-conventions.md) |
+| n8n setup (staging + prod) | [`operations/n8n-setup.md`](./operations/n8n-setup.md) |
+| n8n odluke + plan nastavka | [`operations/n8n-odluka.md`](./operations/n8n-odluka.md) |
+| Gmail OAuth login za n8n autoreply | [`operations/gmail-oauth-setup.md`](./operations/gmail-oauth-setup.md) |
 | Česti problemi | [`operations/troubleshooting.md`](./operations/troubleshooting.md) |
 | Troškovi (cijene, mjerenje, alerts) | [`operations/costs.md`](./operations/costs.md) |
 | Data quality (slike, kategorije refresh) | [`operations/data-quality.md`](./operations/data-quality.md) |

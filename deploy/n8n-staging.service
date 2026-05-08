@@ -12,6 +12,8 @@ Environment=N8N_PROTOCOL=https
 Environment=WEBHOOK_URL=https://n8n-staging.bitlab.rs/
 Environment=GENERIC_TIMEZONE=Europe/Belgrade
 Environment=N8N_RUNNERS_BROKER_PORT=5681
+Environment=N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+Environment=AI_ASSISTANT_URL=http://127.0.0.1:8001
 ExecStart=/usr/bin/n8n start
 Restart=always
 RestartSec=5

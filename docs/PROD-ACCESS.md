@@ -13,6 +13,7 @@ Production server: `aiasistent.bitlab.rs` (Hetzner VPS), release-symlink deploy 
 | **Chat widget** | https://aiasistent.bitlab.rs |
 | **Dashboard (logovi, sesije, stats)** | https://aiasistent.bitlab.rs/admin/ |
 | **Health check** | https://aiasistent.bitlab.rs/healthz |
+| **n8n (automatizacija — email auto-reply, sales workflow)** | https://aiasistent.bitlab.rs/n8n/ *(subpath workaround dok DNS ne bude live; final URL: https://n8n.bitlab.rs — vidi [`operations/n8n-odluka.md`](./operations/n8n-odluka.md))* |
 | **Prezentacija (PDF)** | [Engineering Pitch v2](https://aiasistent.bitlab.rs/public/assets/BitLab%20AI%20Asistent%20%E2%80%94%20Engineering%20Pitch%20v2.pdf) |
 
 ### Pristup dashboard-u
