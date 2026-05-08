@@ -101,6 +101,20 @@
   --bl-font:        "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/* ───── Override host-page focus rules (npr. webshop style.css koji ima
+        input:focus { outline: 2px solid #fb6d3b !important }) ───── */
+#bl-launcher, #bl-launcher:focus, #bl-launcher:focus-visible,
+#bl-window button, #bl-window button:focus, #bl-window button:focus-visible,
+#bl-window input, #bl-window input:focus, #bl-window input:focus-visible,
+#bl-window textarea, #bl-window textarea:focus, #bl-window textarea:focus-visible,
+#bl-window select, #bl-window select:focus, #bl-window select:focus-visible,
+#bl-window a, #bl-window a:focus, #bl-window a:focus-visible,
+#bl-voice-overlay button, #bl-voice-overlay button:focus, #bl-voice-overlay button:focus-visible,
+#bl-voice-overlay input, #bl-voice-overlay input:focus, #bl-voice-overlay input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+}
+
 /* ───── Launcher ───── */
 #bl-launcher {
   position: fixed; bottom: 24px; right: 24px;
