@@ -1,15 +1,681 @@
 {
-  "_comment": "Mapiranje kategorija na primary terms koji NISU u imenima proizvoda te kategorije. Korisi se i u embed_products.py (prefix u search_text-u) i u rag.py (search-time category boost za kratke upite). Format: cat_id -> [list of BCS terms]. Dodaj nove kategorije kad korisnici traže tip proizvoda koji se ne nađe.",
-  "98":  ["laptop", "notebook", "prijenosno", "prijenosni racunar", "prenosivi"],
-  "17":  ["pc", "racunar", "kompjuter", "desktop", "all-in-one", "stoni"],
-  "108": ["maticna", "matična ploča", "motherboard", "mainboard", "mb"],
-  "163": ["televizor", "tv", "smart tv"],
-  "166": ["daljinski", "daljinski upravljac", "remote", "tv box", "chromecast"],
-  "173": ["kamera", "action camera", "akciona kamera", "fotoaparat"],
-  "174": ["foto oprema", "dvogled", "torba za fotoaparat", "stativ"],
-  "184": ["fiksni telefon", "dect telefon", "kucni telefon", "bezicni telefon"],
-  "202": ["powerbank", "eksterna baterija", "punjac za telefon", "prenosivi punjac"],
-  "290": ["kontroler", "adapter", "ide sata", "pcie kartica"],
-  "380": ["elektricni romobil", "scooter", "kickscooter", "trotinet"],
-  "393": ["gift card", "voucher", "robux", "playstation kredit", "digitalni kredit"]
+  "_comment": "Auto-generisano iz data/categories.csv pomoću scripts/build_category_terms.py — NE editovati ručno; izmjene prave u CSV-u (meta_keywords, name) i regenerisati. Mapiranje cat_id → BCS termini za search-time category boost u rag.py i embedding-time prefix u embed_products.py. Iskljuceni su cat-ovi sa < 5 proizvoda (migration ghost-ovi).",
+  "17": [
+    "računari",
+    "desktop računari",
+    "laptop",
+    "all-in-one",
+    "računar",
+    "kompjuter",
+    "pc",
+    "stoni racunar"
+  ],
+  "98": [
+    "notebook",
+    "laptop",
+    "prijenosni računar",
+    "hp laptop",
+    "lenovo laptop",
+    "asus laptop",
+    "prijenosno",
+    "prijenosni"
+  ],
+  "99": [
+    "tableti",
+    "android tablet",
+    "ipad",
+    "windows tablet",
+    "tablet"
+  ],
+  "104": [
+    "torba za laptop",
+    "ranac za laptop",
+    "laptop bag",
+    "targus torba",
+    "case logic ranac",
+    "15.6 torba",
+    "poslovne torbe",
+    "rančevi"
+  ],
+  "108": [
+    "matične ploče",
+    "motherboard",
+    "intel matična ploča",
+    "amd matična ploča",
+    "msi",
+    "maticna",
+    "maticna ploca",
+    "mb",
+    "mainboard"
+  ],
+  "111": [
+    "cpu cooler",
+    "procesorski hladnjak",
+    "vodeno hlađenje",
+    "termalna pasta",
+    "noctua",
+    "be quiet cooler"
+  ],
+  "112": [
+    "pc ventilatori",
+    "case fan",
+    "120mm ventilator",
+    "140mm ventilator",
+    "rgb ventilator",
+    "argb fan",
+    "ventilatori"
+  ],
+  "113": [
+    "ram memorija",
+    "ddr4",
+    "ddr5",
+    "kingston ram",
+    "crucial ram",
+    "nadogradnja memorije"
+  ],
+  "115": [
+    "ssd disk",
+    "m.2 nvme",
+    "sata ssd",
+    "samsung ssd",
+    "kingston ssd",
+    "crucial ssd",
+    "brzi disk",
+    "ssd storage"
+  ],
+  "118": [
+    "pc kućište",
+    "midi tower",
+    "full tower",
+    "mini itx",
+    "cooler master",
+    "nzxt kućište",
+    "kućišta"
+  ],
+  "120": [
+    "napojna jedinica",
+    "psu",
+    "power supply",
+    "be quiet psu",
+    "corsair psu",
+    "80 plus",
+    "napajanjepc",
+    "napojne jedinice"
+  ],
+  "123": [
+    "kablovi"
+  ],
+  "124": [
+    "laserski printer",
+    "laser printer",
+    "hp laserski",
+    "brother laserski",
+    "canon laser",
+    "kolor laserski printer",
+    "laserski printeri",
+    "printer",
+    "stampac"
+  ],
+  "127": [
+    "multifunkcijski printer",
+    "mfp",
+    "hp multifunkcijski",
+    "canon mfp",
+    "multifunkcijski printeri"
+  ],
+  "132": [
+    "ups",
+    "besprekidno napajanje",
+    "apc ups",
+    "ever ups",
+    "eaton ups"
+  ],
+  "135": [
+    "baterija za ups",
+    "zamjenska ups baterija",
+    "apc baterija",
+    "ever baterija",
+    "ups akumulator",
+    "baterije za ups"
+  ],
+  "136": [
+    "inverter",
+    "dc/ac inverter",
+    "automobilski inverter",
+    "solarni inverter",
+    "pretvarač napona",
+    "inverteri"
+  ],
+  "137": [
+    "usb kablovi",
+    "kabal",
+    "kabel",
+    "usb kabal"
+  ],
+  "151": [
+    "mobiteli",
+    "pametni telefoni",
+    "smartphones",
+    "kupovina mobitela",
+    "mobilni telefoni"
+  ],
+  "163": [
+    "televizori",
+    "smart tv",
+    "4k uhd tv",
+    "oled tv",
+    "samsung televizor",
+    "lg televizor",
+    "sony televizor",
+    "tv",
+    "televizor"
+  ],
+  "165": [
+    "nosač za tv",
+    "zidni nosač televizora",
+    "stalak za tv",
+    "montaža televizora",
+    "tv bracket"
+  ],
+  "168": [
+    "projektori - uređaji"
+  ],
+  "169": [
+    "platno za projektor",
+    "projekcijsko platno",
+    "zidno platno",
+    "stojeće platno",
+    "uvlačno platno",
+    "platna za projektor"
+  ],
+  "172": [
+    "fotoaparat",
+    "digitalni fotoaparat",
+    "dslr",
+    "mirrorless",
+    "fujifilm",
+    "fotoaparati"
+  ],
+  "173": [
+    "sportska kamera",
+    "akcijska kamera",
+    "dji action",
+    "vodootporna kamera"
+  ],
+  "174": [
+    "dodaci za fotoaparate"
+  ],
+  "175": [
+    "mobilni telefon",
+    "samsung galaxy",
+    "iphone",
+    "mobitel",
+    "pametni telefon",
+    "mobilni telefoni",
+    "telefon",
+    "smartfon"
+  ],
+  "176": [
+    "dodaci za mobitele",
+    "maska za telefon",
+    "zaštitno staklo",
+    "punjač za mobitel",
+    "phone case"
+  ],
+  "177": [
+    "pametni sat",
+    "smartwatch",
+    "fitness narukvica",
+    "apple watch",
+    "samsung watch",
+    "xiaomi band",
+    "pametni satovi"
+  ],
+  "184": [
+    "bezični telefoni"
+  ],
+  "189": [
+    "audio player-i",
+    "transmiteri"
+  ],
+  "198": [
+    "inverter klima",
+    "a++ klima",
+    "energetski efikasna klima",
+    "daikin inverter",
+    "mitsubishi inverter",
+    "klima inverter"
+  ],
+  "200": [
+    "led sijalice",
+    "led žarulje",
+    "e27 led",
+    "e14 led",
+    "gu10 led",
+    "energetski efikasna rasvjeta"
+  ],
+  "201": [
+    "baterije"
+  ],
+  "202": [
+    "punjive baterije",
+    "powerbank",
+    "eksterna baterija",
+    "prenosivi punjac"
+  ],
+  "216": [
+    "stolice"
+  ],
+  "218": [
+    "procesori",
+    "intel core",
+    "amd ryzen",
+    "cpu",
+    "procesor",
+    "desktop procesor"
+  ],
+  "220": [
+    "tastatura",
+    "mehanička tastatura",
+    "gaming tastatura",
+    "bežična tastatura",
+    "logitech tastatura",
+    "corsair",
+    "tastature",
+    "tipkovnica"
+  ],
+  "221": [
+    "slušalice",
+    "gaming headset",
+    "bežične slušalice",
+    "over-ear slušalice",
+    "sony slušalice",
+    "jbl slušalice"
+  ],
+  "224": [
+    "monitori",
+    "ips monitor",
+    "gaming monitor",
+    "4k monitor",
+    "144hz monitor",
+    "lg monitor",
+    "samsung monitor",
+    "monitor"
+  ],
+  "225": [
+    "eksterni hdd",
+    "prijenosni hard disk",
+    "backup disk",
+    "seagate eksterni",
+    "wd my passport"
+  ],
+  "226": [
+    "toneri"
+  ],
+  "228": [
+    "cd mediji"
+  ],
+  "229": [
+    "tinta"
+  ],
+  "230": [
+    "gaming oprema",
+    "gaming kontroler",
+    "volan za pc",
+    "gaming podloga",
+    "gamepad",
+    "oprema za igrice"
+  ],
+  "232": [
+    "memorijska kartica",
+    "sd kartica",
+    "microsd",
+    "cf kartica",
+    "kingston sd",
+    "sandisk microsd",
+    "memorijske kartice"
+  ],
+  "233": [
+    "desktop pc",
+    "stolni računar",
+    "desktop računar",
+    "kućni računar",
+    "poslovni računar"
+  ],
+  "249": [
+    "kuhinjski aparati"
+  ],
+  "254": [
+    "dvd mediji"
+  ],
+  "256": [
+    "web kamera",
+    "webcam",
+    "logitech web kamera",
+    "full hd kamera",
+    "4k webcam",
+    "streaming kamera",
+    "web kamere"
+  ],
+  "257": [
+    "usb stick",
+    "usb flash",
+    "flash memorija",
+    "kingston usb",
+    "sandisk usb",
+    "64gb usb stick",
+    "usb stickovi",
+    "usb stik",
+    "memorijski stik"
+  ],
+  "270": [
+    "mrežni switch",
+    "network switch",
+    "cisco switch",
+    "tp-link switch",
+    "managed switch",
+    "unmanaged switch",
+    "switch-evi",
+    "switch",
+    "preklopnik"
+  ],
+  "277": [
+    "ostalo",
+    "miš",
+    "mis",
+    "miševi"
+  ],
+  "279": [
+    "zvučnici za pc",
+    "computer speakers",
+    "2.1 zvučnici",
+    "logitech zvučnici",
+    "creative zvučnici",
+    "zvučnici"
+  ],
+  "285": [
+    "dodaci za kućište",
+    "fan kontroler",
+    "hdd nosač",
+    "rgb dodaci",
+    "pc kućište oprema",
+    "dodaci za kućišta"
+  ],
+  "287": [
+    "audio kablovi",
+    "3.5mm kabel",
+    "rca kabel",
+    "xlr kabel",
+    "optički audio kabel"
+  ],
+  "289": [
+    "dodaci za tablet",
+    "maska za tablet",
+    "zaštitno staklo tablet",
+    "tastatura za tablet",
+    "ipad dodaci"
+  ],
+  "294": [
+    "kalkulator",
+    "džepni kalkulator",
+    "naučni kalkulator",
+    "casio kalkulator",
+    "sharp kalkulator",
+    "kalkulatori"
+  ],
+  "295": [
+    "mrežni konektori",
+    "rj45",
+    "utičnica mrežna",
+    "koaksijalni konektori",
+    "patch konektori",
+    "konektori i utičnice"
+  ],
+  "296": [
+    "kućanski aparati",
+    "bijela tehnika",
+    "mali kućanski aparati",
+    "frižider",
+    "usisivač",
+    "aparat za kafu"
+  ],
+  "297": [
+    "microsoft windows",
+    "office 365",
+    "microsoft 365",
+    "windows 11",
+    "microsoft licenca"
+  ],
+  "298": [
+    "mrežni alat",
+    "krimperka",
+    "tester kabla",
+    "striperka",
+    "punch-down alat",
+    "mrežna instalacija"
+  ],
+  "299": [
+    "napojni kablovi",
+    "strujni kabel",
+    "c13 kabel",
+    "iec kabel",
+    "napajanje za računar"
+  ],
+  "301": [
+    "optički kabel",
+    "toslink",
+    "spdif",
+    "optički audio kabel",
+    "kućno kino kabel",
+    "opticki kablovi"
+  ],
+  "304": [
+    "kancelarijski sitni materijal",
+    "ljepilo",
+    "makaze",
+    "spajalice",
+    "selotejp",
+    "uredski pribor",
+    "ostali kancelarijski materijal",
+    "heftalica",
+    "alat",
+    "lopta",
+    "skalpel"
+  ],
+  "305": [
+    "papir za štampu",
+    "a4 papir",
+    "foto papir",
+    "papir za printer",
+    "uredski papir",
+    "papir"
+  ],
+  "306": [
+    "prezenter",
+    "bežični prezenter",
+    "laserski prezenter",
+    "logitech prezenter",
+    "pointer",
+    "prezenteri"
+  ],
+  "307": [
+    "podloga za miš",
+    "gaming podloga",
+    "xl podloga",
+    "mousepad",
+    "podloge za miševe"
+  ],
+  "309": [
+    "ruter",
+    "wifi router",
+    "wifi 6",
+    "mesh sistem",
+    "tp-link ruter",
+    "asus ruter",
+    "5g ruter",
+    "router-i",
+    "router"
+  ],
+  "310": [
+    "čišćenje računara",
+    "komprimirani zrak",
+    "čistač ekrana",
+    "antistatička krpa",
+    "održavanje elektronike",
+    "sredstva za održavanje"
+  ],
+  "311": [
+    "telefonski kabel",
+    "rj11",
+    "adsl kabel",
+    "telefonski kablovi"
+  ],
+  "313": [
+    "usb hub",
+    "usb razvodnik",
+    "usb 3.0 hub",
+    "usb-c hub",
+    "napajani usb hub",
+    "usb hub-ovi"
+  ],
+  "314": [
+    "usb punjač",
+    "brzi punjač",
+    "gan punjač",
+    "pd 65w",
+    "punjač za mobitel",
+    "višeportni punjač",
+    "usb punjači",
+    "punjac",
+    "auto punjac",
+    "zidni punjac"
+  ],
+  "316": [
+    "video kablovi",
+    "hdmi kabel",
+    "displayport kabel",
+    "vga kabel",
+    "dvi kabel",
+    "4k hdmi kabel"
+  ],
+  "319": [
+    "mikrofon",
+    "usb mikrofon",
+    "kondenzatorski mikrofon",
+    "gaming mikrofon",
+    "blue mikrofon",
+    "hyperx mic",
+    "mikrofoni"
+  ],
+  "324": [
+    "dodaci za notebook",
+    "hladnjak za laptop",
+    "docking station",
+    "laptop stalak",
+    "zamjenski punjač"
+  ],
+  "329": [
+    "kućište za hdd",
+    "hdd enclosure",
+    "2.5 kućište",
+    "3.5 kućište",
+    "ssd kućište",
+    "usb disk kućište",
+    "kućišta za hdd"
+  ],
+  "334": [
+    "card reader",
+    "čitač kartica",
+    "sd card reader",
+    "microsd čitač",
+    "usb čitač kartica",
+    "card reader-i"
+  ],
+  "335": [
+    "barkod skener",
+    "barcode scanner",
+    "1d skener",
+    "2d skener",
+    "qr skener",
+    "bežični skener",
+    "barcode skeneri"
+  ],
+  "339": [
+    "futrola za cd",
+    "omot za dvd",
+    "kofer za diskove",
+    "cd wallet",
+    "dvd storage",
+    "futrole i omoti"
+  ],
+  "361": [
+    "aparati za njegu",
+    "fen za kosu",
+    "brijaći aparat",
+    "epilator",
+    "trimer",
+    "ravnalica za kosu"
+  ],
+  "368": [
+    "gaming konzola",
+    "playstation 5",
+    "ps5",
+    "xbox series x",
+    "nintendo switch",
+    "konzola za igre",
+    "konzole"
+  ],
+  "377": [
+    "registrator",
+    "fascikla",
+    "arhivska kutija",
+    "a4 registrator",
+    "organizovanje dokumenta",
+    "registratori"
+  ],
+  "378": [
+    "ostale kategorije"
+  ],
+  "380": [
+    "električni skuter",
+    "e-scooter",
+    "električni trotinet",
+    "sklopivi skuter",
+    "gradski skuter",
+    "skuteri"
+  ],
+  "387": [
+    "školski ranac",
+    "torba za školu",
+    "ruksak za školu",
+    "školska torba"
+  ],
+  "393": [
+    "digitalni kodovi",
+    "gift card",
+    "playstation gift card",
+    "xbox gift card",
+    "steam kodovi",
+    "voucher",
+    "robux",
+    "playstation kredit",
+    "digitalni kredit"
+  ],
+  "394": [
+    "maska za mobitel",
+    "futrola za telefon",
+    "zaštitno staklo",
+    "phone case",
+    "samsung maska",
+    "iphone maska"
+  ],
+  "395": [
+    "4g ruter",
+    "lte ruter",
+    "sim ruter",
+    "4g wifi ruter",
+    "mobilni internet ruter",
+    "huawei 4g",
+    "4g routeri"
+  ]
 }
