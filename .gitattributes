@@ -1,3 +1,7 @@
+# Sve tekstualne fajlove normalizuj na LF (auto-detekcija binarnih).
+# Sprečava CRLF churn od Windows editora na /mnt/c/ (WSL).
+* text=auto eol=lf
+
 *.sh text eol=lf
 entrypoint.sh text eol=lf
 Dockerfile text eol=lf
