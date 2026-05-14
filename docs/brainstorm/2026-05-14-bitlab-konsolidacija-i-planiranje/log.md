@@ -508,3 +508,33 @@ Plan: `git restore` 5 churned fajlova (sigurno — pure CRLF, pravi sadržaj je 
 3. `feature/n8n-deploy`: `git merge main`, renormalize ako treba, push.
 4. `feature/ai-search-…`: stale (0 ahead) → preporuka: OBRISATI, ne ažurirati.
    **Čeka korisnikovu odluku:** delete ili update?
+
+### ✅ Line endings + feature grane — sve izvršeno (korisnik: "4 delete, ostalo uradi")
+
+**Korak 1 — line endings na `main`:** `.gitattributes` proširen sa `* text=auto eol=lf`;
+`git add --renormalize` → `data/all-products.json` + `data/categories.csv` (CRLF/mixed → LF).
+Commit `d9d5c84` (`chore:`) + `17dcb77` (`docs:` log). Push `main` (`9bf4fb0..17dcb77`). ✅
+
+**Korak 2 — `feature/openclaw-integration`:** `git merge main` — čist merge (disjoint
+fajlovi), merge commit `d61d2f8`. Renormalize: ništa (sve već LF). Push (`7fcee70..d61d2f8`). ✅
+
+**Korak 3 — `feature/n8n-deploy`:** `git merge main` — čist merge (README.md auto-merged,
+bez konflikta), merge commit `bfc5086`, 19 fajlova iz main-a. Renormalize: ništa. Push
+(`d485b0a..bfc5086`). ✅
+
+**Korak 4 — `feature/ai-search-brand-category-improvements`:** `git branch -d` — obrisana
+(stale, 0 unikatnih commita, fully merged, local-only). ✅
+
+**Finalno stanje:**
+- `main` `17dcb77` [origin] — sync
+- `staging` `9bf4fb0` [origin] — sync, ALI sad **2 IZA main-a** (posljedica koraka 1 —
+  `d9d5c84` + `17dcb77` dodani na main poslije staging reseta). Staging NIJE divergiran,
+  samo iza → može čist `--ff-only` (bez force-a). Čeka odluku korisnika.
+- `feature/openclaw-integration` `d61d2f8` [origin] — NIJE iza main-a (`main...` = `0 2`)
+- `feature/n8n-deploy` `bfc5086` [origin] — NIJE iza main-a (`main...` = `0 2`)
+- `feature/ai-search-…` — obrisana
+
+**Preostalo iz šireg plana:** `STATUS.md` na openclaw grani; odluka o `.env.openclaw`
+ključu (na public originu — rotacija?); opciono fast-forward `staging` na `main`.
+
+> Ovaj log unos je uncommitted (dopuna nakon `17dcb77`).
