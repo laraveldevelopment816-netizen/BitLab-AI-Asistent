@@ -282,3 +282,181 @@ Tri pojedinačna `docs:` commita na `main`:
 OpenClaw fajlovi (`app/*`, `.env.example`, `.env.openclaw`) NISU dirani — ostaju
 uncommitted za `feature/openclaw-integration`. Nema push-a. SHA-ovi: `git log`.
 (Napomena: ovaj log se i dalje dopunjava nakon commita #3 → biće opet "modified".)
+
+✅ **Izvršeno** (lokalno, bez push): `d3a43d9` CLAUDE.md • `7122d62` Drive pitanja •
+`21c80cb` ovaj log. Radno stablo sad: samo OpenClaw fajlovi (`app/agent.py`,
+`app/config.py`, `app/server/dashboard.py`, `.env.example`) + `.env.openclaw`
+ostaju uncommitted — za `feature/openclaw-integration` granu.
+
+### Push — `main` na remote (korisnik odobrio: "možeš pushovati ove promjene na main")
+
+✅ `git push origin main` — fast-forward `0d3d4cc..21c80cb`. Tri `docs:` commita su
+sad na `origin/main`.
+- Napomena: remote je **GitHub** (`github.com:laraveldevelopment816-netizen/BitLab-AI-Asistent.git`),
+  ne GitLab — korisnik je rekao "gitlab", ali je u pitanju GitHub.
+- Push je obuhvatio samo 3 commita. Mali post-commit dodatak u ovom logu (✅ redovi
+  iznad) ostaje LOKALNO uncommitted — nije u push-u.
+
+### `.env.openclaw` — repo je PUBLIC (blokira odluku o commitu ključa)
+
+Korisnik: `OPENCLAW_API_KEY` je samo **interfejs ključ do lokalnog OpenClaw agenta**
+(gateway na `127.0.0.1:18789`), nije API ključ za naplativi/eksterni poziv → predlaže
+da se `.env.openclaw` commituje zajedno sa ostalim izmjenama.
+
+**Provjereno:** repo `laraveldevelopment816-netizen/BitLab-AI-Asistent` je **PUBLIC**
+(GitHub API vraća 200 na neautentifikovan zahtjev).
+
+- Korisnik ima pravo: localhost interfejs ključ JESTE niža kategorija rizika nego
+  Anthropic API ključ — ranija formulacija "stvaran API ključ" je bila pregruba.
+- ALI: public repo znači da bi commit objavio token **cijelom svijetu, trajno**
+  (git historija public repo-a; secret-scanneri, botovi). "Niži rizik" ≠ "javno OK".
+- Tri opcije za `.env.openclaw`:
+  - **(A)** `.gitignore` — ne commitovati fajl; dev-bilješka ide u `STATUS.md`.
+  - **(B)** commitovati sa **redigovanim** ključem (placeholder umjesto vrijednosti).
+  - **(C)** commitovati kako jeste sa stvarnim ključem — token postaje world-readable.
+- Preporuka: **A ili B**. Čeka se korisnikova eksplicitna odluka prije izvršenja.
+
+**Timing (Q1):** DA, sad je pravi momenat za `feature/openclaw-integration` granu —
+`main` je čist i pushovan, radno stablo ima tačno OpenClaw fajlove. Izvršenje grane
+čeka samo odluku A/B/C.
+
+**Odluka korisnika: opcija C** — commitovati `.env.openclaw` sa stvarnim ključem.
+Obrazloženje korisnika: "ovo svakako neće stići do main grane, radićemo refactor."
+
+⚠️ **Faktička ispravka (bitna):** "neće stići do main" NE štiti ključ. Feature grana
+na PUBLIC repo-u je jednako javna kao `main` (GitHub prikazuje sve grane; secret-
+scanneri skeniraju sve grane). Git historija je trajna. Jedino što čuva ključ od
+javnosti jeste da se grana **NE pushuje**.
+
+**Plan (čeka potvrdu korisnika):** napraviti `feature/openclaw-integration` LOKALNO,
+commitovati OpenClaw fajlove + `.env.openclaw` sa stvarnim ključem, **bez `git push`**.
+Grana ostaje lokalna do refactora. Preporuka: rotirati OpenClaw ključ nakon refactora.
+
+### Izvršeno — `feature/openclaw-integration` napravljena LOKALNO ✅
+
+Korisnik potvrdio: "Komitujte lokalno, nemojte pushati još uvijek, da pregledam."
+
+- ✅ `git checkout -b feature/openclaw-integration`
+- ✅ Jedan `feat(openclaw)` commit **`7fcee70`** — 5 fajlova (90+/3−): `app/agent.py`,
+  `app/config.py`, `app/server/dashboard.py`, `.env.example`, `.env.openclaw`
+  (opcija C — stvaran ključ u commitu).
+- ✅ Vraćeno na `main`. `git branch -vv` potvrđuje: grana **NEMA upstream → NIJE pushovana**.
+- Jedan WIP commit radi lakšeg review-a; Opus-4.7 bundlovan unutra (može se razdvojiti
+  kasnije — grana je lokalna, rebase trivijalan).
+- STATUS.md NIJE napravljen — zaseban korak kasnije (van scope-a "commit + review").
+
+**Repo visibility — potvrđeno:** korisnik se prvo dvoumio ("private?"), pa se ispravio:
+**repo JESTE public** (poklapa se sa GitHub API provjerom, HTTP 200).
+
+**Trenutno sigurnosno stanje:** ključ je u commitu `7fcee70` ali **SAMO lokalno** — grana
+nije pushovana, ključ NIJE izložen. Zaštita drži dok god se grana ne pushuje. Review
+treba da obuhvati: redakcija `.env.openclaw` prije eventualnog push-a, ILI grana ostaje
+trajno lokalna, ILI rotacija ključa. Review komanda na panelu: `git show feature/openclaw-integration`.
+
+### Pitanje korisnika — MR staging→main, "zar ne bi rekao da su identične?"
+
+Korisnik: ako su sadržaji staging-a isti, MR staging→main bi trebalo da kaže
+"nothing to commit / branches identical". Tražio ispravku ako griješi.
+
+**Ispravka 1 — premisa je netačna:** staging i main NISU sadržajno isti.
+- Ranija tvrdnja je bila uža: staging-ov *jedini unikatni commit* `572043e` je
+  sadržajni duplikat (patch-id `a4eec2b3…` == `7125d10`). To znači staging ne
+  doprinosi ništa novo — NE znači "staging == main".
+- Trenutno `git diff main staging`: 4 fajla razlike (459 deletions) — staging-u fale
+  `CLAUDE.md`, `docs/Otvorena pitanja…`, `docs/brainstorm/…/log.md`, i ima stariju
+  verziju `public/widget.js`. `main...staging` = `7 1`. Staging je IZA main-a.
+
+**Ispravka 2 — i da su sadržaji isti, git ne bi rekao "identične":** git/GitHub
+računaju merge po commit SHA / graf reachability, ne po sadržaju (isti princip kao
+ahead/behind brojanje). `572043e` je distinct SHA koji main nema → MR staging→main
+bi pokazao "1 commit", ne "identical". `git merge` kaže "Already up to date" SAMO kad
+je izvor predak cilja — `staging` NIJE predak `main`-a (potvrđeno).
+
+**Šta bi MR staging→main stvarno uradio:** null merge commit — `572043e`-ova izmjena
+je već na main preko `7125d10`, pa 3-way merge ne daje konflikt ni novi sadržaj;
+nastao bi merge commit sa praznim diff-om koji samo uvlači suvišnu historiju.
+
+**Smjer:** za konsolidaciju treba `main → staging` (staging je iza), NE staging→main.
+
+### Kako ručno uporediti divergirane SHA-ove (na pitanje korisnika)
+
+Komande (pokrenute, output u sesiji):
+- `git merge-base main staging` → SHA tačke divergencije = **`58a8a69`**.
+- `git log --oneline --graph main staging` → vizuelni fork; grananje vidljivo kod `58a8a69`.
+- `git diff staging...main --stat` → **TRI tačke** = "šta je main promijenio OD
+  divergencije" (diff od merge-base, ignoriše staging stranu). Rezultat: main je od
+  forka dodao `CLAUDE.md`, `docs/Otvorena pitanja…`, `docs/brainstorm/…/log.md` (novi)
+  i promijenio `public/widget.js` + `public/voice.html`. 5 fajlova, 461+/30−.
+- Dvije tačke (`staging..main`) = direktan diff vrh-na-vrh.
+- Drill u jedan fajl: `git diff staging...main -- public/widget.js` (stavljeno na panel).
+
+### Q1 + Q2 — staging diference i uticaj na feature grane (na pitanje korisnika)
+
+**Q1 — "samo dvije diference, sakrij mikrofon" — DJELIMIČNO tačno:**
+- Tačno: `7125d10` (main) i `572043e` (staging) su "sakrij mikrofon" DUP par — isti
+  sadržaj, i `572043e` JESTE jedini commit koji staging ima a main nema.
+- NETAČNO da su "samo dvije diference": `staging..main` = **7 commita** koje main ima
+  a staging nema: `21c80cb`, `7122d62`, `d3a43d9` (današnji docs), `0d3d4cc`,
+  `efae235` (widget), `7125d10` (sakrij mikrofon dup), `a51f0a2` (merge).
+- Dakle: staging = 1 suvišan commit; main = 7 ispred. "Sakrij mikrofon" je samo 1 par;
+  ostalih 6 (merge + 2 widget + 3 docs) je stvaran sadržaj koji staging-u fali.
+
+**Q2 — kako su feature grane pogođene hard-reset-om staging-a / merge-om? → NIKAKO.**
+
+Princip: git grana = pomjerljiv pointer (ref) na commit; commiti su nepromjenjivi.
+`reset`/`merge`/`push` mijenjaju SAMO granu na kojoj operišeš — nikad druge grane.
+
+Provjereno:
+- `feature/ai-search-brand-category-improvements` @ `091040e` — ancestor i od `main`
+  i od `staging`. Reset staging-a ga ne dira: `091040e` ostaje dostupan preko `main`
+  (i dalje ancestor) I preko vlastitog pointera grane.
+- `feature/n8n-deploy` @ `d485b0a` — NIJE ancestor ni od main ni od staging; potpuno
+  odvojen, drži ga vlastiti pointer + `origin/feature/n8n-deploy`.
+- `feature/openclaw-integration` @ `7fcee70` — granat od današnjeg main-a, vlastiti pointer.
+
+Zaključak: reset staging→main i/ili merge main↔staging mijenjaju SAMO `staging` pointer.
+Nijedna feature grana se ne pomjera, nijedan commit se ne gubi (svaki dostupan preko
+vlastite grane i/ili main-a). Feature commiti u grafu = samo ancestry, ne "kontrola".
+
+### ⚠️ Pauza — neočekivano stanje radnog stabla: CRLF churn (na zahtjev za 3 push zadatka)
+
+Korisnik tražio 3 zadatka: (1) push `feature/openclaw-integration`, (2) hard reset
+staging + force push, (3) commit+push brainstorm log na `main`.
+
+**Pri provjeri stanja — radno stablo NIJE čisto.** Na grani `feature/openclaw-integration`,
+6 fajlova "modified". Istraga:
+- `git diff -w --stat` i `git diff --ignore-cr-at-eol --stat` → ostaje SAMO `log.md`
+  (135 insertions). 5 OpenClaw fajlova: 0 stvarnih izmjena.
+- `file` → svih 5 OpenClaw fajlova sad ima **CRLF line terminators**.
+- CR count: HEAD verzije = 0 CR; working tree = 389 / 125 / 18 CR.
+- Zaključak: 5 fajlova je čista **CRLF line-ending churn** — vjerovatno Windows editor
+  pri review-u (`/mnt/c/` je Windows FS). `7fcee70` je netaknut i ispravan (LF).
+- `log.md`: jedina STVARNA izmjena — 135 linija session-log dopuna (legit, za `main`).
+
+**Zašto pauza:** CRLF churn bi smetao `git checkout staging` (korak 2), i korisnik treba
+znati da radno stablo nije čisto prije push-eva. NIJE izvršen nijedan push/reset.
+
+**Preporuka:** `git restore` 5 churned fajlova (sigurno — sadržaj dokazano identičan,
+LF verzija je u `7fcee70`), pa onda 3 zadatka jedan po jedan. Root cause: dodati
+`.gitattributes` (`* text=auto eol=lf`) da se CRLF ne ponavlja — zaseban follow-up.
+
+### ✅ Task 1 — `feature/openclaw-integration` pushovan na origin
+
+`git push -u origin feature/openclaw-integration` — nova remote grana kreirana, commit
+`7fcee70` (sa `.env.openclaw` + stvarnim ključem — opcija C, korisnik informisan i
+potvrdio više puta). Repo je public → ključ je sad world-readable. `main` NIJE diran.
+
+Korisnikova "reorder" poruka ("prvo main pa openclaw da nemaš konflikt") stigla je
+POSLIJE push-a — moot za task 1 (push se već desio).
+
+### Task 3 — log.md → main: blokira CRLF churn (čeka OK za `git restore`)
+
+Korisnik traži: push lokalnih `log.md` izmjena na `main`.
+Blokada: 5 OpenClaw fajlova ima CRLF churn u radnom stablu → `git checkout main` bi
+odbio prelaz (radno stablo se razlikuje od main verzija tih fajlova). To je vjerovatno
+"konflikt" koji korisnik osjeća.
+Plan: `git restore` 5 churned fajlova (sigurno — pure CRLF, pravi sadržaj je u
+`7fcee70`, sad i na origin) → `git checkout main` → commit `log.md` → `git push origin main`.
+
+**✅ Korisnik dao OK** ("Ok, pushaj sada ovaj naš log na main"). Izvršavam:
+`git restore` 5 fajlova → `git checkout main` → commit `log.md` → `git push origin main`.
