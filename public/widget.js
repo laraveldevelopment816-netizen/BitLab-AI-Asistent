@@ -101,6 +101,20 @@
   --bl-font:        "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/* ───── Override host-page focus rules (npr. webshop style.css koji ima
+        input:focus { outline: 2px solid #fb6d3b !important }) ───── */
+#bl-launcher, #bl-launcher:focus, #bl-launcher:focus-visible,
+#bl-window button, #bl-window button:focus, #bl-window button:focus-visible,
+#bl-window input, #bl-window input:focus, #bl-window input:focus-visible,
+#bl-window textarea, #bl-window textarea:focus, #bl-window textarea:focus-visible,
+#bl-window select, #bl-window select:focus, #bl-window select:focus-visible,
+#bl-window a, #bl-window a:focus, #bl-window a:focus-visible,
+#bl-voice-overlay button, #bl-voice-overlay button:focus, #bl-voice-overlay button:focus-visible,
+#bl-voice-overlay input, #bl-voice-overlay input:focus, #bl-voice-overlay input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+}
+
 /* ───── Launcher ───── */
 #bl-launcher {
   position: fixed; bottom: 24px; right: 24px;
@@ -346,46 +360,47 @@
 
 /* ───── Welcome screen ───── */
 .bl-welcome {
-  padding: 28px 20px 12px;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 16px 18px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
   text-align: center;
 }
 .bl-welcome__avatar {
-  width: 64px; height: 64px; border-radius: 18px;
+  width: 44px; height: 44px; border-radius: 13px;
   background: linear-gradient(135deg, var(--bl-orange), var(--bl-orange-600));
   display: flex; align-items: center; justify-content: center;
   box-shadow: var(--bl-shadow-orange); color: #fff;
 }
-.bl-welcome__avatar svg { width: 30px; height: 30px; }
+.bl-welcome__avatar svg { width: 22px; height: 22px; }
 .bl-welcome__title {
-  font-size: 18px; font-weight: 700; color: var(--bl-text);
+  font-size: 17px; font-weight: 700; color: var(--bl-text);
   letter-spacing: -.015em;
 }
 .bl-welcome__title span { color: var(--bl-orange); }
 .bl-welcome__sub {
-  font-size: 13px; color: var(--bl-text-2);
-  line-height: 1.45; max-width: 300px;
+  font-size: 12.5px; color: var(--bl-text-2);
+  line-height: 1.4; max-width: 300px;
 }
 .bl-beta-notice {
-  margin: 12px 0 4px;
-  padding: 10px 12px;
+  margin: 4px 0 0;
+  padding: 7px 10px;
   background: var(--bl-bg-soft);
   border: 1px solid var(--bl-line);
   border-left: 3px solid #7dd3fc;
   border-radius: 8px;
-  font-size: 11.5px;
-  line-height: 1.55;
+  font-size: 10.5px;
+  line-height: 1.4;
   color: var(--bl-text-3);
+  text-align: left;
 }
 .bl-beta-notice strong { color: var(--bl-text); font-weight: 600; }
 .bl-welcome__suggest {
   width: 100%; display: flex; flex-direction: column;
-  gap: 8px; margin-top: 8px;
+  gap: 6px; margin-top: 4px;
 }
 .bl-suggest {
-  width: 100%; display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px; background: #fff;
-  border: 1px solid var(--bl-line); border-radius: 12px;
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; background: #fff;
+  border: 1px solid var(--bl-line); border-radius: 10px;
   cursor: pointer; text-align: left;
   font-family: inherit; transition: all .15s;
 }
@@ -395,15 +410,15 @@
   transform: translateY(-1px);
 }
 .bl-suggest__icon {
-  width: 36px; height: 36px; border-radius: 10px;
+  width: 30px; height: 30px; border-radius: 9px;
   background: var(--bl-orange-50); color: var(--bl-orange);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.bl-suggest__icon svg { width: 18px; height: 18px; }
+.bl-suggest__icon svg { width: 16px; height: 16px; }
 .bl-suggest__body { flex: 1; min-width: 0; }
 .bl-suggest__t { font-size: 13px; font-weight: 600; color: var(--bl-text); line-height: 1.2; }
-.bl-suggest__d { font-size: 11px; color: var(--bl-text-3); margin-top: 2px; }
+.bl-suggest__d { font-size: 11px; color: var(--bl-text-3); margin-top: 1px; }
 .bl-suggest__arrow { color: var(--bl-text-3); flex-shrink: 0; }
 .bl-suggest__arrow svg { width: 14px; height: 14px; }
 
@@ -445,12 +460,6 @@
   border: 1px solid var(--bl-line);
   border-radius: 99px;
   padding: 0 4px 0 14px; height: 42px;
-  transition: border-color .15s, background .15s, box-shadow .15s;
-}
-.bl-input-wrap:focus-within {
-  border-color: var(--bl-orange);
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--bl-orange-50);
 }
 #bl-input {
   flex: 1; border: none; background: transparent;
@@ -949,7 +958,7 @@ html.bl-scroll-lock body {
     <div class="bl-input-wrap">
       <input id="bl-input" type="text" placeholder="Postavi pitanje..." autocomplete="off">
     </div>
-    <button id="bl-voice-btn" title="Voice mode" aria-label="Voice mode">${I.mic}</button>
+    <button id="bl-voice-btn" title="Voice mode" aria-label="Voice mode" style="display:none">${I.mic}</button>
     <button id="bl-send" aria-label="Pošalji">${I.send}</button>
   </div>
 
@@ -1034,10 +1043,8 @@ html.bl-scroll-lock body {
         <div class="bl-welcome__sub">Pitaj me bilo šta o našim proizvodima, dostavi ili garanciji.</div>
       </div>
       <div class="bl-beta-notice">
-        <strong>BETA verzija — u stalnom unapređenju.</strong>
-        Za važne odluke (B2B ponude, veće narudžbe, reklamacije) najbrže je
-        kontaktirati prodajni tim direktno: <strong>066 516 174</strong> ili
-        <strong>prodaja@bitlab.rs</strong>.
+        <strong>BETA</strong> — za važne upite (B2B, veće narudžbe):
+        <strong>066 516 174</strong> · <strong>prodaja@bitlab.rs</strong>
       </div>
       <div class="bl-welcome__suggest"></div>
     `;
