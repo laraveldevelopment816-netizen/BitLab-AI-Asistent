@@ -538,3 +538,28 @@ bez konflikta), merge commit `bfc5086`, 19 fajlova iz main-a. Renormalize: ništ
 ključu (na public originu — rotacija?); opciono fast-forward `staging` na `main`.
 
 > Ovaj log unos je uncommitted (dopuna nakon `17dcb77`).
+> (Naknadno: gornji unos je commitovan u `781f25c`, staging fast-forwardovan na `781f25c`.)
+
+### Workflow grana — korisnik potvrdio razumijevanje
+
+Korisnik provjerio svoje razumijevanje toka rada; potvrđeno kao ispravno:
+- `staging` = integraciona/radna grana; rad može ići direktno na `staging`.
+- Za feature grane: **prvo `staging` → feature** (sinhronizacija; konflikti se rješavaju
+  NA feature grani), **pa feature → `staging`** (nazad), **pa `staging` → `main`**.
+- Zdrav, standardan pattern; `staging → main` se poklapa sa postojećom praksom repo-a
+  (commit `a51f0a2 "Merge staging → main"`).
+
+Napomena: u ovoj sesiji sam merge-ovao `main` (ne `staging`) u feature grane — ali pošto
+su `main` i `staging` trenutno identični (`781f25c`), efekat je isti. Ubuduće, po ovom
+workflow-u: `staging` → feature.
+
+Korisnik: "Ovo je zasada OK" — trenutni 1-commit drift feature grana je prihvatljiv.
+
+### 🏁 Sesija zaključena
+
+Korisnik odobrio zaključak ("da" / "Da napravite descision i zaključite sesiju").
+`decisions.md` napisan u session folder-u sa kuriranim zaključkom. Ovaj `log.md` +
+`decisions.md` commitovani na `staging` (korisnik: "komitamo kao finalno na staging").
+
+Status agende: tačka 3 (git konsolidacija) završena; tačke 1, 2, 4 i većina 5 ostaju
+otvorene — detalji u `decisions.md`.
