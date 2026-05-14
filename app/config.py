@@ -17,16 +17,27 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    # ── OpenClaw gateway (opt-in, single source of truth) ─────
+    # When use_openclaw=True, chat-only path routes via OpenClaw gateway
+    # using local Claude CLI subscription (no ANTHROPIC_API_KEY needed).
+    # NOTE: tool-use (product search, escalation) is NOT yet wired through
+    # OpenClaw — direct Anthropic path remains the production tool path.
+    use_openclaw: bool = False
+    openclaw_base_url: str = "http://127.0.0.1:18789/v1"
+    openclaw_api_key: str = ""
+    openclaw_model: str = "openclaw/default"
+
     # ── Anthropic ─────────────────────────────────────────────
     anthropic_api_key: str = Field(default="")
 
     @field_validator("anthropic_api_key")
     @classmethod
-    def _require_api_key(cls, v: str) -> str:
-        if not v:
+    def _require_api_key(cls, v: str, info) -> str:
+        if not v and not info.data.get("use_openclaw"):
             raise ValueError(
                 "ANTHROPIC_API_KEY nije postavljen u .env. "
-                "Dodaj: ANTHROPIC_API_KEY=sk-ant-..."
+                "Dodaj: ANTHROPIC_API_KEY=sk-ant-... "
+                "(ili postavi USE_OPENCLAW=true za routing kroz gateway)"
             )
         return v
     # Sesija 8 hotfix: Haiku ne sluša "ne pitaj pojašnjenje" pravilo
@@ -36,6 +47,7 @@ class Settings(BaseSettings):
     # tests/test_typo_robustness.py i evals/category_eval.json (typo cases).
     chat_model: str = "claude-sonnet-4-6"
     email_model: str = "claude-sonnet-4-6"
+    opus_model: str = "claude-opus-4-7"
     max_tool_iterations: int = 5
     max_output_tokens: int = 1024
 
@@ -106,6 +118,7 @@ class Settings(BaseSettings):
         return {
             "haiku": self.chat_model,
             "sonnet": self.email_model,
+            "opus": self.opus_model,
         }
 
 

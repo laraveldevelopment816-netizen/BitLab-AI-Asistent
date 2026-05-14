@@ -9,6 +9,7 @@ import time
 from typing import Any
 
 import anthropic
+import httpx
 
 from .config import settings
 from .system_prompts import system_prompt
@@ -140,6 +141,55 @@ def _default_model_for_channel(channel: str) -> str:
     return settings.email_model if channel == "email" else settings.chat_model
 
 
+def _run_agent_openclaw(
+    messages: list[dict[str, Any]],
+    channel: str,
+    model: str,
+    sys_prompt: str,
+) -> dict[str, Any]:
+    """OpenClaw passthrough — single chat completion, no tools.
+
+    Used when settings.use_openclaw=True. Routes via OpenClaw gateway
+    /v1/chat/completions which internally uses Claude CLI subscription.
+    Tool-use (product search, escalation) is NOT supported in this mode —
+    use direct Anthropic path for those flows.
+    """
+    t_start = time.monotonic()
+    url = f"{settings.openclaw_base_url}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {settings.openclaw_api_key}",
+        "Content-Type": "application/json",
+    }
+    oa_messages = [{"role": "system", "content": sys_prompt}]
+    for m in messages:
+        if m.get("role") in ("user", "assistant") and m.get("content"):
+            oa_messages.append({"role": m["role"], "content": m["content"]})
+    payload = {"model": settings.openclaw_model, "messages": oa_messages}
+
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            text = data["choices"][0]["message"]["content"]
+            usage = data.get("usage", {})
+            tokens_in = usage.get("prompt_tokens", 0)
+            tokens_out = usage.get("completion_tokens", 0)
+    except Exception as exc:
+        print(f"[AGENT/OPENCLAW] failed: {exc!r}")
+        ui_msg = (
+            "AI servis privremeno nije dostupan. "
+            "Pokušajte za par minuta ili nas kontaktirajte na 066 516 174."
+        )
+        return _graceful_return(
+            channel, ui_msg, ui_msg, [], False, 1, model, 0, 0, t_start, []
+        )
+
+    return _finalize(
+        text, channel, [], False, 1, model, tokens_in, tokens_out, t_start, []
+    )
+
+
 def run_agent(
     messages: list[dict[str, Any]],
     channel: str = "chat",
@@ -154,6 +204,10 @@ def run_agent(
     """
     model = model_override or _default_model_for_channel(channel)
     sys_prompt = system_prompt(channel)
+
+    if settings.use_openclaw:
+        return _run_agent_openclaw(messages, channel, model, sys_prompt)
+
     client = _get_client()
 
     tools_used: list[str] = []
