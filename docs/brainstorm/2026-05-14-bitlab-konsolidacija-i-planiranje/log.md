@@ -460,3 +460,51 @@ Plan: `git restore` 5 churned fajlova (sigurno — pure CRLF, pravi sadržaj je 
 
 **✅ Korisnik dao OK** ("Ok, pushaj sada ovaj naš log na main"). Izvršavam:
 `git restore` 5 fajlova → `git checkout main` → commit `log.md` → `git push origin main`.
+
+### ✅ Task 3 + Task 2 — izvršeno
+
+**Task 3 — log na main:** `git restore` 5 churned fajlova (CRLF šum maknut) →
+`git checkout main` → commit `9bf4fb0` "docs: update brainstorm session log" →
+`git push origin main` (fast-forward `21c80cb..9bf4fb0`). ✅
+
+**Task 2 — staging poravnat na main:** `git checkout staging` → `git reset --hard main`
+→ `git push --force-with-lease origin staging` (forced `572043e...9bf4fb0`). ✅
+- staging-ov stari commit `572043e` (dup od `7125d10`) odbačen — sadržaj već na `main`,
+  ništa izgubljeno. `main...staging` = `0 0` (identični).
+
+**Finalno stanje grana:**
+- `main` `9bf4fb0` [origin/main] — sync
+- `staging` `9bf4fb0` [origin/staging] — sync, == `main`
+- `feature/openclaw-integration` `7fcee70` [origin/…] — pushed (task 1)
+- `feature/n8n-deploy` `d485b0a` [origin/…] — parkiran (n8n DNS-blokiran)
+- `feature/ai-search-brand-category-improvements` `091040e` — lokalna, stale, JOŠ NIJE
+  obrisana (preostali korak iz plana)
+
+**Preostalo iz plana konsolidacije:**
+- Obrisati stale `feature/ai-search-brand-category-improvements` (`git branch -d`).
+- `.gitattributes` (`* text=auto eol=lf`) — da se CRLF churn ne ponavlja.
+- `STATUS.md` na `feature/openclaw-integration`.
+- Odluka o `.env.openclaw` ključu (sad je na public origin — rotacija?).
+
+> Napomena: ovaj log unos je dopuna NAKON commita `9bf4fb0` → `log.md` je opet
+> "modified" (uncommitted), nije pushovan.
+
+### Line endings + feature grane "ne iza main-a" — dijagnoza i plan (na zahtjev korisnika)
+
+**Dijagnoza:**
+- `.gitattributes` POSTOJI ali pokriva samo `*.sh`, `entrypoint.sh`, `Dockerfile` →
+  `.py`/`.js`/`.env` fajlovi nisu zaštićeni → Windows editor ih slobodno pretvara u CRLF.
+- Na `main`: 2 fajla commitovana sa lošim eol — `data/all-products.json` (crlf),
+  `data/categories.csv` (mixed). Ostalih 169 tekst fajlova su LF (OK).
+- Feature grane vs `main`: `openclaw-integration` behind 1 / ahead 1; `n8n-deploy`
+  behind 12 / ahead 1; `ai-search` behind 9 / ahead 0 (stale, potpuno merged).
+
+**Plan (čeka go; ~3 push-a, jedan po turi):**
+1. `main`: dodati `* text=auto eol=lf` u `.gitattributes`, `git add --renormalize`
+   `data/all-products.json` + `data/categories.csv`, commit (`chore:`); + commit
+   pending `log.md` (`docs:`); push `main`.
+2. `feature/openclaw-integration`: `git merge main` (dobija najnoviji main +
+   line-ending fix), renormalize ako treba, push.
+3. `feature/n8n-deploy`: `git merge main`, renormalize ako treba, push.
+4. `feature/ai-search-…`: stale (0 ahead) → preporuka: OBRISATI, ne ažurirati.
+   **Čeka korisnikovu odluku:** delete ili update?
