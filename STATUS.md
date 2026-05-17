@@ -33,6 +33,24 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
   instancira na import time, što ruši testove/CI bez `.env`. Cold-start:
   explicit warm-up u `lifespan` task-u umjesto čistog background-a (prvi
   `/api/chat` sad čeka 30–50s).
+- [ ] Strukturirani layout rezultata pretrage — AI vraća JSON, widget renderuje <!-- id:slay -->
+  Trenutno chat AI sam generiše markdown layout za proizvode (slika + naziv +
+  cijena + "Na lageru" link), i layout puca na 6-7 rezultata (dokumentovan
+  slučaj u `docs/Otvorena pitanja sa Google Drive-a.md` — "Puca layout na
+  laptopove ponovo, Koliko imate laptopova do 3000 eura"). Voice mode već
+  renderuje product cards programski (vidi `docs/features/voice-mode.md`) —
+  chat treba isti princip. Koraci:
+  1. Definisati JSON shemu za `search_products` rezultate u response (može
+     XML tag tipa `<products>…</products>` ili JSON block u envelopi).
+  2. Ažurirati system prompt — AI vraća rezultate ISKLJUČIVO u toj schemi,
+     bez inline markdown za proizvode (samo prose oko njih).
+  3. `public/widget.js` chat path — parser za structured block + render kao
+     product cards (re-use voice mode card komponentu ako moguće).
+  4. Regresioni test (vez sa `tst1`/`evl1`): "AI vraća N proizvoda kao
+     strukturirani output za 5/10/20 rezultata" + golden datasets sa edge
+     case-om "laptopovi do 3000 EUR".
+  5. Fallback u widget-u: ako schema nije ispoštovana, prikazati error +
+     trigger eskalaciju (ne tih fail).
 - [ ] Stale doc cleanup — security-review body + S7.3 <!-- id:stld -->
   `docs/reviews/security-review.md` body i dalje piše "🔓 OTVORENO" iako su
   V2/V3/S1/S2/S3/N2/N3 zatvoreni (vrh tabela je tačna — body je stale).
