@@ -20,12 +20,6 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
 
 ## Todo
 
-- [ ] Repo scanner skripta (`scan.sh`) za web chat / Devin analize <!-- id:scan -->
-  Copy `scan.sh` iz `bitlab-standards` (30 linija bash) — generiše `repo-scan.md`
-  sa strukturom + sadržajem svih tracked tekstualnih fajlova, za lijepljenje
-  u online agente (web chat, Devin). Promijeniti naslov header-a na
-  "BitLab AI Asistent"; dodati `repo-scan.md` u `.gitignore`. Preduslov za
-  Devin gap analizu unutar `arch`.
 - [ ] Konsolidacija istorijskih dokumenata → `docs/archives/` <!-- id:arch -->
   Pojedinačna procjena svakog `.md` i dizajn fajla — šta je live, šta istorija.
   Kandidati za arhivu (potvrđeni s korisnikom): `docs/handoff/`,
@@ -116,6 +110,11 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
 
 ## Done
 
+- [x] Repo scanner skripta (`scan.sh`) za web chat / Devin analize <!-- id:scan -->
+  `scan.sh` kopiran iz `bitlab-standards`, header naslova promijenjen na
+  "BitLab AI Asistent", `repo-scan.md` dodat u `.gitignore`. Skripta testirana —
+  generiše ~50k linija / 10 MB output (194 fajla) sa strukturom + sadržajem
+  svih tracked tekstualnih fajlova. Spremno za web chat / Devin paste.
 - [x] Reverse-engineering arhive → `docs/plans/akcioni-plan.md` <!-- id:rev1 -->
   Verifikacija završena (kod + git, ne tvrdnje dokumenata): 6 inicijativa
   Completed, 2 Now (`p1fix`, `tst1`), 3 Next (`meval`, `grow1`, `std1`),
