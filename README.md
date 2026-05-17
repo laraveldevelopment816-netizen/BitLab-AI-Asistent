@@ -117,7 +117,7 @@ Diff vs `main` (28 commit-ova): [`docs/archives/changes.md`](./docs/archives/cha
 
 ## Deploy
 
-Server-side: **[`DEPLOY.md`](./DEPLOY.md)** (8 komandi, copy-paste).
+Server-side: **[`docs/operations/DEPLOY.md`](./docs/operations/DEPLOY.md)** (8 komandi, copy-paste).
 Server konvencije (Pattern A, port mapa): [`docs/operations/server-conventions.md`](./docs/operations/server-conventions.md).
 
 Trenutni deploy target: `aiasistent-prod` na `aiasistent.bitlab.rs`, `aiasistent-staging` na `staging.aiasistent.bitlab.rs`.

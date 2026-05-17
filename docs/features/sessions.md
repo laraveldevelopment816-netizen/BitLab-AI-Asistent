@@ -131,7 +131,7 @@ python scripts/migrate_session_id.py
 
 Output: `✅ Dodato session_id + index` ili `✅ session_id kolona već postoji — nothing to do`.
 
-Server-side deploy: pokreni jednom poslije `git pull` koraka iz [`../../DEPLOY.md`](../../DEPLOY.md). U `_init_db()` lifespan task-u već se kreiraju sve tabele iz modela, ali `ADD COLUMN` na postojećoj tabeli zahtijeva eksplicitnu migraciju (SQLAlchemy `create_all` ne dira postojeće).
+Server-side deploy: pokreni jednom poslije `git pull` koraka iz [`../operations/DEPLOY.md`](../operations/DEPLOY.md). U `_init_db()` lifespan task-u već se kreiraju sve tabele iz modela, ali `ADD COLUMN` na postojećoj tabeli zahtijeva eksplicitnu migraciju (SQLAlchemy `create_all` ne dira postojeće).
 
 ## Implementacija
 

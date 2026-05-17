@@ -91,4 +91,4 @@ Idi na **Settings**, paste-uj `DASHBOARD_API_KEY` iz `.env`, save → svi tabovi
 - Otvori voice mode (mikrofon dugme u widget-u)
 - Otvori `/admin/live` i vidi tool calls timeline
 - Ako pukne — [`operations/troubleshooting.md`](./operations/troubleshooting.md)
-- Deploy na server — [`../DEPLOY.md`](../DEPLOY.md)
+- Deploy na server — [`operations/DEPLOY.md`](./operations/DEPLOY.md)

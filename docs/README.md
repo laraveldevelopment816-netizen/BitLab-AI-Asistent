@@ -51,4 +51,4 @@
 
 Otvorena pitanja korisnika (sa Google Drive-a) — još uvijek pending pojedinačna procjena: [`Otvorena pitanja sa Google Drive-a.md`](./Otvorena%20pitanja%20sa%20Google%20Drive-a.md).
 
-Korijenski [`README.md`](../README.md) je entry point — kratak overview, pokazuje ovamo. [`DEPLOY.md`](../DEPLOY.md) je radni cheatsheet sa 8 komandi za deploy.
+Korijenski [`README.md`](../README.md) je entry point — kratak overview, pokazuje ovamo. [`operations/DEPLOY.md`](./operations/DEPLOY.md) je radni cheatsheet sa 8 komandi za deploy.
