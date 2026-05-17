@@ -12,6 +12,9 @@ sections:
 
 # Akcioni plan — bitlab-ai-asistent
 
+> **Arhivirano 2026-05-17.** Ovaj fajl je zamrznut snapshot. Trenutni
+> dokument: `docs/plans/akcioni-plan.md`. Ne ažuriraj ovaj fajl.
+
 Ažurirano: 2026-05-17
 
 > Strateški plan (Now/Next/Later inicijative) za `bitlab-ai-asistent`.
