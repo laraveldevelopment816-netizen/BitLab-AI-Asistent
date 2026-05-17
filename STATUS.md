@@ -12,7 +12,7 @@ columns:
 
 # STATUS — bitlab-ai-asistent
 
-Ažurirano: 2026-05-17
+Ažurirano: 2026-05-18
 
 Taktički nivo (dnevne taske) prema bitlab-standards shemi
 (`bitlab-standards/docs/standards/status-schema.md`). Strateški nivo —
@@ -23,13 +23,6 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
 
 ## Todo
 
-- [ ] Voice modul off (chat-only) <!-- id:vmoff -->
-  Komentarisati voice import-e i rute (`/api/tts`, `/api/stt`, `/api/voice/status`)
-  za chat-only deploy. Ukloniti Whisper init iz `app/main.py:24-39` lifespan-a
-  ako ostane nakon komentarisanja. Voice kod ostaje u repu — nije obrisan,
-  samo isključen iz aktivnog servisa. Reaktivacija je zaseban korak u kasnijoj
-  fazi. Smoke test: chat radi normalno, `/api/voice/status` vraća 404 ili
-  eksplicitno disabled. Procjena: 30-60 min. Izvor: DoD sekcija 1.
 - [ ] Centralni exception handler za Anthropic API <!-- id:c4xh -->
   Trenutno `app/main.py:59` ima samo `add_exception_handler(RateLimitExceeded, ...)`.
   Nema handler-a za `anthropic.APIStatusError` / `APIConnectionError`. Ako
@@ -112,6 +105,16 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
 ## Blocked
 
 ## Done
+
+- [x] Voice modul off (chat-only) <!-- id:vmoff -->
+  Backend: dekoratori `/api/tts`, `/api/stt`, `/api/voice/status` komentarisani
+  u `app/main.py` (funkcije ostaju za reaktivaciju), "Whisper" leftover uklonjen
+  iz lifespan komentara. Frontend: `VOICE_ENABLED=false` u `public/widget.js` —
+  pre-flight fetch ka `/api/voice/status` se ne izvršava, mikrofon button
+  ostaje hidden, nema 404 spam-a u Network tab-u. Smoke test prošao na portu
+  7777 (8000-8090 zauzeti na WSL-u): startup log čist, `/api/chat` HTTP 200,
+  tri voice rute HTTP 404, `/healthz` OK. Plan testa i koraci za reaktivaciju:
+  [`TEST-voice-off.md`](TEST-voice-off.md).
 
 Istorijske kartice — vidi [`docs/archives/status-2026-05-17.md`](docs/archives/status-2026-05-17.md).
 

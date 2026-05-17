@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Preload RAG indeks odmah (čisti numpy/json — brzo).
-    # Embedding model i Whisper se griju u BACKGROUND task-u — server ne čeka.
+    # Embedding model se grije u BACKGROUND task-u — server ne čeka.
     # Razlog: na WSL2 /mnt/c sentence-transformers import traje ~50s. Bez ovoga
     # startup je minut+. Sa ovim, /healthz odgovara odmah, prvi /api/chat čeka model.
     import asyncio
@@ -329,8 +329,10 @@ def _normalize_rate(rate: str) -> str:
     return s
 
 
-@app.post("/api/tts")
-@limiter.limit("20/minute")
+# Voice off (chat-only deploy) — STATUS kartica vmoff.
+# Reaktivacija = ukloni komentar na dekoratorima ispod.
+# @app.post("/api/tts")
+# @limiter.limit("20/minute")
 async def api_tts(request: Request, req: TtsRequest):
     """TTS — fallback chain:
        1. Azure Speech Services (oficijalno, sa AZURE_SPEECH_KEY)
@@ -392,8 +394,10 @@ async def api_tts(request: Request, req: TtsRequest):
     raise HTTPException(status_code=503, detail="TTS provideri nedostupni. Pokušaj ponovo.")
 
 
-@app.post("/api/stt")
-@limiter.limit("20/minute")
+# Voice off (chat-only deploy) — STATUS kartica vmoff.
+# Reaktivacija = ukloni komentar na dekoratorima ispod.
+# @app.post("/api/stt")
+# @limiter.limit("20/minute")
 async def api_stt(request: Request, audio: UploadFile = File(...)):
     """Transkribuje audio preko Groq Whisper API-ja. Vraća {text, language, provider="groq"}.
     Ako Groq nije dostupan (no key, network, invalid key, non-200), vraća HTTP 503.
@@ -474,7 +478,9 @@ _voice_health: dict = {"checked_at": 0.0, "ok": False, "reason": "uninitialized"
 _VOICE_HEALTH_TTL = 60.0  # sekundi
 
 
-@app.get("/api/voice/status")
+# Voice off (chat-only deploy) — STATUS kartica vmoff.
+# Reaktivacija = ukloni komentar na dekoratoru ispod.
+# @app.get("/api/voice/status")
 async def api_voice_status() -> dict:
     """Pre-flight check za voice mode. Widget zove ovo na load i prikazuje
     voice button samo ako je `voice_available: true`. Cache-uje rezultat 60s

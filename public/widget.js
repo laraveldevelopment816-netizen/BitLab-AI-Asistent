@@ -16,6 +16,12 @@
   const TTS_URL  = API_BASE + '/api/tts';
   const VOICE_STATUS_URL = API_BASE + '/api/voice/status';
 
+  // Chat-only deploy — voice OFF. Reaktivacija: vrati na true (i u app/main.py
+  // ukloni # ispred dekoratora /api/tts, /api/stt, /api/voice/status).
+  // Sa false: voice button se ne renderuje, pre-flight check se ne izvršava,
+  // tj. frontend uopšte ne dodiruje backend voice rute.
+  const VOICE_ENABLED = false;
+
   const QUICK_REPLIES = [
     { label: 'Dostava',   icon: 'truck',  q: 'Kakve su opcije dostave i načini plaćanja?' },
     { label: 'Garancija', icon: 'shield', q: 'Kakva je politika garancije i povraćaja robe?' },
@@ -1908,20 +1914,24 @@ html.bl-scroll-lock body {
 
   // Pre-flight: provjeri da li je Groq STT dostupan. Ako nije, sakri voice button.
   // Server cache-uje rezultat 60s — bezbjedan poziv pri svakom widget mountu.
-  (async () => {
-    const btn = $('bl-voice-btn');
-    if (!btn) return;
-    try {
-      const r = await fetch(VOICE_STATUS_URL, { method: 'GET' });
-      const data = await r.json();
-      if (!data.voice_available) {
+  // VOICE_ENABLED=false (chat-only deploy) preskače pre-flight — button već je
+  // default hidden u markup-u, ostaje hidden, voice/status se ne zove.
+  if (VOICE_ENABLED) {
+    (async () => {
+      const btn = $('bl-voice-btn');
+      if (!btn) return;
+      try {
+        const r = await fetch(VOICE_STATUS_URL, { method: 'GET' });
+        const data = await r.json();
+        if (!data.voice_available) {
+          btn.style.display = 'none';
+          console.warn('[BitLab] Voice mode disabled —', data.reason || 'unknown');
+        }
+      } catch (e) {
         btn.style.display = 'none';
-        console.warn('[BitLab] Voice mode disabled —', data.reason || 'unknown');
+        console.warn('[BitLab] Voice status check failed —', e);
       }
-    } catch (e) {
-      btn.style.display = 'none';
-      console.warn('[BitLab] Voice status check failed —', e);
-    }
-  })();
+    })();
+  }
 
 })();
