@@ -42,6 +42,22 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
   `feature/n8n-deploy` (commit `d485b0a`) — kod gotov, čeka Rale-ov DNS push.
   Workaround: pustiti n8n na postojećem domenu kao subpath, ili na staging
   dok DNS ne legne. Detalji u memoriji (`project_n8n_setup_state.md`).
+- [ ] Refresh `ai-search-improvements.md` sa najnovijim categories.csv + brend.json <!-- id:aisr -->
+  Branislav je dostavio najnoviji export iz webshop baze na mejlu ("Ivane šaljem
+  kategorije i brendove"): `data/categories.csv` (138 KB, 512 redova sa
+  `parent_id` hijerarhijom — kategorije + podkategorije) i `data/brend.json`
+  (phpMyAdmin format). Trenutni `docs/features/ai-search-improvements.md` opisuje
+  prethodni deploy (89 kategorija, 90 brendova) — treba ažurirati brojeve i opisati
+  novu kategorije/podkategorije strukturu. Koraci:
+  1. Re-generisati derived fajlove: `python scripts/build_category_terms.py`
+     (osvježi `data/category_terms.json`) + `python scripts/build_categories.py`
+     (osvježi `data/categories.json`).
+  2. Provjeriti nove brojeve (kategorije nakon <5 produkata filtera, brendovi
+     iz `brend.json`) i ažurirati ai-search-improvements.md.
+  3. Dodati opis hijerarhije kategorija/podkategorija (`parent_id` relationship)
+     koju trenutni doc ne objašnjava.
+  4. Opciono: `python scripts/embed_products.py` ako se mijenja `build_search_text`
+     output (~5 min).
 - [ ] Reorganizuj live docs iz `docs/` root u `docs/features/` <!-- id:dorg -->
   `docs/architecture.md`, `development.md`, `changes.md`, `Otvorena pitanja sa
   Google Drive-a.md` — svi živi i validni, ali su trenutno u `docs/` root
