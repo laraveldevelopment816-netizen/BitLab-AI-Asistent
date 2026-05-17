@@ -124,6 +124,50 @@ Trenutni deploy target: `aiasistent-prod` na `aiasistent.bitlab.rs`, `aiasistent
 
 ---
 
+## Embed snippet za webshop
+
+Widget se ubacuje sa jednim `<script>` tag-om pred `</body>` na host
+site-u. Pojavi se kao orange chat bubble u donjem desnom uglu.
+
+**Production** (`webshop.bitlab.rs`):
+
+```html
+<script>window.BITLAB_API='https://aiasistent.bitlab.rs';</script>
+<script src="https://aiasistent.bitlab.rs/public/widget.js" defer></script>
+```
+
+**Staging** (test prije prod):
+
+```html
+<script>window.BITLAB_API='https://staging.aiasistent.bitlab.rs';</script>
+<script src="https://staging.aiasistent.bitlab.rs/public/widget.js" defer></script>
+```
+
+---
+
+## Backend restart
+
+Ako se prod backend zabuguje (502/503), restart sa servera:
+
+```bash
+ssh ai@ai.bitlab.rs
+sudo systemctl restart aiasistent-prod
+sudo systemctl status aiasistent-prod   # provjera da je active (running)
+curl -sf https://aiasistent.bitlab.rs/healthz   # treba 200 OK
+```
+
+Ako je restart pomogao, vrati se na dashboard. Ako i dalje 502/500:
+
+```bash
+sudo journalctl -u aiasistent-prod -n 100 --no-pager
+```
+
+Pošalji zadnjih 30 linija loga na Viber Branislavu.
+
+Live beta monitoring (dashboard tabovi + eskalacijski put): [`docs/operations/live-beta-monitoring.md`](./docs/operations/live-beta-monitoring.md).
+
+---
+
 ## Kontakt
 
 **BitLab d.o.o.** · Jevrejska 37, 78000 Banja Luka  

@@ -22,7 +22,7 @@ Ažurirano: 2026-05-17
 > STATUS Doing, korak 2 verifikacija završena 2026-05-17). Izvori i evidence
 > iz koda + git log-a: `docs/archives/bitlab-mvp-plan.md`,
 > `docs/plans/{production-prep,model-eval,growth}.md`, `docs/changes.md`,
-> `docs/reviews/{code-review,security-review}.md`, `LIVE.md`.
+> `docs/reviews/{code-review,security-review}.md`, `docs/archives/live-2026-05-08.md`.
 
 ## Now
 
@@ -35,7 +35,7 @@ manifestuju pod istovremenim opterećenjem: TOCTOU race (C2 — nema
 `lifespan`-a (C3 — komentar laže), endpointi bez centralnog exception
 handler-a za `anthropic.APIStatusError` (C4). Plus: embedding model
 cold-start od 30–50s na prvom `/api/chat`-u, stale dokumentacija
-(`security-review.md` body, `bitlab-mvp-plan.md` S7.3, `LIVE.md` Plan B).
+(`security-review.md` body, `bitlab-mvp-plan.md` S7.3).
 n8n `/api/email` migracija je blokirana DNS-om koji Rale treba da publikuje
 (workaround paralelno).
 
@@ -45,7 +45,7 @@ Started: 2026-05-17
 - C2/C3/C4 P1 fix-evi (`app/main.py`, `app/rag.py`, `app/agent.py`, `app/tools.py`)
 - C7/C8 P2 quality fix-evi (module-scope `_HALLUCINATIONS` kao `frozenset`, lazy API key validacija završetak)
 - Cold-start fix — warm-up Whisper + embedding model u `lifespan` umjesto čisto background task-a
-- Stale doc cleanup (`security-review.md` body, `bitlab-mvp-plan.md` S7.3 status, `LIVE.md` Plan B)
+- Stale doc cleanup (`security-review.md` body, `bitlab-mvp-plan.md` S7.3 status)
 - n8n DNS workaround (paralelno sa `feature/n8n-deploy` branch-om koja čeka Rale-ov push)
 
 **Out of scope:**
@@ -210,11 +210,12 @@ README, RUNBOOK-prod, MANUAL-setup-domain}`). Detalji: `docs/plans/production-pr
 Završeno: 2026-05-08
 
 Backend + chat widget pušteni na webshop.bitlab.rs (voice privremeno hiddran
-po `LIVE.md` Plan B, kasnije vraćen — Plan A ElevenLabs preskočen).
+po Plan B, kasnije vraćen — Plan A ElevenLabs preskočen; istorijski log:
+[`../archives/live-2026-05-08.md`](../archives/live-2026-05-08.md)).
 `feature/ai-search-brand-category-improvements` merge: 89 kategorija (vs 13),
 90 brendova (`data/brend.json`), bidirectional prefix match, head-noun
 fallback. Mobile responsive dashboard. Widget CSS leak iz host webshop-a
-(`input:focus` override). Detalji: `LIVE.md` + `docs/features/ai-search-improvements.md`.
+(`input:focus` override). Detalji: [`../archives/live-2026-05-08.md`](../archives/live-2026-05-08.md) + `docs/features/ai-search-improvements.md`.
 
 ### Git konsolidacija + bitlab-standards adopcija (2026-05-15) <!-- id:bsgit -->
 

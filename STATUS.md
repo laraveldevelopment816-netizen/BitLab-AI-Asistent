@@ -33,17 +33,21 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
   instancira na import time, što ruši testove/CI bez `.env`. Cold-start:
   explicit warm-up u `lifespan` task-u umjesto čistog background-a (prvi
   `/api/chat` sad čeka 30–50s).
-- [ ] Stale doc cleanup — security-review body + S7.3 + LIVE Plan B <!-- id:stld -->
+- [ ] Stale doc cleanup — security-review body + S7.3 <!-- id:stld -->
   `docs/reviews/security-review.md` body i dalje piše "🔓 OTVORENO" iako su
   V2/V3/S1/S2/S3/N2/N3 zatvoreni (vrh tabela je tačna — body je stale).
   `docs/archives/bitlab-mvp-plan.md` S7.3: kaže ⏸ ODGOĐENO; stvarno Groq-only
-  ostao (`e9baa9c`) — odluka donesena drugačije od plana. `LIVE.md` Plan B
-  (voice hidden) više nije aktivan — `display:none` na `#bl-voice-btn` više
-  ne postoji u `widget.js`.
+  ostao (`e9baa9c`) — odluka donesena drugačije od plana.
 - [ ] n8n DNS workaround — staging/subpath dok ne legne pravi DNS <!-- id:n8nw -->
   `feature/n8n-deploy` (commit `d485b0a`) — kod gotov, čeka Rale-ov DNS push.
   Workaround: pustiti n8n na postojećem domenu kao subpath, ili na staging
   dok DNS ne legne. Detalji u memoriji (`project_n8n_setup_state.md`).
+- [ ] Reorganizuj live docs iz `docs/` root u `docs/features/` <!-- id:dorg -->
+  `docs/architecture.md`, `development.md`, `changes.md`, `Otvorena pitanja sa
+  Google Drive-a.md` — svi živi i validni, ali su trenutno u `docs/` root
+  umjesto u semantičkom podfolderu (`docs/features/`). Pojedinačna procjena:
+  šta od ovih ide u `features/`, šta u `operations/`, šta ostaje u root-u kao
+  index/entry. Lower priority, ne blokira ništa.
 - [ ] Razviti safety-net testova oko ključnih funkcionalnosti i poslovne logike <!-- id:tst1 -->
   Sistematski sloj testova (unit + integracioni + regresioni + e2e) koji hvata
   regresije prije produkcije. Gradi se na postojećem — `tests/` (8 fajlova),
@@ -96,21 +100,27 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
 
 ## Doing
 
-- [ ] Konsolidacija istorijskih dokumenata → `docs/archives/` <!-- id:arch -->
-  **Prvi prolaz urađen** — premješteno u `docs/archives/` (`git mv`, history
-  očuvana): `docs/handoff/`, `docs/dan4/`, `design_handoff_conduit/` (root),
-  `docs/BitLab-AI-Asistent-Dizajn/` (potvrđeno: `public/widget.html`, `widget.js`,
-  `voice.html` su live verzije divergirale iz mockup-a u `uploads/`). Zadržano
-  kao live: `docs/brainstorm/` — živi izvor za usmjeravanje budućih zadataka.
-  `docs/README.md` index ažuriran.
-  **Sljedeći prolaz** — pojedinačna procjena `architecture.md`, `development.md`,
-  `changes.md`, `Otvorena pitanja sa Google Drive-a.md`: šta od ovoga je živo,
-  šta istorija; live ostaje, istorija ide u `docs/archives/`.
-
 ## Blocked
 
 ## Done
 
+- [x] Rastavi LIVE.md — sav živi sadržaj u live docs, samo eventski log u archives <!-- id:live -->
+  Razdvajanje po procjeni s korisnikom: SSH/restart skripte + embed snippet
+  → `README.md` (sekcije "Backend restart" + "Embed snippet za webshop").
+  Monitoring tabela + eskalacijski put → `docs/operations/live-beta-monitoring.md`.
+  Voice migration (ElevenLabs Plan A + debugging hidden voice button +
+  vraćanje voice-a koraci) → `docs/voice.md`. "Šta je novo backend-side" —
+  duplikat `docs/features/ai-search-improvements.md`, samo referenca ostala.
+  U arhivi (`docs/archives/live-2026-05-08.md`) ostao samo eventski log:
+  header, odluka tog dana, šta se mijenja u 11:00, ishod. `LIVE.md` obrisan
+  (`git rm`). Reference u `akcioni-plan.md` (5x) ažurirane; `stld` sužen.
+- [x] Konsolidacija istorijskih dokumenata → `docs/archives/` <!-- id:arch -->
+  Premješteno u `docs/archives/` (`git mv`, history očuvana, 47 fajlova):
+  `docs/handoff/`, `docs/dan4/`, `design_handoff_conduit/` (root),
+  `docs/BitLab-AI-Asistent-Dizajn/`. Drugi prolaz (`architecture.md`,
+  `development.md`, `changes.md`, `Otvorena pitanja…md`): svi procijenjeni
+  kao live — kandidati za reorganizaciju (`dorg` kartica), ne arhivu.
+  `LIVE.md` razdvojen kroz `live` ticket. Zadržano kao live: `docs/brainstorm/`.
 - [x] Repo scanner skripta (`scan.sh`) za web chat / Devin analize <!-- id:scan -->
   `scan.sh` kopiran iz `bitlab-standards`, header naslova promijenjen na
   "BitLab AI Asistent", `repo-scan.md` dodat u `.gitignore`. Skripta testirana —
