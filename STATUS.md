@@ -20,16 +20,6 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
 
 ## Todo
 
-- [ ] Konsolidacija istorijskih dokumenata → `docs/archives/` <!-- id:arch -->
-  Pojedinačna procjena svakog `.md` i dizajn fajla — šta je live, šta istorija.
-  Kandidati za arhivu (potvrđeni s korisnikom): `docs/handoff/`,
-  `design_handoff_conduit/` (root), `docs/dan4/` (radionica završena, materijal
-  kompletno implementiran). NE u arhivu: `docs/brainstorm/` — živi izvor za
-  usmjeravanje budućih zadataka, eksplicitno zadržati. Ostalo (`architecture.md`,
-  `development.md`, `changes.md`, `Otvorena pitanja…md`) — pojedinačna procjena
-  zajedno s korisnikom. Rename `docs/archive/` →
-  `docs/archives/` urađen odvojeno u istom commit-u kao i uvođenje ove kartice.
-  Rezultat: jasno razdvojen "live" vs "istorija" u dokumentaciji.
 - [ ] P1 hotfix-evi (C2/C3/C4) — locks + Whisper preload + exception handlers <!-- id:p1fx -->
   C2: `threading.Lock` (double-checked) u 4 lazy-singleton helpera
   (`app/rag.py`, `app/agent.py`, `app/tools.py`, `app/main.py`). C3: Whisper
@@ -105,6 +95,17 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
   u karticu `arch`. Sekundarno (Next u `akcioni-plan.md`).
 
 ## Doing
+
+- [ ] Konsolidacija istorijskih dokumenata → `docs/archives/` <!-- id:arch -->
+  **Prvi prolaz urađen** — premješteno u `docs/archives/` (`git mv`, history
+  očuvana): `docs/handoff/`, `docs/dan4/`, `design_handoff_conduit/` (root),
+  `docs/BitLab-AI-Asistent-Dizajn/` (potvrđeno: `public/widget.html`, `widget.js`,
+  `voice.html` su live verzije divergirale iz mockup-a u `uploads/`). Zadržano
+  kao live: `docs/brainstorm/` — živi izvor za usmjeravanje budućih zadataka.
+  `docs/README.md` index ažuriran.
+  **Sljedeći prolaz** — pojedinačna procjena `architecture.md`, `development.md`,
+  `changes.md`, `Otvorena pitanja sa Google Drive-a.md`: šta od ovoga je živo,
+  šta istorija; live ostaje, istorija ide u `docs/archives/`.
 
 ## Blocked
 

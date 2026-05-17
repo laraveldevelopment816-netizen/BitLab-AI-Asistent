@@ -22,9 +22,7 @@
 | Sesija 10 plan (growth) | [`plans/growth.md`](./plans/growth.md) |
 | Code review (Sesija 7) | [`reviews/code-review.md`](./reviews/code-review.md) |
 | Security review (Sesija 7) | [`reviews/security-review.md`](./reviews/security-review.md) |
-| Stari materijali | [`archive/`](./archive/) |
+| Stari materijali (arhiva) | [`archives/`](./archives/) |
 | **Pitch deck v2 (engineer audience)** | [`PITCH-BRIEF-V2-ENGINEER.md`](./PITCH-BRIEF-V2-ENGINEER.md) |
-
-Plus dizajn handoff iz Sesija 6/8: [`BitLab-AI-Asistent-Dizajn/`](./BitLab-AI-Asistent-Dizajn/), [`handoff/`](./handoff/), [`dan4/`](./dan4/).
 
 Korijenski [`README.md`](../README.md) je entry point — kratak overview, pokazuje ovamo. [`DEPLOY.md`](../DEPLOY.md) je radni cheatsheet sa 8 komandi za deploy.
