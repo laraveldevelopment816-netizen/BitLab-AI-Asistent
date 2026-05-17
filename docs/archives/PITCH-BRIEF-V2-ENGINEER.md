@@ -1,5 +1,10 @@
-# Pitch deck v2 — instrukcije za Claude Design (inženjerska publika)
+# Pitch deck v2 — instrukcije za Claude Design (inženjerska publika) (istorija)
 
+> **Arhivirano 2026-05-17.** Originalno bio `docs/PITCH-BRIEF-V2-ENGINEER.md`.
+> Task izvršen — `public/assets/BitLab AI Asistent — Engineering Pitch v2.pdf`
+> postoji. Relativne putanje u fajlu su pisane iz originalne lokacije (`docs/`);
+> dodaj `../` prefix za pristup iz `docs/archives/`.
+>
 > **Za:** Claude Design instanca koja ima pristup PowerPoint/Figma/Canva alatima
 > **Cilj:** ažurirati postojeću prezentaciju (`public/assets/BitLab AI Asistent.pdf`)
 > **Razlog:** trenutna v1 je marketing-orijentisana, publika je inženjer

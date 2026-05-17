@@ -21,7 +21,7 @@ Ažurirano: 2026-05-17
 > Plan je rekonstruisan reverse-engineering-om iz arhive (taska `rev1` u
 > STATUS Doing, korak 2 verifikacija završena 2026-05-17). Izvori i evidence
 > iz koda + git log-a: `docs/archives/bitlab-mvp-plan.md`,
-> `docs/plans/{production-prep,model-eval,growth}.md`, `docs/changes.md`,
+> `docs/plans/{production-prep,model-eval,growth}.md`, `docs/archives/changes.md`,
 > `docs/reviews/{code-review,security-review}.md`, `docs/archives/live-2026-05-08.md`.
 
 ## Now
@@ -68,7 +68,7 @@ Started: 2026-05-17 (eskalirana iz STATUS taske u inicijativu)
 - Inventar + gap analiza (postojeći testovi/evali vs ključna logika u `app/`)
 - Unit — agent loop, RAG hibridni scoring + category/brand filter, FAQ parsiranje, config validatori
 - Integracioni — agent loop + tools + rag, dashboard DB sloj (`requests`/`tool_calls`/`sessions`), `/api/dashboard/` endpointi, escalation/SMTP put
-- Regresioni — jedan test po dokumentovanom prošlom bugu (izvor `docs/reviews/` + `docs/changes.md`)
+- Regresioni — jedan test po dokumentovanom prošlom bugu (izvor `docs/reviews/` + `docs/archives/changes.md`)
 - E2E — `/api/chat`, `/api/tts`, `/api/stt`, `/api/email` golden-path
 - CI gate — pytest markeri (brzi unit vs spori/`anthropic_api`); mreža je "safety net" tek kad se pokreće automatski
 
@@ -123,7 +123,7 @@ da bi se znalo gdje je ROI.
 
 ### Operativna infrastruktura — backup, monitoring, alerts <!-- id:ops1 -->
 
-Iz `docs/changes.md` "Prostor za unapređenje" liste: dnevni `sqlite3 .backup`
+Iz `docs/archives/changes.md` "Prostor za unapređenje" liste: dnevni `sqlite3 .backup`
 cron za `var/bitlab.db`, healthcheck cron, alert na error rate > 10%, cost
 alert na Anthropic potrošnju, `/healthz` browser-friendly status page, image
 regeneracija audita kao cron (webshop dodaje proizvode, kategorije se mijenjaju).
@@ -203,7 +203,7 @@ Tailwind 4, port iz `playwright-router`-a — 9 stranica umjesto planiranih 6:
 dodate Overview, Sessions, SessionDetail), voice UX redesign (fullscreen orb),
 deploy artefakti (`scripts/deploy.sh`, `deploy/{bitlab-ai.service, nginx-site.conf,
 README, RUNBOOK-prod, MANUAL-setup-domain}`). Detalji: `docs/plans/production-prep.md`
-+ `docs/changes.md`.
++ `docs/archives/changes.md`.
 
 ### LIVE test + AI search hardening (2026-05-08) <!-- id:livet -->
 

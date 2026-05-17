@@ -97,7 +97,7 @@ Sve detalje, dijagrame i feature-by-feature objašnjenja drži **[`docs/`](./doc
 | 2026-05-04 | Compare panel (haiku ↔ sonnet) | [`docs/features/compare.md`](./docs/features/compare.md) |
 | 2026-05-04 | Česti problemi | [`docs/operations/troubleshooting.md`](./docs/operations/troubleshooting.md) |
 | 2026-05-04 | Troškovi | [`docs/operations/costs.md`](./docs/operations/costs.md) |
-| 2026-05-04 | Razvojni workflow + testovi | [`docs/development.md`](./docs/development.md) |
+| 2026-05-04 | Razvojni workflow + testovi | [`docs/operations/development.md`](./docs/operations/development.md) |
 
 > Kompletan indeks svih dokumenata: [`docs/README.md`](./docs/README.md).
 
@@ -111,7 +111,7 @@ Sve detalje, dijagrame i feature-by-feature objašnjenja drži **[`docs/`](./doc
 | 9 | [`docs/plans/model-eval.md`](./docs/plans/model-eval.md) | Multi-provider eval — ekonomska odluka kraj sedmice 2026-W19 |
 | 10 | [`docs/plans/growth.md`](./docs/plans/growth.md) | SEO + content + link building + AI growth tool |
 
-Diff vs `main` (28 commit-ova): [`docs/changes.md`](./docs/changes.md)
+Diff vs `main` (28 commit-ova): [`docs/archives/changes.md`](./docs/archives/changes.md)
 
 ---
 

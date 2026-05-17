@@ -20,19 +20,26 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
 
 ## Todo
 
-- [ ] P1 hotfix-evi (C2/C3/C4) — locks + Whisper preload + exception handlers <!-- id:p1fx -->
-  C2: `threading.Lock` (double-checked) u 4 lazy-singleton helpera
-  (`app/rag.py`, `app/agent.py`, `app/tools.py`, `app/main.py`). C3: Whisper
-  preload kao background task u `lifespan` (sad lifespan preloaduje samo
-  embedding, komentar laže). C4: centralni `@app.exception_handler` + handle
-  za `anthropic.APIStatusError`/`APIConnectionError` na `/api/chat`,
-  `/api/email`, `/api/tts`. Izvor: `docs/reviews/code-review.md` (Sesija 7.7).
-- [ ] P2 fix-evi (C7/C8) + cold-start warm-up <!-- id:p2cs -->
-  C7: `_HALLUCINATIONS` na module-scope `frozenset` (sad se alocira po
-  `/api/stt` pozivu). C8: lazy API key validacija — `Settings()` se i dalje
-  instancira na import time, što ruši testove/CI bez `.env`. Cold-start:
-  explicit warm-up u `lifespan` task-u umjesto čistog background-a (prvi
-  `/api/chat` sad čeka 30–50s).
+- [ ] P1 — Centralni exception handler za Anthropic API greške <!-- id:c4xh -->
+  Trenutno `app/main.py:59` ima samo `add_exception_handler(RateLimitExceeded, ...)`.
+  Nema handler-a za `anthropic.APIStatusError` / `APIConnectionError`. Ako
+  Anthropic API ima hiccup, korisnik dobija HTTP 500 sa raw stack trace-om
+  umjesto graceful error response-a. **Jedini od C2/C3/C4 koji se javlja u
+  normalnom radu, ne samo na startup-u** — izvučen iz `p1fx` zbog viseg
+  praktičnog prioriteta. Posao: `@app.exception_handler(anthropic.APIStatusError)`
+  + `APIConnectionError`, vrati 503 sa korisničkom porukom + log full trace.
+  Procjena: 30 min. Izvor: `docs/reviews/code-review.md` C4.
+- [ ] P1 hotfix-evi (C2/C3) — locks + Whisper preload <!-- id:p1fx -->
+  C2: `threading.Lock` (double-checked) u 3 lazy-singleton helpera (verifikovano:
+  `app/rag.py:436` `_index`, `app/agent.py:57` `_client`, `app/tools.py:230`
+  `_faq_sections`). Defensive — low real risk pod trenutnim opterećenjem
+  (race window samo na startup-u prvog requesta; `lifespan` mitigates za
+  `_index`, ali ne za `_client`/`_faq_sections`). C3: Whisper preload —
+  `main.py:24-39` lifespan preloaduje samo embedding (komentar na liniji 27
+  laže da "Embedding model i Whisper se griju"); voice je aktivan
+  (`display:none` na `#bl-voice-btn` više nema u `widget.js`), pa Whisper
+  preload je realna potreba. C4 izvučen u `c4xh` zbog viseg prioriteta.
+  Izvor: `docs/reviews/code-review.md` (Sesija 7.7).
 - [ ] Strukturirani layout rezultata pretrage — AI vraća JSON, widget renderuje <!-- id:slay -->
   Trenutno chat AI sam generiše markdown layout za proizvode (slika + naziv +
   cijena + "Na lageru" link), i layout puca na 6-7 rezultata (dokumentovan
@@ -56,32 +63,28 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
   V2/V3/S1/S2/S3/N2/N3 zatvoreni (vrh tabela je tačna — body je stale).
   `docs/archives/bitlab-mvp-plan.md` S7.3: kaže ⏸ ODGOĐENO; stvarno Groq-only
   ostao (`e9baa9c`) — odluka donesena drugačije od plana.
-- [ ] n8n DNS workaround — staging/subpath dok ne legne pravi DNS <!-- id:n8nw -->
-  `feature/n8n-deploy` (commit `d485b0a`) — kod gotov, čeka Rale-ov DNS push.
-  Workaround: pustiti n8n na postojećem domenu kao subpath, ili na staging
-  dok DNS ne legne. Detalji u memoriji (`project_n8n_setup_state.md`).
-- [ ] Refresh `ai-search-improvements.md` sa najnovijim categories.csv + brend.json <!-- id:aisr -->
-  Branislav je dostavio najnoviji export iz webshop baze na mejlu ("Ivane šaljem
-  kategorije i brendove"): `data/categories.csv` (138 KB, 512 redova sa
-  `parent_id` hijerarhijom — kategorije + podkategorije) i `data/brend.json`
-  (phpMyAdmin format). Trenutni `docs/features/ai-search-improvements.md` opisuje
-  prethodni deploy (89 kategorija, 90 brendova) — treba ažurirati brojeve i opisati
-  novu kategorije/podkategorije strukturu. Koraci:
-  1. Re-generisati derived fajlove: `python scripts/build_category_terms.py`
-     (osvježi `data/category_terms.json`) + `python scripts/build_categories.py`
-     (osvježi `data/categories.json`).
-  2. Provjeriti nove brojeve (kategorije nakon <5 produkata filtera, brendovi
-     iz `brend.json`) i ažurirati ai-search-improvements.md.
-  3. Dodati opis hijerarhije kategorija/podkategorija (`parent_id` relationship)
-     koju trenutni doc ne objašnjava.
-  4. Opciono: `python scripts/embed_products.py` ako se mijenja `build_search_text`
-     output (~5 min).
-- [ ] Reorganizuj live docs iz `docs/` root u `docs/features/` <!-- id:dorg -->
-  `docs/architecture.md`, `development.md`, `changes.md`, `Otvorena pitanja sa
-  Google Drive-a.md` — svi živi i validni, ali su trenutno u `docs/` root
-  umjesto u semantičkom podfolderu (`docs/features/`). Pojedinačna procjena:
-  šta od ovih ide u `features/`, šta u `operations/`, šta ostaje u root-u kao
-  index/entry. Lower priority, ne blokira ništa.
+- [ ] n8n email autoreply — kredencijali + smoke test <!-- id:n8nw -->
+  DNS riješen (Rale završio). `feature/n8n-deploy` (commit `d485b0a`) — kod
+  gotov, čeka Branislav-ove kredencijale i smoke test na produkciji. Keyword
+  filter već radi (jasni slučajevi → autoreply draft). Detalji u memoriji
+  (`project_n8n_setup_state.md`).
+- [ ] Hibridni AI email pristup — keyword → Haiku → Sonnet <!-- id:n8nh -->
+  Nadgradnja `n8nw` osnovnog autoreply-a. Keyword filter pretpobjeđuje jasne
+  slučajeve (predefinisani odgovori). Za nejasne — Haiku 4.5 prvi pass; za
+  nijansirane B2B/komplikovane upite — eskalacija na Sonnet 4.6. Cost
+  estimate (Sonnet ~$3/1M input, ~$15/1M output): ~$5-15/mjesec za tipičan
+  webshop saobraćaj sa keyword pre-filterom. Preduslov: `n8nw` aktivan +
+  metrike per-channel u dashboard-u (`evl1` može testirati accuracy).
+- [ ] Refresh `ai-search-improvements.md` — 90 kategorija + parent_id hijerarhija <!-- id:aisr -->
+  Branislav dostavio najnoviji export (2026-05-14): `data/categories.csv`
+  (513 linija = 512 data + header, parent_id hijerarhija) i `data/brend.json`
+  (90 brendova — nepromijenjeno). Derived fajlovi regenerisani lokalno:
+  `category_terms.json` → 90 entries; `categories.json` → Top 50 (pokrivenost
+  4778/5278 = 90.5%). Trenutni `docs/features/ai-search-improvements.md` kaže
+  "89 kategorija" — treba 89→90 + dodati opis parent_id hijerarhije (kategorije
+  + podkategorije) koju doc trenutno NE opisuje (priča o flat listi).
+  Embed refresh (`embed_products.py`) NIJE potreban — `build_search_text`
+  nije mijenjan, samo termini i Top-N labele.
 - [ ] Razviti safety-net testova oko ključnih funkcionalnosti i poslovne logike <!-- id:tst1 -->
   Sistematski sloj testova (unit + integracioni + regresioni + e2e) koji hvata
   regresije prije produkcije. Gradi se na postojećem — `tests/` (8 fajlova),
@@ -98,7 +101,11 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
      sloj (`requests`/`tool_calls`), `/api/dashboard/` endpointi, escalation/SMTP put.
   4. Regresioni — jedan test po dokumentovanom prošlom bugu: typo handling
      (`test_typo_robustness.py` je obrazac), halucinacija zaliha, prompt-injection,
-     prazan search → escalate. Izvor bugova: `docs/reviews/` + `docs/changes.md`.
+     prazan search → escalate. Izvor bugova: `docs/reviews/` + `docs/archives/changes.md`.
+  **MVP sub-scope predlog** (da `tst1` ne blokira "production-ready" status):
+  agent loop integration test + dashboard DB sloj (`requests`/`tool_calls`)
+  + escalation/SMTP put + 2-3 regresiona za poznate bugove. Procjena: 1 dan
+  fokusiranog rada vs 2-3 dana za full scope. Korisnikov poziv: full ili MVP.
   5. E2E — golden-path kroz kanale: `/api/chat`, `/api/tts`, `/api/stt`,
      `/api/email`; `evals/run*.py` kao eval sloj.
   6. CI gate — pytest markeri (brzi unit vs spori/`anthropic_api`); mreža je
@@ -134,10 +141,31 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
 
 ## Doing
 
+- [ ] Reorganizuj live docs iz `docs/` root <!-- id:dorg -->
+  **Prvi prolaz urađen** — premješteno (`git mv`, history očuvana):
+  `development.md` → `operations/`; `changes.md` → `archives/` (post-merge
+  istorijski snapshot); `PROD-ACCESS.md`, `STAGING-ACCESS.md` → `operations/`;
+  `PITCH-BRIEF-V2-ENGINEER.md` → `archives/` (task izvršen — v2 pdf u
+  `public/assets/BitLab AI Asistent — Engineering Pitch v2.pdf`). Ostaju u
+  `docs/` root: `README.md` (index — ažuriran sa grupisanjem
+  Pokretanje / Features / Operativno / Planovi i istorija), `architecture.md`,
+  `getting-started.md`, `voice.md` (svi live). Reference ažurirane u
+  `README.md`, `docs/plans/akcioni-plan.md`, `docs/README.md`.
+  **Sljedeći prolaz** — `Otvorena pitanja sa Google Drive-a.md`: traži
+  pojedinačnu procjenu po stavci (ekstrakt otvorenih u STATUS / nove kartice,
+  arhiviraj ostatak; pažnja na embedded base64 png-ove — 4 slike).
+
 ## Blocked
 
 ## Done
 
+- [x] P2 cold-start warm-up implementiran (C7/C8 ostali kao mikro-optimizacije) <!-- id:p2cs -->
+  `app/main.py:24-39` lifespan radi `get_index()` + background `preload_model`
+  task; `/healthz` odgovara odmah, server boot 3s umjesto 60s+ (potvrđeno na
+  produkciji). C7 (`_HALLUCINATIONS` unutar funkcije `api_stt`, `main.py:418`)
+  i C8 (lazy API key validacija — `Settings()` se i dalje instancira na
+  import time) ostaju mikro-optimizacije bez mjerljivog impact-a — ignorisane
+  iz scope-a ovog ticketa.
 - [x] Rastavi LIVE.md — sav živi sadržaj u live docs, samo eventski log u archives <!-- id:live -->
   Razdvajanje po procjeni s korisnikom: SSH/restart skripte + embed snippet
   → `README.md` (sekcije "Backend restart" + "Embed snippet za webshop").
