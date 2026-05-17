@@ -20,7 +20,7 @@ Ažurirano: 2026-05-17
 >
 > Plan je rekonstruisan reverse-engineering-om iz arhive (taska `rev1` u
 > STATUS Doing, korak 2 verifikacija završena 2026-05-17). Izvori i evidence
-> iz koda + git log-a: `docs/archive/bitlab-mvp-plan.md`,
+> iz koda + git log-a: `docs/archives/bitlab-mvp-plan.md`,
 > `docs/plans/{production-prep,model-eval,growth}.md`, `docs/changes.md`,
 > `docs/reviews/{code-review,security-review}.md`, `LIVE.md`.
 
@@ -107,10 +107,10 @@ Faze 2–6 ostaju Later kao `grow2`.
 
 ### Uskladiti repo sa bitlab-standards strukturom <!-- id:std1 -->
 
-`docs/archive/` → `docs/archives/` (standard traži množinu), `docs/README.md`
-linkuje nazad na bitlab-standards. Mala mehanička inicijativa, ne blokira
-ništa — zatvara dug standarda. Vraća se u STATUS kao taska kad postane Now
-(ne treba decompose, ovo je ionako jednoiteracijska).
+`docs/README.md` linkuje nazad na bitlab-standards + ostala uskladja prema
+standardu. Mala mehanička inicijativa, ne blokira ništa — zatvara dug
+standarda. Archive rename (`docs/archive/` → `docs/archives/`) + konsolidacija
+istorijskih dokumenata su izvučeni kao zasebna STATUS kartica `arch`.
 
 ## Later
 
@@ -168,7 +168,7 @@ FastAPI + Claude Haiku 4.5/Sonnet 4.6, lokalni RAG (sentence-transformers +
 BM25 hibrid), 4 tool-a (`search_products`, `get_faq`, `check_availability`,
 `escalate_to_human`), 3 kanala (widget, voice, email), n8n cloud email
 automatizacija. 18 eval pitanja, README sa pitch sekcijom. Detalji:
-`docs/archive/bitlab-mvp-plan.md` Sesije 0–5.
+`docs/archives/bitlab-mvp-plan.md` Sesije 0–5.
 
 ### Sesija 6 — n8n na lokalni hosting <!-- id:s6n8n -->
 
@@ -189,7 +189,7 @@ CPU-only deps + brži startup od 60s na 2.7s (7.2 — lazy import + bg preload
 backlog (7.6 — slowapi + CORS + size guards + contacts.py), code review (7.7 —
 `docs/reviews/code-review.md`). S7.3 (STT fix) riješeno drugačije od plana —
 Groq Whisper ostao primarni (`e9baa9c`); S7.5 (voice→email cycle) je u
-`vord` Later. Detalji: `docs/archive/bitlab-mvp-plan.md` Sesija 7.
+`vord` Later. Detalji: `docs/archives/bitlab-mvp-plan.md` Sesija 7.
 
 ### Production-prep + dashboard (Sesija 8) <!-- id:prodp -->
 

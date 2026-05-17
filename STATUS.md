@@ -20,6 +20,22 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
 
 ## Todo
 
+- [ ] Repo scanner skripta (`scan.sh`) za web chat / Devin analize <!-- id:scan -->
+  Copy `scan.sh` iz `bitlab-standards` (30 linija bash) — generiše `repo-scan.md`
+  sa strukturom + sadržajem svih tracked tekstualnih fajlova, za lijepljenje
+  u online agente (web chat, Devin). Promijeniti naslov header-a na
+  "BitLab AI Asistent"; dodati `repo-scan.md` u `.gitignore`. Preduslov za
+  Devin gap analizu unutar `arch`.
+- [ ] Konsolidacija istorijskih dokumenata → `docs/archives/` <!-- id:arch -->
+  Pojedinačna procjena svakog `.md` i dizajn fajla — šta je live, šta istorija.
+  Kandidati za arhivu (potvrđeni s korisnikom): `docs/handoff/`,
+  `design_handoff_conduit/` (root), `docs/dan4/` (radionica završena, materijal
+  kompletno implementiran). NE u arhivu: `docs/brainstorm/` — živi izvor za
+  usmjeravanje budućih zadataka, eksplicitno zadržati. Ostalo (`architecture.md`,
+  `development.md`, `changes.md`, `Otvorena pitanja…md`) — pojedinačna procjena
+  zajedno s korisnikom. Rename `docs/archive/` →
+  `docs/archives/` urađen odvojeno u istom commit-u kao i uvođenje ove kartice.
+  Rezultat: jasno razdvojen "live" vs "istorija" u dokumentaciji.
 - [ ] P1 hotfix-evi (C2/C3/C4) — locks + Whisper preload + exception handlers <!-- id:p1fx -->
   C2: `threading.Lock` (double-checked) u 4 lazy-singleton helpera
   (`app/rag.py`, `app/agent.py`, `app/tools.py`, `app/main.py`). C3: Whisper
@@ -36,7 +52,7 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
 - [ ] Stale doc cleanup — security-review body + S7.3 + LIVE Plan B <!-- id:stld -->
   `docs/reviews/security-review.md` body i dalje piše "🔓 OTVORENO" iako su
   V2/V3/S1/S2/S3/N2/N3 zatvoreni (vrh tabela je tačna — body je stale).
-  `docs/archive/bitlab-mvp-plan.md` S7.3: kaže ⏸ ODGOĐENO; stvarno Groq-only
+  `docs/archives/bitlab-mvp-plan.md` S7.3: kaže ⏸ ODGOĐENO; stvarno Groq-only
   ostao (`e9baa9c`) — odluka donesena drugačije od plana. `LIVE.md` Plan B
   (voice hidden) više nije aktivan — `display:none` na `#bl-voice-btn` više
   ne postoji u `widget.js`.
@@ -90,8 +106,9 @@ inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcio
   Van scope-a: finalna odluka o produkcijskom modelu — to je ishod iz
   `model-eval.md`. Ovdje gradimo framework i pokrivenost, ne donosimo odluku.
 - [ ] Uskladiti repo sa bitlab-standards strukturom <!-- id:std1 -->
-  `docs/archive/` → `docs/archives/` (standard traži množinu); `docs/README.md`
-  linkuje nazad na bitlab-standards. Sekundarno (Next u `akcioni-plan.md`).
+  `docs/README.md` linkuje nazad na bitlab-standards + ostala uskladja prema
+  standardu. Archive rename + konsolidacija istorijskih dokumenata su odvojeni
+  u karticu `arch`. Sekundarno (Next u `akcioni-plan.md`).
 
 ## Doing
 
