@@ -12,31 +12,44 @@ columns:
 
 # STATUS — bitlab-ai-asistent
 
-Ažurirano: 2026-05-15
+Ažurirano: 2026-05-17
 
 Taktički nivo (dnevne taske) prema bitlab-standards shemi
 (`bitlab-standards/docs/standards/status-schema.md`). Strateški nivo —
-inicijative Now/Next/Later — živi u `docs/plans/akcioni-plan.md`; taj fajl
-još ne postoji, pravi ga prva taska (`rev1`).
+inicijative Now/Next/Later — u [`docs/plans/akcioni-plan.md`](docs/plans/akcioni-plan.md).
 
 ## Todo
 
-- [ ] Reverse-engineering arhive → `docs/plans/akcioni-plan.md` <!-- id:rev1 -->
-  Proći kroz plan-dokumente, utvrditi šta je STVARNO urađeno (dokaz iz
-  `git log` + koda, ne iz tvrdnje u dokumentu), pa otvorene + nove stavke
-  složiti u strateški akcioni plan. Koraci:
-  1. Izvori: `docs/archive/bitlab-mvp-plan.md` (Sesije 0–7),
-     `docs/plans/production-prep.md` (S8), `docs/plans/model-eval.md` (S9),
-     `docs/plans/growth.md` (S10), `LIVE.md`, `docs/changes.md`, `docs/reviews/`.
-  2. Svaku numerisanu tačku/sesiju označiti: urađeno / djelimično / otvoreno.
-  3. Otvorene + nove stavke u `docs/plans/akcioni-plan.md` po Now/Next/Later.
-  4. "Now" inicijativu razbiti u konkretne taske ovdje u Todo (decompose).
+- [ ] P1 hotfix-evi (C2/C3/C4) — locks + Whisper preload + exception handlers <!-- id:p1fx -->
+  C2: `threading.Lock` (double-checked) u 4 lazy-singleton helpera
+  (`app/rag.py`, `app/agent.py`, `app/tools.py`, `app/main.py`). C3: Whisper
+  preload kao background task u `lifespan` (sad lifespan preloaduje samo
+  embedding, komentar laže). C4: centralni `@app.exception_handler` + handle
+  za `anthropic.APIStatusError`/`APIConnectionError` na `/api/chat`,
+  `/api/email`, `/api/tts`. Izvor: `docs/reviews/code-review.md` (Sesija 7.7).
+- [ ] P2 fix-evi (C7/C8) + cold-start warm-up <!-- id:p2cs -->
+  C7: `_HALLUCINATIONS` na module-scope `frozenset` (sad se alocira po
+  `/api/stt` pozivu). C8: lazy API key validacija — `Settings()` se i dalje
+  instancira na import time, što ruši testove/CI bez `.env`. Cold-start:
+  explicit warm-up u `lifespan` task-u umjesto čistog background-a (prvi
+  `/api/chat` sad čeka 30–50s).
+- [ ] Stale doc cleanup — security-review body + S7.3 + LIVE Plan B <!-- id:stld -->
+  `docs/reviews/security-review.md` body i dalje piše "🔓 OTVORENO" iako su
+  V2/V3/S1/S2/S3/N2/N3 zatvoreni (vrh tabela je tačna — body je stale).
+  `docs/archive/bitlab-mvp-plan.md` S7.3: kaže ⏸ ODGOĐENO; stvarno Groq-only
+  ostao (`e9baa9c`) — odluka donesena drugačije od plana. `LIVE.md` Plan B
+  (voice hidden) više nije aktivan — `display:none` na `#bl-voice-btn` više
+  ne postoji u `widget.js`.
+- [ ] n8n DNS workaround — staging/subpath dok ne legne pravi DNS <!-- id:n8nw -->
+  `feature/n8n-deploy` (commit `d485b0a`) — kod gotov, čeka Rale-ov DNS push.
+  Workaround: pustiti n8n na postojećem domenu kao subpath, ili na staging
+  dok DNS ne legne. Detalji u memoriji (`project_n8n_setup_state.md`).
 - [ ] Razviti safety-net testova oko ključnih funkcionalnosti i poslovne logike <!-- id:tst1 -->
   Sistematski sloj testova (unit + integracioni + regresioni + e2e) koji hvata
   regresije prije produkcije. Gradi se na postojećem — `tests/` (8 fajlova),
   `evals/` (3 runnera), `anthropic_api` marker već u `pyproject.toml` —
-  konsolidacija i popuna rupa, ne greenfield. Obim je inicijativa-veličine:
-  nakon `rev1` vjerovatno seli u `akcioni-plan.md` kao zasebna inicijativa.
+  konsolidacija i popuna rupa, ne greenfield. Inicijativa `tst1` živi i u
+  `docs/plans/akcioni-plan.md` (Now) — ovdje high-level pointer.
   Koraci:
   1. Inventar + gap analiza — postojeći testovi/evali naspram ključne logike u
      `app/` (agent loop, rag, tools, system_prompts, faq, config, server/, storage/).
@@ -78,7 +91,7 @@ još ne postoji, pravi ga prva taska (`rev1`).
   `model-eval.md`. Ovdje gradimo framework i pokrivenost, ne donosimo odluku.
 - [ ] Uskladiti repo sa bitlab-standards strukturom <!-- id:std1 -->
   `docs/archive/` → `docs/archives/` (standard traži množinu); `docs/README.md`
-  linkuje nazad na bitlab-standards. Sekundarno — ne blokira `rev1`.
+  linkuje nazad na bitlab-standards. Sekundarno (Next u `akcioni-plan.md`).
 
 ## Doing
 
@@ -86,17 +99,24 @@ još ne postoji, pravi ga prva taska (`rev1`).
 
 ## Done
 
+- [x] Reverse-engineering arhive → `docs/plans/akcioni-plan.md` <!-- id:rev1 -->
+  Verifikacija završena (kod + git, ne tvrdnje dokumenata): 6 inicijativa
+  Completed, 2 Now (`p1fix`, `tst1`), 3 Next (`meval`, `grow1`, `std1`),
+  6 Later. Now inicijativa `p1fix` decomposed u 4 nove STATUS taske
+  (`p1fx`, `p2cs`, `stld`, `n8nw`). Akcioni plan na `docs/plans/akcioni-plan.md`.
 - [x] STATUS.md kreiran prema bitlab-standards shemi <!-- id:bas1 -->
   Frontmatter + Todo/Doing/Blocked/Done kolone; prolazi `validate-status.py`.
 
 ## Poznata ograničenja
 
-- `docs/plans/akcioni-plan.md` (strateški nivo) još ne postoji — popunjava ga
-  `rev1`. Do tada je ovo jedini nivo praćenja.
-- Istorijski završen rad (MVP Sesije 0–7, Sesija 8 dashboard, LIVE test
-  2026-05-08) namjerno NIJE unesen kao Done kartice — `rev1` ga verifikuje
-  kroz git + kod i rekonstruiše u akcioni-plan. STATUS.md drži samo tekuće
-  taktičke taske, ne cijelu istoriju projekta.
+- Istorijski završen rad (MVP, Sesija 6 n8n, Sesija 7 polish, Sesija 8
+  dashboard, LIVE test 2026-05-08, git + standards konsolidacija) živi kao
+  Completed inicijative u `docs/plans/akcioni-plan.md`, ne kao Done kartice
+  ovdje. STATUS.md drži tekuće taktičke taske, ne cijelu istoriju projekta.
+- `tst1` / `evl1` / `std1` su istovremeno STATUS taske i inicijative u
+  `akcioni-plan.md`. Dvostruko predstavljanje je svjestan kompromis dok
+  cm-viewer Roadmap view ne počne grupisati taske po inicijativi
+  (`init:` referenca u shemi — sad ne podržana validator-om).
 - Nema lokalnog validatora u repou — shema se provjerava sa
   `bitlab-standards/scripts/validate-status.py`. Kopija u `scripts/` je
   opciona, vezana za `std1`.
