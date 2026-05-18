@@ -23,17 +23,6 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
 
 ## Todo
 
-- [ ] Centralni exception handler za Anthropic API <!-- id:c4xh -->
-  Trenutno `app/main.py:59` ima samo `add_exception_handler(RateLimitExceeded, ...)`.
-  Nema handler-a za `anthropic.APIStatusError` / `APIConnectionError`. Ako
-  Anthropic API ima hiccup ili je kvota potrošena, korisnik dobija HTTP 500 sa
-  raw stack trace-om umjesto razumljive poruke. Sub-stavka "nema kredita":
-  specifičan slučaj kvota-exhausted (HTTP 429 sa quota error iz Anthropic-a) —
-  vrati korisničku poruku različitu od generic rate-limit/server-error poruke,
-  jasno saopšti da je kredit potrošen i preusmjeri na ljudsku eskalaciju.
-  Posao: `@app.exception_handler(anthropic.APIStatusError)` + `APIConnectionError`
-  + quota case discrimination; vrati 503 (ili 402 za quota) sa korisničkom
-  porukom; log-uj full trace. Procjena: 30 min. Izvor: DoD sekcija 5.
 - [ ] PlaywrightRouter kao test backend <!-- id:pwrt -->
   PlaywrightRouter je interni servis (OpenAI-kompatibilan SDK interfejs) koji
   rutira pozive ka DeepSeek/Claude nalozima (plaćeni i besplatni tier-ovi).
@@ -106,6 +95,21 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
 
 ## Done
 
+- [x] Centralni exception handler za Anthropic API <!-- id:c4xh -->
+  `app/main.py` sad registruje `@app.exception_handler` za
+  `anthropic.APIStatusError` i `anthropic.APIConnectionError` — safety net za
+  greške koje `app/agent.py` ne uhvati lokalno (Auth/Permission/Internal/itd.).
+  Quota discrimination po "credit balance"/"billing"/"quota" tekstu u poruci →
+  HTTP 402 + telefon/email eskalacija. Ostale API greške → HTTP 503 + generička
+  poruka. Mrežne greške → HTTP 503 + poruka o mreži. Full trace se loguje sa
+  `exc_info=True` na `logger.error`. Widget (`public/widget.js`) ažuriran da
+  čita `data.reply` i na non-200 odgovorima, tako da korisnik vidi specifičnu
+  poruku umjesto generičkog "Greška servera". Pokriveno sa
+  [`tests/test_anthropic_error_handlers.py`](tests/test_anthropic_error_handlers.py)
+  (7 testova: AuthError, InternalServerError, kvota varijante credit_balance/
+  billing/quota, ConnectionError, happy path regression) — svi prolaze, ne
+  troše pravi API. Plan ručnog testa (uživo curl + browser widget render):
+  [`TEST-anthropic-errors.md`](TEST-anthropic-errors.md).
 - [x] Voice modul off (chat-only) <!-- id:vmoff -->
   Backend: dekoratori `/api/tts`, `/api/stt`, `/api/voice/status` komentarisani
   u `app/main.py` (funkcije ostaju za reaktivaciju), "Whisper" leftover uklonjen

@@ -1343,9 +1343,17 @@ html.bl-scroll-lock body {
         body: JSON.stringify({ message: text, history: history.slice(0, -1), channel: 'chat', session_id: sessionId }),
       });
       typing.remove();
-      if (!resp.ok) { addMsg('Greška servera. Pokušaj ponovo.', 'bot'); return; }
-      const data = await resp.json();
-      const reply = data.reply || '(bez odgovora)';
+      // Server može vratiti 402/503 sa user-friendly `reply` (vidi centralni
+      // Anthropic exception handler u app/main.py). Ako reply postoji,
+      // prikazujemo ga umjesto generičke poruke.
+      let data = null;
+      try { data = await resp.json(); } catch { data = null; }
+      if (!resp.ok) {
+        const errReply = (data && data.reply) || 'Greška servera. Pokušaj ponovo.';
+        addMsg(errReply, 'bot');
+        return;
+      }
+      const reply = (data && data.reply) || '(bez odgovora)';
       history.push({ role: 'assistant', content: reply });
       addMsg(reply, 'bot');
     } catch (err) {

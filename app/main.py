@@ -6,10 +6,11 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
+import anthropic
 import httpx
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -57,6 +58,71 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# Centralni safety net za Anthropic SDK greške koje ne uhvati call site
+# (`app/agent.py` već lokalno hvata BadRequestError / RateLimitError /
+# APIConnectionError). Ovdje pokrivamo ostatak: AuthenticationError,
+# InternalServerError, generic APIStatusError, kao i mrežne greške ako bi
+# preskočile lokalni handler. Cilj: pravi HTTP status + strukturirani log
+# umjesto 500 sa raw stack trace-om.
+def _is_quota_error(message: str) -> bool:
+    msg = message.lower()
+    return "credit balance" in msg or "billing" in msg or "quota" in msg
+
+
+async def _anthropic_api_status_handler(
+    request: Request, exc: anthropic.APIStatusError
+) -> JSONResponse:
+    logger.error(
+        "Anthropic APIStatusError @ %s (status=%s): %s",
+        request.url.path, getattr(exc, "status_code", "?"), exc,
+        exc_info=True,
+    )
+    if _is_quota_error(str(exc)):
+        return JSONResponse(
+            status_code=402,
+            content={
+                "error": "ai_quota_exhausted",
+                "reply": (
+                    "Trenutno imamo tehnički zastoj sa AI sistemom. Molimo "
+                    "kontaktirajte prodajni tim direktno:\n\n"
+                    "📞 066 516 174 (Viber/tel)\n"
+                    "✉️ prodaja@bitlab.rs"
+                ),
+            },
+        )
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": "ai_unavailable",
+            "reply": (
+                "Žao mi je, AI servis privremeno nije dostupan. Pokušajte "
+                "za par minuta ili nas kontaktirajte na 066 516 174."
+            ),
+        },
+    )
+
+
+async def _anthropic_connection_handler(
+    request: Request, exc: anthropic.APIConnectionError
+) -> JSONResponse:
+    logger.error(
+        "Anthropic APIConnectionError @ %s: %s",
+        request.url.path, exc, exc_info=True,
+    )
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": "ai_unavailable",
+            "reply": "Mreža je trenutno preopterećena. Pokušajte ponovo za par sekundi.",
+        },
+    )
+
+
+app.add_exception_handler(anthropic.APIStatusError, _anthropic_api_status_handler)
+app.add_exception_handler(anthropic.APIConnectionError, _anthropic_connection_handler)
+
 
 app.add_middleware(
     CORSMiddleware,
