@@ -180,4 +180,95 @@ test('Cijena sa decimalama (389,99) ispravno parsovana', () => {
   assert.match(out, /389,99 KM/);
 });
 
+// ── COPY-OF: formatPriceKm (widget.js — STATUS kartica srcv) ────────
+function formatPriceKm(n) {
+  if (n == null || isNaN(n)) return '';
+  const isInt = Number.isInteger(n);
+  if (isInt) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+  const [intPart, decPart] = n.toFixed(2).split('.');
+  return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + decPart;
+}
+
+// ── COPY-OF: structuredReplyToText (widget.js — STATUS kartica srcv) ─
+function structuredReplyToText(reply) {
+  if (!reply || typeof reply !== 'object') return '';
+  if (reply.type === 'products') {
+    const items = (reply.products || [])
+      .map((p) => `${p.name} — ${formatPriceKm(p.price_km)} KM — ${p.availability}`)
+      .join('\n');
+    return [reply.text || '', items].filter(Boolean).join('\n');
+  }
+  if (reply.type === 'empty') return reply.message || '';
+  if (reply.type === 'message') return reply.content || '';
+  return JSON.stringify(reply);
+}
+
+test('formatPriceKm: integer bez separatora (3-cifren)', () => {
+  assert.equal(formatPriceKm(929), '929');
+});
+
+test('formatPriceKm: integer sa BCS thousand separator (4-cifren)', () => {
+  assert.equal(formatPriceKm(1450), '1.450');
+});
+
+test('formatPriceKm: integer 5-cifren', () => {
+  assert.equal(formatPriceKm(12345), '12.345');
+});
+
+test('formatPriceKm: decimale (zarez umjesto tačke)', () => {
+  assert.equal(formatPriceKm(929.99), '929,99');
+});
+
+test('formatPriceKm: thousand sep + decimale', () => {
+  assert.equal(formatPriceKm(1450.99), '1.450,99');
+});
+
+test('formatPriceKm: null / undefined / NaN vraća ""', () => {
+  assert.equal(formatPriceKm(null), '');
+  assert.equal(formatPriceKm(undefined), '');
+  assert.equal(formatPriceKm(NaN), '');
+});
+
+test('structuredReplyToText: products flatten u intro + N linija', () => {
+  const reply = {
+    type: 'products',
+    text: 'Evo top 2 laptopa:',
+    products: [
+      { sifra: 'G1', name: 'ASUS', price_km: 929, availability: 'Na lageru', url: 'https://x', image_url: null },
+      { sifra: 'G2', name: 'Lenovo', price_km: 1450, availability: 'Po narudžbi', url: 'https://y', image_url: null },
+    ],
+  };
+  const out = structuredReplyToText(reply);
+  assert.match(out, /Evo top 2 laptopa:/);
+  assert.match(out, /ASUS — 929 KM — Na lageru/);
+  assert.match(out, /Lenovo — 1\.450 KM — Po narudžbi/);
+});
+
+test('structuredReplyToText: empty type vraća message', () => {
+  assert.equal(
+    structuredReplyToText({ type: 'empty', message: 'Nema rezultata.' }),
+    'Nema rezultata.'
+  );
+});
+
+test('structuredReplyToText: message type vraća content', () => {
+  assert.equal(
+    structuredReplyToText({ type: 'message', content: 'Pozdrav!' }),
+    'Pozdrav!'
+  );
+});
+
+test('structuredReplyToText: nepoznat type → JSON dump (fallback)', () => {
+  const r = { type: 'something_else', x: 1 };
+  assert.equal(structuredReplyToText(r), JSON.stringify(r));
+});
+
+test('structuredReplyToText: null/undefined → ""', () => {
+  assert.equal(structuredReplyToText(null), '');
+  assert.equal(structuredReplyToText(undefined), '');
+  assert.equal(structuredReplyToText('string'), '');
+});
+
 console.log('✅ Svi widget renderer testovi prošli');

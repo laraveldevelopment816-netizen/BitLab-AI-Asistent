@@ -1299,12 +1299,82 @@ html.bl-scroll-lock body {
     return html;
   }
 
-  function addMsg(text, role) {
+  // ── Strukturisani odgovor (JSON shema — STATUS kartica srcv) ─────
+  // Renderer za AssistantResponse iz app/schemas.py: 3 tipa discriminated
+  // union po `type` polju. Aktivira se kad je data.reply objekat sa `type`;
+  // u suprotnom widget pada nazad na markdown put (renderMarkdown).
+
+  // Format cijene u KM kako Claude trenutno piše u markdownu: tačka kao
+  // separator hiljada, zarez za decimale (BCS). 929 → "929", 1450 → "1.450",
+  // 929.99 → "929,99", 1450.99 → "1.450,99".
+  function formatPriceKm(n) {
+    if (n == null || isNaN(n)) return '';
+    const isInt = Number.isInteger(n);
+    if (isInt) {
+      return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    const [intPart, decPart] = n.toFixed(2).split('.');
+    return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + decPart;
+  }
+
+  function renderStructuredReply(reply) {
+    if (!reply || typeof reply !== 'object') return '';
+    switch (reply.type) {
+      case 'products': {
+        let html = '';
+        if (reply.text) html += renderMarkdown(reply.text);
+        for (const p of reply.products || []) {
+          html += renderProductCard({
+            img: p.image_url,
+            name: p.name,
+            price: formatPriceKm(p.price_km),
+            avail: p.availability,
+            href: p.url,
+          });
+        }
+        return html;
+      }
+      case 'empty':
+        return renderMarkdown(reply.message || '');
+      case 'message':
+        return renderMarkdown(reply.content || '');
+      default:
+        // Diskriminator je već trebao da uhvati — fallback za debug.
+        return escHtml('[Nepoznat tip odgovora: ' + JSON.stringify(reply) + ']');
+    }
+  }
+
+  // Flatten strukturisanog odgovora u string za history (server očekuje
+  // string content u prethodnim turn-ovima). Kad sistem prompt bude updated
+  // da AI emituje JSON, ovo se može mijenjati u json-stringify ako se Claude
+  // bolje snalazi sa serijaliziranim history-jem.
+  function structuredReplyToText(reply) {
+    if (!reply || typeof reply !== 'object') return '';
+    if (reply.type === 'products') {
+      const items = (reply.products || [])
+        .map((p) => `${p.name} — ${formatPriceKm(p.price_km)} KM — ${p.availability}`)
+        .join('\n');
+      return [reply.text || '', items].filter(Boolean).join('\n');
+    }
+    if (reply.type === 'empty') return reply.message || '';
+    if (reply.type === 'message') return reply.content || '';
+    return JSON.stringify(reply);
+  }
+
+  function isStructuredReply(x) {
+    return x && typeof x === 'object' && typeof x.type === 'string';
+  }
+
+  function addMsg(payload, role) {
     clearWelcome();
     showQuickReplies();
     const div = document.createElement('div');
     div.className = 'bl-msg ' + role;
-    div.innerHTML = role === 'bot' ? renderMarkdown(text) : escHtml(text);
+    if (role === 'bot' && isStructuredReply(payload)) {
+      div.innerHTML = renderStructuredReply(payload);
+    } else {
+      div.innerHTML = role === 'bot' ? renderMarkdown(payload) : escHtml(payload);
+    }
     messagesEl.appendChild(div);
     // Bot odgovori (često sadrže listu proizvoda) — skroluj na VRH nove
     // poruke da se prvi rezultat vidi prvi. User poruke (kratke) ostaju
@@ -1354,8 +1424,16 @@ html.bl-scroll-lock body {
         return;
       }
       const reply = (data && data.reply) || '(bez odgovora)';
-      history.push({ role: 'assistant', content: reply });
-      addMsg(reply, 'bot');
+      // Strukturisan reply (AssistantResponse iz app/schemas.py) — render po
+      // tipu (products/empty/message), history dobija flatten verziju jer
+      // server još očekuje stringove u prethodnim turn-ovima.
+      if (isStructuredReply(reply)) {
+        history.push({ role: 'assistant', content: structuredReplyToText(reply) });
+        addMsg(reply, 'bot');
+      } else {
+        history.push({ role: 'assistant', content: reply });
+        addMsg(reply, 'bot');
+      }
     } catch (err) {
       typing.remove();
       addMsg('Greška mreže: ' + err.message, 'bot');

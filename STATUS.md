@@ -34,23 +34,6 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
      PlaywrightRouter.
   3. Dokumentovati kako se bira tier (free vs paid) za pojedinačni test set.
   Preduslov za `tst1` Safety net. Izvor: DoD sekcija 4.
-- [ ] Strukturisani search output (JSON shema + Pydantic + Layout) <!-- id:srcv -->
-  AI output za search rezultate trenutno nije konzistentan — isti tip upita
-  može vratiti različite strukture, layout puca na 6-7 rezultata (dokumentovan
-  bug "laptopovi do 3000 EUR" u `docs/Otvorena pitanja sa Google Drive-a.md`).
-  Trostepena arhitektura:
-  1. **JSON shema** — formalna definicija "search result" objekta (polja,
-     tipovi, required/optional). Ugovor između AI sloja i UI sloja.
-  2. **Pydantic validator** — runtime provjera AI output-a; ne prolazi shemu →
-     fail-fast sa jasnom dijagnostikom; ne propagira neispravne podatke u widget.
-  3. **Layout** — komponenta u `public/widget.js` koja konzumira validan output
-     i prikazuje konzistentno; bez defanzivnih grananja za odsutna polja (jer
-     ulaz je garantovan).
-  Edge case "prazni rezultati" rješen preko eksplicitnog `empty_state` polja u
-  shemi, ne ad-hoc null/prazna lista. Pokriva i FAQ output (`get_faq`) ako shema
-  dozvoljava. **Prije nego što napišeš ikakav Pydantic kod**, predloži korisniku
-  konkretan JSON schema oblik (polja, required vs optional) i čekaj odobrenje.
-  Procjena: 1-2 dana. Izvor: DoD sekcija 2.
 - [ ] Hijerarhijske kategorije (parent_id u AI pretrazi) <!-- id:phir -->
   `data/categories.csv` ima `parent_id` polje sa parent-child relacijama
   (513 redova = parent + child). Trenutna pretraga (`app/rag.py`) tretira
@@ -90,6 +73,24 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
   Procjena: 2-3 dana. Izvor: DoD sekcija 5.
 
 ## Doing
+
+- [ ] Strukturisani search output (JSON shema + Pydantic + Layout) <!-- id:srcv -->
+  AI output za search rezultate trenutno nije konzistentan — isti tip upita
+  može vratiti različite strukture, layout puca na 6-7 rezultata (dokumentovan
+  bug "laptopovi do 3000 EUR" u `docs/Otvorena pitanja sa Google Drive-a.md`).
+  Trostepena arhitektura:
+  1. **JSON shema** — formalna definicija "search result" objekta (polja,
+     tipovi, required/optional). Ugovor između AI sloja i UI sloja.
+  2. **Pydantic validator** — runtime provjera AI output-a; ne prolazi shemu →
+     fail-fast sa jasnom dijagnostikom; ne propagira neispravne podatke u widget.
+  3. **Layout** — komponenta u `public/widget.js` koja konzumira validan output
+     i prikazuje konzistentno; bez defanzivnih grananja za odsutna polja (jer
+     ulaz je garantovan).
+  Edge case "prazni rezultati" rješen preko eksplicitnog `empty_state` polja u
+  shemi, ne ad-hoc null/prazna lista. Pokriva i FAQ output (`get_faq`) ako shema
+  dozvoljava. **Prije nego što napišeš ikakav Pydantic kod**, predloži korisniku
+  konkretan JSON schema oblik (polja, required vs optional) i čekaj odobrenje.
+  Procjena: 1-2 dana. Izvor: DoD sekcija 2.
 
 ## Blocked
 
