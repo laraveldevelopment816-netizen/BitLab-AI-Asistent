@@ -155,6 +155,40 @@ def _default_model_for_channel(channel: str, backend: str | None = None) -> str:
     return settings.email_model if channel == "email" else settings.chat_model
 
 
+def _default_effort_for_channel(channel: str, backend: str | None = None) -> str:
+    # Voice kanal koristi chat_model_effort (nije zasebno polje, vidi config.py).
+    backend = backend or settings.llm_backend
+    if backend == "pwr":
+        return (
+            settings.pwr_email_model_effort
+            if channel == "email"
+            else settings.pwr_chat_model_effort
+        )
+    return (
+        settings.email_model_effort
+        if channel == "email"
+        else settings.chat_model_effort
+    )
+
+
+# Anthropic extended thinking budget per effort niveau. "low" → thinking
+# isključen (default, čuva produkcijsko ponašanje). Budget se mora upariti
+# sa povećanjem max_tokens jer API zahtijeva max_tokens > budget_tokens.
+_ANTHROPIC_THINKING_BUDGET = {"medium": 1024, "high": 4096}
+
+
+def _anthropic_thinking_kwargs(effort: str, base_max_tokens: int) -> dict[str, Any]:
+    """Vrati kwargs za client.messages.create() koji nose thinking config.
+    Za effort="low" vraća {} (no-op, produkcija nepromijenjena)."""
+    budget = _ANTHROPIC_THINKING_BUDGET.get(effort)
+    if budget is None:
+        return {}
+    return {
+        "thinking": {"type": "enabled", "budget_tokens": budget},
+        "max_tokens": base_max_tokens + budget,
+    }
+
+
 def run_agent(
     messages: list[dict[str, Any]],
     channel: str = "chat",
@@ -173,17 +207,19 @@ def run_agent(
     """
     backend = settings.llm_backend
     model = model_override or _default_model_for_channel(channel, backend)
+    effort = _default_effort_for_channel(channel, backend)
     sys_prompt = system_prompt(channel)
 
     if backend == "pwr":
-        return _run_pwr(messages, channel, model, sys_prompt)
-    return _run_anthropic(messages, channel, model, sys_prompt)
+        return _run_pwr(messages, channel, model, effort, sys_prompt)
+    return _run_anthropic(messages, channel, model, effort, sys_prompt)
 
 
 def _run_anthropic(
     messages: list[dict[str, Any]],
     channel: str,
     model: str,
+    effort: str,
     sys_prompt: str,
 ) -> dict[str, Any]:
     client = _get_anthropic_client()
@@ -198,6 +234,8 @@ def _run_anthropic(
     total_out = 0
     t_start = time.monotonic()
 
+    thinking_kwargs = _anthropic_thinking_kwargs(effort, settings.max_output_tokens)
+
     for iteration in range(1, settings.max_tool_iterations + 1):
         try:
             response = client.messages.create(
@@ -206,6 +244,7 @@ def _run_anthropic(
                 system=sys_prompt,
                 tools=ALL_TOOLS,
                 messages=current_messages,
+                **thinking_kwargs,
             )
         except anthropic.BadRequestError as exc:
             err_msg = str(exc)
@@ -297,6 +336,7 @@ def _run_pwr(
     messages: list[dict[str, Any]],
     channel: str,
     model: str,
+    effort: str,
     sys_prompt: str,
 ) -> dict[str, Any]:
     """PWR backend (OpenAI-kompatibilan endpoint). Razlike u odnosu na Anthropic:
@@ -328,6 +368,7 @@ def _run_pwr(
                 messages=pwr_messages,
                 tools=ALL_TOOLS_OPENAI_SHAPE,
                 max_tokens=settings.max_output_tokens,
+                reasoning_effort=effort,
             )
         except openai.BadRequestError as exc:
             print(f"[AGENT/PWR] BadRequest: {exc}")

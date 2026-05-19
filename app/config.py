@@ -9,6 +9,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+# Effort niveau po kanalu — utiče na Anthropic thinking budget ili
+# PWR reasoning_effort. Default je "low" da Anthropic produkcijski put
+# (bez thinking-a) ostane nepromijenjen za default vrijednosti.
+EffortLevel = Literal["low", "medium", "high"]
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -33,7 +38,10 @@ class Settings(BaseSettings):
     # Sonnet 4.6 robusno hvata namjeru i kroz typoove. Vidi
     # tests/test_typo_robustness.py i evals/category_eval.json (typo cases).
     chat_model: str = "claude-sonnet-4-6"
+    chat_model_effort: EffortLevel = "low"
     email_model: str = "claude-sonnet-4-6"
+    email_model_effort: EffortLevel = "low"
+    # Voice kanal koristi chat_model + chat_model_effort (nije zasebno polje).
     max_tool_iterations: int = 5
     max_output_tokens: int = 1024
 
@@ -43,7 +51,9 @@ class Settings(BaseSettings):
     # Kroz PWR koristimo Claude Code CLI varijantu (~15s latencija,
     # paušal Pro pretplate) umjesto web UI ("claude", ~30s).
     pwr_chat_model: str = "claude-opus-cli"
+    pwr_chat_model_effort: EffortLevel = "low"
     pwr_email_model: str = "claude-opus-cli"
+    pwr_email_model_effort: EffortLevel = "low"
 
     @model_validator(mode="after")
     def _validate_backend_credentials(self) -> "Settings":
