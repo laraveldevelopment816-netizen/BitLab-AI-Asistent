@@ -2,7 +2,7 @@
 
 Pad-ovi iz testiranja BAA→PWR migracije (kartica `pwrt`). Migracija je u
 working tree-u, nije commit-ovana. Sve liste niže su iz run-a sa
-`LLM_BACKEND=pwr`, `pwr_chat_model=claude-opus-cli`.
+`LLM_BACKEND=pwr`, `pwr_chat_model=claude-sonnet-4-6`.
 
 Kontekst migracije: novi feature flag `LLM_BACKEND=anthropic|pwr` (default
 anthropic). PWR put koristi `openai.OpenAI` SDK protiv lokalnog PlaywrightRouter-a
@@ -14,7 +14,7 @@ Anthropic produkcijski put je verifikovano nepromijenjen (DoD #6).
 ## 1. `category_eval.json` #39 — "trebamo masku za telfon"
 
 **Status:** OPEN
-**Backend:** PWR (`claude-opus-cli`)
+**Backend:** PWR (`claude-sonnet-4-6`)
 **Eval:** `category_eval.json` (inline category accuracy probe, vidi raniji
 session log)
 
@@ -59,7 +59,7 @@ ovo nije blocker za migraciju, samo poznata slabost.
 ## 2. `test_questions.json` #16 — voice channel reply sadrži markdown
 
 **Status:** OPEN (pre-postojeći, ne PWR-specifičan)
-**Backend:** PWR (`claude-opus-cli`)
+**Backend:** PWR (`claude-sonnet-4-6`)
 **Eval:** ad-hoc inline HTTP eval (jer `evals/run.py` ima hardcoded 60s
 timeout koji ne pokrije PWR multi-iteration call latency od ~90s).
 
@@ -175,7 +175,7 @@ bug u embed sloju.
 **Status:** RIJEŠEN — bio stale Docker image bez `tools_bridge.py`
 **Backend:** PWR (svi modeli)
 
-Prvo smoke testiranje sa 6 PWR adapter-a (`claude-opus-cli`, `claude`,
+Prvo smoke testiranje sa 6 PWR adapter-a (`claude-sonnet-4-6`, `claude`,
 `gpt-4o`, `gpt-5-mini`, `copilot`, `deepseek`) — svi su vraćali plain
 tekst bez `tool_calls`. Razlog: PWR Docker image koji je radio bio je
 stariji od T1-T6 faza tools_bridge implementacije. Nakon

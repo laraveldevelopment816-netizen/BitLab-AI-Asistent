@@ -50,9 +50,9 @@ class Settings(BaseSettings):
     pwr_api_key: str = ""
     # Kroz PWR koristimo Claude Code CLI varijantu (~15s latencija,
     # paušal Pro pretplate) umjesto web UI ("claude", ~30s).
-    pwr_chat_model: str = "claude-opus-cli"
+    pwr_chat_model: str = "claude-sonnet-4-6"
     pwr_chat_model_effort: EffortLevel = "low"
-    pwr_email_model: str = "claude-opus-cli"
+    pwr_email_model: str = "claude-sonnet-4-6"
     pwr_email_model_effort: EffortLevel = "low"
 
     @model_validator(mode="after")

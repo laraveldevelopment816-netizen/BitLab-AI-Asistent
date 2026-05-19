@@ -23,7 +23,7 @@ docker exec playwright-router-router-1 ls /app/playwright_router/server/ | grep 
 # 3. PWR endpoint odgovara, API key valjan
 curl -sf -H "Authorization: Bearer $(grep ^API_KEY ../playwright-router/.env | cut -d= -f2)" \
   http://127.0.0.1:8765/v1/models | jq '.data | map(.id)'
-# Očekivano: lista koja sadrži "claude-opus-cli"
+# Očekivano: lista koja sadrži "claude-sonnet-4-6"
 ```
 
 ## Pokretanje servera za PWR test
@@ -68,9 +68,9 @@ asinhrono persistuje u SQLite DB i čita kroz:
 
 | Polje | PWR vrijednost | Anthropic vrijednost |
 |---|---|---|
-| `adapter` | `chat:opus` (`_short_model_name("claude-opus-cli")="opus"`) | `chat:sonnet` ili `chat:haiku` |
-| `model` | `claude-opus-cli` (ili šta god je `pwr_chat_model`) | `claude-sonnet-4-6` (ili `chat_model`) |
-| `tokens_in` / `tokens_out` | `0` (PWR ne izlaže brojeve) | `>0` |
+| `adapter` | `chat:sonnet` (od `_short_model_name("claude-sonnet-4-6")`) | `chat:sonnet` ili `chat:haiku` — collision je moguć kad oba puta koriste isti model |
+| `model` | `claude-sonnet-4-6` (ili šta god je `pwr_chat_model`) | `claude-sonnet-4-6` (ili `chat_model`) |
+| `tokens_in` / `tokens_out` | `0` (PWR ne izlaže brojeve) — **glavni diskriminator** | `>0` |
 | `latency_ms` | 60000-90000 multi-iter | 2000-5000 multi-iter |
 
 > Napomena: `via_pwr` flag postoji u `_trace` dict-u u memoriji ali se ne
@@ -115,7 +115,7 @@ curl -s -H "Authorization: Bearer $(grep ^DASHBOARD_API_KEY .env | cut -d= -f2)"
   | jq '.items[0] | {adapter, model, tokens_in, tokens_out, latency_ms, iterations}'
 ```
 
-Očekivano: `adapter: "chat:opus"`, `model: "claude-opus-cli"`,
+Očekivano: `adapter: "chat:sonnet"`, `model: "claude-sonnet-4-6"`,
 `tokens_in: 0`, `tokens_out: 0`, `latency_ms` između 60000-90000.
 Tool_calls možeš vidjeti detaljnije preko `/api/dashboard/requests/{id}`
 ili u admin UI-ju.
@@ -218,7 +218,7 @@ Očekivano:
   ni `⟦tool_use⟧` marker.
 - `<voice>` ili `<text>` XML tagovi NE smiju cure u `reply`.
 
-PWR put potvrđuješ kroz dashboard request row (`adapter: "chat:opus"`,
+PWR put potvrđuješ kroz dashboard request row (`adapter: "chat:sonnet"`,
 `tokens_in: 0`).
 
 Ponovi sa još 4-5 voice upita (laptop, garancija, pozdrav, miš) da pokriješ

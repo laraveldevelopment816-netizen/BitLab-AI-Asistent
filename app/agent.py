@@ -69,9 +69,13 @@ def _get_anthropic_client() -> anthropic.Anthropic:
 def _get_pwr_client() -> openai.OpenAI:
     global _pwr_client
     if _pwr_client is None:
+        # timeout=180.0 obavezno per PWR docs §11.9 — multi-iteration kroz
+        # web UI / CLI subprocess ide 60-90s end-to-end, SDK default ~60s
+        # bi pucao prije finalne iteracije.
         _pwr_client = openai.OpenAI(
             base_url=settings.pwr_base_url,
             api_key=settings.pwr_api_key,
+            timeout=180.0,
         )
     return _pwr_client
 
