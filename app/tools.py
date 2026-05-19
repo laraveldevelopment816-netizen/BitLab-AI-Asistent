@@ -3,11 +3,20 @@ Anthropic tool use schema + handler implementacije.
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import time
 from pathlib import Path
 from typing import Any
 
 from .contacts import EMAIL, TEL
+
+
+# Dedup cache za escalate_to_human — sprečava dupli email kad ReAct loop
+# kroz PWR ponovi isti tool_call (vidi PWR docs sek. 11.10 tačka 7).
+# Mapa: SHA256(reason|summary) -> timestamp prvog poziva.
+_ESCALATION_DEDUP_TTL_S = 300  # 5 min
+_escalation_dedup: dict[str, float] = {}
 
 
 # ── Kategorije + brendovi — load jednom pri import-u ─────────
@@ -217,6 +226,20 @@ ALL_TOOLS: list[dict[str, Any]] = [
 ]
 
 
+def _to_openai_shape(tool: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "function",
+        "function": {
+            "name": tool["name"],
+            "description": tool["description"],
+            "parameters": tool["input_schema"],
+        },
+    }
+
+
+ALL_TOOLS_OPENAI_SHAPE: list[dict[str, Any]] = [_to_openai_shape(t) for t in ALL_TOOLS]
+
+
 TOOL_NAMES: list[str] = [t["name"] for t in ALL_TOOLS]
 
 
@@ -290,12 +313,24 @@ def handle_escalate_to_human(reason: str, summary: str) -> str:
     iako ništa stvarno nije slano — laž koju je AI ponavljao korisniku.
     Sad: ako je ESCALATION_EMAIL_TO + SMTP konfigurisan u .env, šaljemo
     pravi email; inače honest tekst "vaš upit je zabilježen, kontaktirajte
-    tim direktno za brz odgovor"."""
+    tim direktno za brz odgovor".
+
+    Dedup (PWR ReAct loop): drugi poziv sa istim (reason, summary) u 5-min
+    prozoru ne šalje novi email, samo vraća isti UX tekst. Sprečava spam
+    kad PWR retry-uje tool_call (vidi PWR docs sek. 11.10)."""
     from .config import settings
+
+    dedup_key = hashlib.sha256(f"{reason}|{summary}".encode("utf-8")).hexdigest()
+    now = time.monotonic()
+    # GC stare entry-je oportunistički
+    for k, ts in list(_escalation_dedup.items()):
+        if now - ts > _ESCALATION_DEDUP_TTL_S:
+            _escalation_dedup.pop(k, None)
+    deduped = dedup_key in _escalation_dedup
 
     notified = False
     notify_target = getattr(settings, "escalation_email_to", None) or settings.smtp_user
-    if notify_target and settings.smtp_host and settings.smtp_user and settings.smtp_password:
+    if not deduped and notify_target and settings.smtp_host and settings.smtp_user and settings.smtp_password:
         try:
             import smtplib
             from email.message import EmailMessage
@@ -318,6 +353,10 @@ def handle_escalate_to_human(reason: str, summary: str) -> str:
             # Ne padaj — tool i dalje treba da vrati instrukcije korisniku
 
     if notified:
+        notify_status = "Prodajni tim je obaviješten putem emaila — javit će se u toku radnog vremena."
+        _escalation_dedup[dedup_key] = now
+    elif deduped:
+        # Eskalacija je već poslata u zadnjih 5 min — vrati isti UX tekst bez ponovnog emaila
         notify_status = "Prodajni tim je obaviješten putem emaila — javit će se u toku radnog vremena."
     else:
         # Honest fallback: NE tvrdi obavještenje koje nije poslano

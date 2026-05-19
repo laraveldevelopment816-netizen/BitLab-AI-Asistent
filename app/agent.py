@@ -9,10 +9,11 @@ import time
 from typing import Any
 
 import anthropic
+import openai
 
 from .config import settings
 from .system_prompts import system_prompt
-from .tools import ALL_TOOLS, dispatch
+from .tools import ALL_TOOLS, ALL_TOOLS_OPENAI_SHAPE, dispatch
 
 
 def _parse_voice_xml(text: str) -> tuple[str, str]:
@@ -54,14 +55,25 @@ def _parse_voice_xml(text: str) -> tuple[str, str]:
 
     return reply_text, reply_voice
 
-_client: anthropic.Anthropic | None = None
+_anthropic_client: anthropic.Anthropic | None = None
+_pwr_client: openai.OpenAI | None = None
 
 
-def _get_client() -> anthropic.Anthropic:
-    global _client
-    if _client is None:
-        _client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-    return _client
+def _get_anthropic_client() -> anthropic.Anthropic:
+    global _anthropic_client
+    if _anthropic_client is None:
+        _anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    return _anthropic_client
+
+
+def _get_pwr_client() -> openai.OpenAI:
+    global _pwr_client
+    if _pwr_client is None:
+        _pwr_client = openai.OpenAI(
+            base_url=settings.pwr_base_url,
+            api_key=settings.pwr_api_key,
+        )
+    return _pwr_client
 
 
 def _trim_email_preamble(text: str) -> str:
@@ -136,7 +148,10 @@ def _strip_markdown_tables(text: str) -> str:
     return '\n'.join(out).strip()
 
 
-def _default_model_for_channel(channel: str) -> str:
+def _default_model_for_channel(channel: str, backend: str | None = None) -> str:
+    backend = backend or settings.llm_backend
+    if backend == "pwr":
+        return settings.pwr_email_model if channel == "email" else settings.pwr_chat_model
     return settings.email_model if channel == "email" else settings.chat_model
 
 
@@ -150,18 +165,34 @@ def run_agent(
       reply, reply_voice, tools_used, escalated, iterations, _trace
 
     `_trace` je strukturirani log koji potroši dashboard storage:
-      {model, tokens_in, tokens_out, latency_ms, tool_calls: [...]}
+      {model, tokens_in, tokens_out, latency_ms, via_pwr, tool_calls: [...]}
+
+    Backend selekcija prema `settings.llm_backend`:
+      - "anthropic" (default, produkcija): direktan Anthropic API.
+      - "pwr": PlaywrightRouter (paušal pretplate; usage tokens uvijek 0).
     """
-    model = model_override or _default_model_for_channel(channel)
+    backend = settings.llm_backend
+    model = model_override or _default_model_for_channel(channel, backend)
     sys_prompt = system_prompt(channel)
-    client = _get_client()
+
+    if backend == "pwr":
+        return _run_pwr(messages, channel, model, sys_prompt)
+    return _run_anthropic(messages, channel, model, sys_prompt)
+
+
+def _run_anthropic(
+    messages: list[dict[str, Any]],
+    channel: str,
+    model: str,
+    sys_prompt: str,
+) -> dict[str, Any]:
+    client = _get_anthropic_client()
 
     tools_used: list[str] = []
     escalated = False
     current_messages = list(messages)
     last_text = ""
 
-    # Trace state — akumulirano po koraku
     trace_calls: list[dict[str, Any]] = []
     total_in = 0
     total_out = 0
@@ -199,20 +230,20 @@ def run_agent(
                     "AI servis privremeno nije dostupan. Pokušajte za par minuta."
                 )
             return _graceful_return(channel, ui_msg, voice_msg, tools_used, escalated,
-                                     iteration, model, total_in, total_out, t_start, trace_calls)
+                                     iteration, model, total_in, total_out, t_start, trace_calls,
+                                     via_pwr=False)
         except (anthropic.RateLimitError, anthropic.APIConnectionError) as exc:
             print(f"[AGENT] Anthropic transient: {type(exc).__name__}: {exc}")
             ui_msg = "Mreža je trenutno preopterećena. Pokušajte ponovo za par sekundi."
             return _graceful_return(channel, ui_msg, ui_msg, tools_used, escalated,
-                                     iteration, model, total_in, total_out, t_start, trace_calls)
+                                     iteration, model, total_in, total_out, t_start, trace_calls,
+                                     via_pwr=False)
 
-        # Akumuliraj usage iz svakog API poziva
         usage = getattr(response, "usage", None)
         if usage is not None:
             total_in += getattr(usage, "input_tokens", 0) or 0
             total_out += getattr(usage, "output_tokens", 0) or 0
 
-        # Izvuci tekst ako postoji u ovom odgovoru
         for block in response.content:
             if hasattr(block, "text"):
                 last_text = block.text
@@ -220,7 +251,7 @@ def run_agent(
         if response.stop_reason == "end_turn":
             return _finalize(
                 last_text, channel, tools_used, escalated, iteration,
-                model, total_in, total_out, t_start, trace_calls,
+                model, total_in, total_out, t_start, trace_calls, via_pwr=False,
             )
 
         if response.stop_reason == "tool_use":
@@ -258,7 +289,135 @@ def run_agent(
     )
     return _finalize(
         fallback, channel, tools_used, escalated, settings.max_tool_iterations,
-        model, total_in, total_out, t_start, trace_calls,
+        model, total_in, total_out, t_start, trace_calls, via_pwr=False,
+    )
+
+
+def _run_pwr(
+    messages: list[dict[str, Any]],
+    channel: str,
+    model: str,
+    sys_prompt: str,
+) -> dict[str, Any]:
+    """PWR backend (OpenAI-kompatibilan endpoint). Razlike u odnosu na Anthropic:
+
+    - `system` ide kao prva poruka u `messages` (ne kao zaseban param).
+    - tool_calls dolaze u choices[0].message.tool_calls, arguments je JSON string.
+    - tool_result je `{"role":"tool","tool_call_id":...,"content":...}`.
+    - finish_reason: "stop" (end_turn ekv.) / "tool_calls" (tool_use ekv.).
+    - `usage.total_tokens` uvijek 0 — Claude.ai web ne izlaže brojeve. Trace
+       nosi `via_pwr=True` da UI prikaže "paušal" umjesto cijene.
+    - Streaming sa tools nije podržano (HTTP 400) — pozivamo bez `stream=`.
+    """
+    client = _get_pwr_client()
+
+    tools_used: list[str] = []
+    escalated = False
+    last_text = ""
+
+    pwr_messages: list[dict[str, Any]] = [{"role": "system", "content": sys_prompt}]
+    pwr_messages.extend(messages)
+
+    trace_calls: list[dict[str, Any]] = []
+    t_start = time.monotonic()
+
+    for iteration in range(1, settings.max_tool_iterations + 1):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=pwr_messages,
+                tools=ALL_TOOLS_OPENAI_SHAPE,
+                max_tokens=settings.max_output_tokens,
+            )
+        except openai.BadRequestError as exc:
+            print(f"[AGENT/PWR] BadRequest: {exc}")
+            ui_msg = (
+                "Žao mi je, AI servis privremeno nije dostupan. "
+                "Pokušajte za par minuta ili nas kontaktirajte na 066 516 174."
+            )
+            voice_msg = "AI servis privremeno nije dostupan. Pokušajte za par minuta."
+            return _graceful_return(channel, ui_msg, voice_msg, tools_used, escalated,
+                                     iteration, model, 0, 0, t_start, trace_calls,
+                                     via_pwr=True)
+        except (openai.RateLimitError, openai.APIConnectionError) as exc:
+            print(f"[AGENT/PWR] transient: {type(exc).__name__}: {exc}")
+            ui_msg = "Mreža je trenutno preopterećena. Pokušajte ponovo za par sekundi."
+            return _graceful_return(channel, ui_msg, ui_msg, tools_used, escalated,
+                                     iteration, model, 0, 0, t_start, trace_calls,
+                                     via_pwr=True)
+        except openai.APIStatusError as exc:
+            print(f"[AGENT/PWR] status {exc.status_code}: {exc}")
+            ui_msg = (
+                "Žao mi je, AI servis privremeno nije dostupan. "
+                "Pokušajte za par minuta ili nas kontaktirajte na 066 516 174."
+            )
+            voice_msg = "AI servis privremeno nije dostupan. Pokušajte za par minuta."
+            return _graceful_return(channel, ui_msg, voice_msg, tools_used, escalated,
+                                     iteration, model, 0, 0, t_start, trace_calls,
+                                     via_pwr=True)
+
+        choice = response.choices[0]
+        msg = choice.message
+        if msg.content:
+            last_text = msg.content
+
+        if choice.finish_reason == "stop":
+            return _finalize(
+                last_text, channel, tools_used, escalated, iteration,
+                model, 0, 0, t_start, trace_calls, via_pwr=True,
+            )
+
+        if choice.finish_reason == "tool_calls":
+            pwr_messages.append({
+                "role": "assistant",
+                "content": msg.content,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in (msg.tool_calls or [])
+                ],
+            })
+
+            for tc in msg.tool_calls or []:
+                tool_name = tc.function.name
+                try:
+                    tool_input = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                except json.JSONDecodeError:
+                    tool_input = {}
+                tools_used.append(tool_name)
+                if tool_name == "escalate_to_human":
+                    escalated = True
+                t_tool = time.monotonic()
+                result = dispatch(tool_name, tool_input)
+                tool_latency_ms = int((time.monotonic() - t_tool) * 1000)
+                trace_calls.append({
+                    "iteration": iteration,
+                    "tool_name": tool_name,
+                    "input_json": json.dumps(tool_input, ensure_ascii=False),
+                    "output_text": result,
+                    "latency_ms": tool_latency_ms,
+                })
+                pwr_messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": result,
+                })
+        else:
+            break
+
+    fallback = last_text or (
+        "Žao mi je, trenutno ne mogu odgovoriti. "
+        "Kontaktirajte nas na Viber 066 516 174 ili prodaja@bitlab.rs."
+    )
+    return _finalize(
+        fallback, channel, tools_used, escalated, settings.max_tool_iterations,
+        model, 0, 0, t_start, trace_calls, via_pwr=True,
     )
 
 
@@ -267,8 +426,9 @@ def _graceful_return(
     tools_used: list[str], escalated: bool, iterations: int,
     model: str, total_in: int, total_out: int, t_start: float,
     trace_calls: list[dict[str, Any]],
+    via_pwr: bool = False,
 ) -> dict[str, Any]:
-    """Vrati strukturisanu fallback poruku kad Anthropic API nije dostupan.
+    """Vrati strukturisanu fallback poruku kad LLM nije dostupan.
     Za voice channel, voice_msg ide u TTS (bez emojija/URL-ova)."""
     return {
         "reply": ui_msg,
@@ -279,6 +439,7 @@ def _graceful_return(
         "_trace": {
             "model": model, "tokens_in": total_in, "tokens_out": total_out,
             "latency_ms": int((time.monotonic() - t_start) * 1000),
+            "via_pwr": via_pwr,
             "tool_calls": trace_calls,
         },
     }
@@ -295,6 +456,7 @@ def _finalize(
     total_out: int,
     t_start: float,
     trace_calls: list[dict[str, Any]],
+    via_pwr: bool = False,
 ) -> dict[str, Any]:
     """Sklopi finalni response + trace dict."""
     if channel == "email":
@@ -330,6 +492,7 @@ def _finalize(
             "tokens_in": total_in,
             "tokens_out": total_out,
             "latency_ms": int((time.monotonic() - t_start) * 1000),
+            "via_pwr": via_pwr,
             "tool_calls": trace_calls,
         },
     }

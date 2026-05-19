@@ -23,17 +23,6 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
 
 ## Todo
 
-- [ ] PlaywrightRouter kao test backend <!-- id:pwrt -->
-  PlaywrightRouter je interni servis (OpenAI-kompatibilan SDK interfejs) koji
-  rutira pozive ka DeepSeek/Claude nalozima (plaćeni i besplatni tier-ovi).
-  Postoji prije ove faze. Cilj: postaviti ga kao test backend za masovne eval
-  pozive bez produkcijskih troškova. Koraci:
-  1. Konfiguracioni sloj (env var ili config flag) da se eval/test pozivi
-     rutiraju kroz PlaywrightRouter umjesto direktnog Anthropic SDK-a.
-  2. Smoke test — jedan postojeći eval (`evals/run.py`) prolazi kroz
-     PlaywrightRouter.
-  3. Dokumentovati kako se bira tier (free vs paid) za pojedinačni test set.
-  Preduslov za `tst1` Safety net. Izvor: DoD sekcija 4.
 - [ ] Hijerarhijske kategorije (parent_id u AI pretrazi) <!-- id:phir -->
   `data/categories.csv` ima `parent_id` polje sa parent-child relacijama
   (513 redova = parent + child). Trenutna pretraga (`app/rag.py`) tretira
@@ -74,6 +63,42 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
 
 ## Doing
 
+- [ ] PWR backend za chat agent + test eval (LLM_BACKEND=anthropic|pwr) <!-- id:pwrt -->
+  Preostalo do Done:
+  1. Ažurirati sistem prompt da Claude emituje strukturisani output prema
+     `app/schemas.py` shemi i uvijek vraća isti shape (products / empty /
+     message).
+  2. Aplicirati Pydantic validator (`schemas.TypeAdapter`) na AI output na
+     izlazu iz `run_agent` — fail-fast ako shape nije validan.
+  3. Manuelno testiranje preko PWR puta sa različitim upitima (chat / email /
+     voice kanali).
+  4. Popraviti pad-ove iz [`TEST-failures-pwr-migration.md`](TEST-failures-pwr-migration.md).
+  5. Deploy na staging i smoke test produkcijskog puta.
+
+  Urađeno do sada:
+  Feature flag u `app/config.py` (`LLM_BACKEND`, default `anthropic` — produkcija
+  nepromijenjena; `pwr` rutira kroz PlaywrightRouter na `http://127.0.0.1:8765/v1`).
+  `app/agent.py` razdvojen na `_run_anthropic` i `_run_pwr` loop-ove; PWR put koristi
+  `openai.OpenAI` SDK, mapira `finish_reason="tool_calls"` na isti dispatch kao
+  Anthropic `tool_use`. `_trace` nosi novi `via_pwr` flag (UI prikaže "paušal" mjesto
+  cijene). `app/tools.py` dobio `ALL_TOOLS_OPENAI_SHAPE` (čista derivacija iz
+  `ALL_TOOLS`) + dedup za `escalate_to_human` (SHA(reason|summary), 5-min TTL) da PWR
+  retry ne pošalje dupli email. `openai>=1.50` dodato u `pyproject.toml`.
+
+  DoD verifikacija (kod-nivo, prije manuelnog testiranja):
+  - pytest 106/106 prolazi sa default `LLM_BACKEND=anthropic`, 0 regresija.
+  - Anthropic produkcijski put nepromijenjen — live test sa "laptop do 1500 KM"
+    pravilno trigger-uje `search_products(category_id=98, max_price_km=1500)`.
+  - PWR category accuracy: 40/41 = **97.6%** (threshold 85%, baseline ~95-100%).
+  - PWR HTTP eval na `test_questions.json`: 19/20 = **95%** (threshold 80%).
+  - Voice channel collision: 0/5 ⟦tool_use⟧ leak-ova u `<voice>/<text>` blokovima
+    (Risk #1 iz brief-a verificiran clean).
+
+  Working tree (nekomitovan):
+  - `app/agent.py` +178 net (dispečer + `_run_pwr` + `via_pwr` u helper-ima)
+  - `app/config.py` +28 net (feature flag + PWR settings + cross-field validator)
+  - `app/tools.py` +40 net (OpenAI shape + escalation dedup)
+  - `pyproject.toml` +3 (openai dep)
 - [ ] Strukturisani search output (JSON shema + Pydantic + Layout) <!-- id:srcv -->
   AI output za search rezultate trenutno nije konzistentan — isti tip upita
   može vratiti različite strukture, layout puca na 6-7 rezultata (dokumentovan
@@ -119,7 +144,7 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
   ostaje hidden, nema 404 spam-a u Network tab-u. Smoke test prošao na portu
   7777 (8000-8090 zauzeti na WSL-u): startup log čist, `/api/chat` HTTP 200,
   tri voice rute HTTP 404, `/healthz` OK. Plan testa i koraci za reaktivaciju:
-  [`TEST-voice-off.md`](TEST-voice-off.md).
+  [`docs/how-to-test/TEST-voice-off.md`](docs/how-to-test/TEST-voice-off.md).
 
 Istorijske kartice — vidi [`docs/archives/status-2026-05-17.md`](docs/archives/status-2026-05-17.md).
 
