@@ -142,34 +142,25 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
   dozvoljava. **Prije nego što napišeš ikakav Pydantic kod**, predloži korisniku
   konkretan JSON schema oblik (polja, required vs optional) i čekaj odobrenje.
   Procjena: 1-2 dana. Izvor: DoD sekcija 2.
-- [ ] Per-channel model + effort iz .env (Anthropic + PWR) <!-- id:mdef -->
-  Override modela i effort-a po kanalu kroz `.env`, hirurški. Voice kanal
-  dijeli model sa chat (nije zasebno polje). `CHAT_MODEL`/`EMAIL_MODEL` su
-  već auto-mapirani preko pydantic-settings (`app/config.py:35-36`), samo
-  zakomentarisani u `.env.example`; PWR ekvivalenti (`pwr_chat_model`/
-  `pwr_email_model`) postoje u config-u ali nisu dokumentovani u .env.example.
-  Koraci:
-  1. `app/config.py` — dodati 4 nova polja: `chat_effort`, `email_effort`
-     (Anthropic, mapiranje kao i postojeće — thinking budget) +
-     `pwr_chat_effort`, `pwr_email_effort` (Literal `"low"|"medium"|"high"`,
-     default `"medium"`). Postojeća model polja se ne diraju.
-  2. `app/agent.py` — proslijediti effort u API poziv u `_run_anthropic`
-     (thinking budget kao trenutno) i `_run_pwr` (`reasoning_effort` kwarg
-     OpenAI SDK-a). Bez drugih izmjena u API callsite-ovima.
-  3. `.env.example` — odkomentarisati postojeći Anthropic blok + dodati
-     PWR blok: `CHAT_MODEL`, `CHAT_MODEL_EFFORT`, `EMAIL_MODEL`,
-     `EMAIL_MODEL_EFFORT`, `PWR_CHAT_MODEL`, `PWR_CHAT_MODEL_EFFORT`,
-     `PWR_EMAIL_MODEL`, `PWR_EMAIL_MODEL_EFFORT`.
-  4. Smoke: pytest 106/106 + jedan curl po backendu da effort stigne do
-     trace log-a.
-
-  Princip: postojeći default-i u `config.py` ostaju netaknuti, Anthropic
-  produkcijski put nepromijenjen za default vrijednosti. Procjena: pola dana.
 
 ## Blocked
 
 ## Done
 
+- [x] Per-channel model + effort iz .env (Anthropic + PWR) <!-- id:mdef -->
+  `app/config.py:41-56` ima 4 nova polja (`chat_model_effort`, `email_model_effort`,
+  `pwr_chat_model_effort`, `pwr_email_model_effort`) tipa Literal
+  `"low"|"medium"|"high"`, default `"low"`. `app/agent.py:162-251` propagira
+  effort kroz `_default_effort_for_channel`, `_anthropic_thinking_kwargs`
+  (mapira na Anthropic extended thinking budget) i kroz `reasoning_effort`
+  kwarg u `_run_pwr`. `.env.example:5-26` dokumentuje sva 4 EFFORT polja sa
+  komentarima. Effort se persistuje u novoj `requests.effort` koloni (additive
+  ALTER u `app/storage/db.py`) i izložen je kroz dashboard API
+  (`RequestRow.effort`, `RequestDetail.effort`) u tabelama i detalj-stranama
+  UI-ja. Anthropic produkcijski put nepromijenjen za default `"low"` (vraća
+  prazan thinking kwargs). Plan ručnog testa:
+  [`TEST-channel-model-effort.md`](TEST-channel-model-effort.md) (working
+  tree, uncommitted).
 - [x] Centralni exception handler za Anthropic API <!-- id:c4xh -->
   `app/main.py` sad registruje `@app.exception_handler` za
   `anthropic.APIStatusError` i `anthropic.APIConnectionError` — safety net za
