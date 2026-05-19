@@ -23,6 +23,32 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
 
 ## Todo
 
+- [ ] Pun model ID svuda u dashboard-u (ukloni "haiku/sonnet/opus" skraćenice) <!-- id:fmnm -->
+  Dashboard koristi `_short_model_name` (`app/server/dashboard.py:702`) koji
+  mapira pun model ID na 3-slovne skraćenice ("haiku"/"sonnet"/"opus"). Te
+  skraćenice se koriste kao:
+  - Adapter label (`chat:sonnet`) u DB `requests.adapter` koloni.
+  - `model_registry` ključevi (`app/config.py:136-139`) — `{"haiku": chat_model,
+    "sonnet": email_model}` — eksposed kao `/api/dashboard/compare` API ugovor.
+  - Frontend categorization (`dashboard/src/tokens.ts:30-32` MODEL color map,
+    plus `History.tsx`/`RequestDetail.tsx`/`SessionDetail.tsx` substring matcher-i).
+  Per PWR `models-and-efforts.md` § 3.1, "Opus"/"Sonnet" labele su rezervisane
+  za web chat variant picker (`pwr_options.claude_variant="Opus 4.7"`) — BAA
+  treba referencirati pun explicit ID svuda da se izbjegne semantička kolizija.
+  Koraci:
+  1. Backend — ukloni `_short_model_name`, propagiraj pun model ID u adapter
+     label (`chat:claude-sonnet-4-6` umjesto `chat:sonnet`).
+  2. `model_registry` — ključ promijeni iz `"haiku"`/`"sonnet"` u pun ID
+     (`claude-haiku-4-5-20251001`/`claude-sonnet-4-6`); update `/compare`
+     endpoint dokumentaciju.
+  3. DB migracija — postojeći `requests.adapter` redovi ostaju (read-only
+     istorija), novi insertovi koriste pun ID.
+  4. Frontend — `tokens.ts` MODEL color map keys + ostali substring matcher-i.
+  5. Smoke: dashboard renderuje boje za nove labele, `/compare` prihvata pun
+     ID, postojeće sesije i dalje vidljive.
+
+  Procjena: 0.5 dan (backend) + 0.5 dan (frontend) = 1 dan. Izvor: posljedica
+  mdef rename-a + standardizacija reference na model po PWR docs § 3.1.
 - [ ] Hijerarhijske kategorije (parent_id u AI pretrazi) <!-- id:phir -->
   `data/categories.csv` ima `parent_id` polje sa parent-child relacijama
   (513 redova = parent + child). Trenutna pretraga (`app/rag.py`) tretira
