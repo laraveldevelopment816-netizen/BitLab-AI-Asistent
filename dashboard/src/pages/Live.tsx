@@ -131,7 +131,7 @@ function Row({ r, fresh, onClick }: { r: RequestRow; fresh: boolean; onClick: ()
     >
       <Td color={C.textDim}>#{r.id}</Td>
       <Td><Tag color={ch}>{r.channel}</Tag></Td>
-      <Td><Tag color={md}>{_modelKey(r.model)}</Tag></Td>
+      <Td><Tag color={md}>{_modelKey(r.model)}{r.effort ? ` · ${r.effort}` : ''}</Tag></Td>
       <Td><StatusBadge status={r.status} /></Td>
       <Td right>{r.tokens_in ?? '—'} / {r.tokens_out ?? '—'}</Td>
       <Td right>{r.latency_ms ? `${r.latency_ms}ms` : '—'}</Td>
@@ -154,7 +154,7 @@ function RequestPopover({ r }: { r: RequestRow }) {
       <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: C.textMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
         <span style={{ color: ch }}>● {r.channel}</span>
         <span>·</span>
-        <span style={{ color: md }}>{_modelKey(r.model)}</span>
+        <span style={{ color: md }}>{_modelKey(r.model)}{r.effort ? ` · ${r.effort}` : ''}</span>
         <span>·</span>
         <span>#{r.id}</span>
         <span>·</span>

@@ -274,13 +274,13 @@ def _run_anthropic(
                 )
             return _graceful_return(channel, ui_msg, voice_msg, tools_used, escalated,
                                      iteration, model, total_in, total_out, t_start, trace_calls,
-                                     via_pwr=False)
+                                     via_pwr=False, effort=effort)
         except (anthropic.RateLimitError, anthropic.APIConnectionError) as exc:
             print(f"[AGENT] Anthropic transient: {type(exc).__name__}: {exc}")
             ui_msg = "Mreža je trenutno preopterećena. Pokušajte ponovo za par sekundi."
             return _graceful_return(channel, ui_msg, ui_msg, tools_used, escalated,
                                      iteration, model, total_in, total_out, t_start, trace_calls,
-                                     via_pwr=False)
+                                     via_pwr=False, effort=effort)
 
         usage = getattr(response, "usage", None)
         if usage is not None:
@@ -295,6 +295,7 @@ def _run_anthropic(
             return _finalize(
                 last_text, channel, tools_used, escalated, iteration,
                 model, total_in, total_out, t_start, trace_calls, via_pwr=False,
+                effort=effort,
             )
 
         if response.stop_reason == "tool_use":
@@ -333,6 +334,7 @@ def _run_anthropic(
     return _finalize(
         fallback, channel, tools_used, escalated, settings.max_tool_iterations,
         model, total_in, total_out, t_start, trace_calls, via_pwr=False,
+        effort=effort,
     )
 
 
@@ -383,15 +385,27 @@ def _run_pwr(
             voice_msg = "AI servis privremeno nije dostupan. Pokušajte za par minuta."
             return _graceful_return(channel, ui_msg, voice_msg, tools_used, escalated,
                                      iteration, model, 0, 0, t_start, trace_calls,
-                                     via_pwr=True)
+                                     via_pwr=True, effort=effort)
         except (openai.RateLimitError, openai.APIConnectionError) as exc:
             print(f"[AGENT/PWR] transient: {type(exc).__name__}: {exc}")
             ui_msg = "Mreža je trenutno preopterećena. Pokušajte ponovo za par sekundi."
             return _graceful_return(channel, ui_msg, ui_msg, tools_used, escalated,
                                      iteration, model, 0, 0, t_start, trace_calls,
-                                     via_pwr=True)
+                                     via_pwr=True, effort=effort)
         except openai.APIStatusError as exc:
-            print(f"[AGENT/PWR] status {exc.status_code}: {exc}")
+            detail: str | None = None
+            try:
+                body = exc.body if isinstance(exc.body, dict) else None
+                if body is None and getattr(exc, "response", None) is not None:
+                    body = exc.response.json()
+                if isinstance(body, dict):
+                    raw = body.get("detail")
+                    if isinstance(raw, str):
+                        detail = raw
+            except Exception:
+                detail = None
+            reason = detail or str(exc)
+            print(f"[AGENT/PWR] status {exc.status_code}: {reason}")
             ui_msg = (
                 "Žao mi je, AI servis privremeno nije dostupan. "
                 "Pokušajte za par minuta ili nas kontaktirajte na 066 516 174."
@@ -399,7 +413,7 @@ def _run_pwr(
             voice_msg = "AI servis privremeno nije dostupan. Pokušajte za par minuta."
             return _graceful_return(channel, ui_msg, voice_msg, tools_used, escalated,
                                      iteration, model, 0, 0, t_start, trace_calls,
-                                     via_pwr=True)
+                                     via_pwr=True, effort=effort)
 
         choice = response.choices[0]
         msg = choice.message
@@ -410,6 +424,7 @@ def _run_pwr(
             return _finalize(
                 last_text, channel, tools_used, escalated, iteration,
                 model, 0, 0, t_start, trace_calls, via_pwr=True,
+                effort=effort,
             )
 
         if choice.finish_reason == "tool_calls":
@@ -463,6 +478,7 @@ def _run_pwr(
     return _finalize(
         fallback, channel, tools_used, escalated, settings.max_tool_iterations,
         model, 0, 0, t_start, trace_calls, via_pwr=True,
+        effort=effort,
     )
 
 
@@ -472,6 +488,7 @@ def _graceful_return(
     model: str, total_in: int, total_out: int, t_start: float,
     trace_calls: list[dict[str, Any]],
     via_pwr: bool = False,
+    effort: str | None = None,
 ) -> dict[str, Any]:
     """Vrati strukturisanu fallback poruku kad LLM nije dostupan.
     Za voice channel, voice_msg ide u TTS (bez emojija/URL-ova)."""
@@ -485,6 +502,7 @@ def _graceful_return(
             "model": model, "tokens_in": total_in, "tokens_out": total_out,
             "latency_ms": int((time.monotonic() - t_start) * 1000),
             "via_pwr": via_pwr,
+            "effort": effort,
             "tool_calls": trace_calls,
         },
     }
@@ -502,6 +520,7 @@ def _finalize(
     t_start: float,
     trace_calls: list[dict[str, Any]],
     via_pwr: bool = False,
+    effort: str | None = None,
 ) -> dict[str, Any]:
     """Sklopi finalni response + trace dict."""
     if channel == "email":
@@ -538,6 +557,7 @@ def _finalize(
             "tokens_out": total_out,
             "latency_ms": int((time.monotonic() - t_start) * 1000),
             "via_pwr": via_pwr,
+            "effort": effort,
             "tool_calls": trace_calls,
         },
     }

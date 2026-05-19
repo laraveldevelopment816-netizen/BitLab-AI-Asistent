@@ -223,10 +223,15 @@ class ProductIndex:
         ]
 
     def preload_model(self) -> None:
-        """Pozovi pri startu da bi prvi upit bio brz. Skupo na WSL2 (~50s)."""
+        """Pozovi pri startu da bi prvi upit bio brz. Skupo na WSL2 (~50s).
+
+        device="cpu" eksplicitno — bez toga torch novije verzije ide preko
+        "meta tensor" lazy loading-a, pa kasniji `.to(device)` baca
+        NotImplementedError ("Cannot copy out of meta tensor"). Bug iz
+        TEST-failures-pwr-migration.md §3."""
         if self._model is None:
             from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(settings.embed_model)
+            self._model = SentenceTransformer(settings.embed_model, device="cpu")
 
     def _embed(self, text: str) -> np.ndarray:
         if self._model is None:

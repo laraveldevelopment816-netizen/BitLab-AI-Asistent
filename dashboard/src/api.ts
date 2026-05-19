@@ -36,6 +36,7 @@ export interface RequestRow {
   adapter: string
   channel: string
   model: string
+  effort: string | null
   status: string
   tokens_in: number | null
   tokens_out: number | null

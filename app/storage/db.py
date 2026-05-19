@@ -46,6 +46,18 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 async def init_db() -> None:
-    """Idempotentno kreiraj tabele ako ne postoje."""
+    """Idempotentno kreiraj tabele ako ne postoje + additive ALTER za nove kolone.
+
+    `create_all` ne dodaje kolone na postojeće tabele. Za additive promjene
+    (npr. `requests.effort` iz mdef kartice) hvatamo OperationalError jer
+    SQLite nema `ADD COLUMN IF NOT EXISTS`."""
     async with get_engine().begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        for stmt in (
+            "ALTER TABLE requests ADD COLUMN effort VARCHAR(8)",
+        ):
+            try:
+                await conn.exec_driver_sql(stmt)
+            except Exception:
+                # Kolona već postoji ili drugi ne-fatalni problem — idempotent.
+                pass

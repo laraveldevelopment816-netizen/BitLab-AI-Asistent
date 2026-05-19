@@ -65,6 +65,9 @@ export function useHoverPreview(delayMs = 600) {
 }
 
 
+// Interni component za hook — splitanje u zaseban fajl bi razdvojilo
+// hook + helper koji ide samo s njim.
+// eslint-disable-next-line react-refresh/only-export-components
 function HoverPopover({ x, y, children }: { x: number; y: number; children: ReactNode }) {
   // Provjera da popover ne izlazi iz viewport-a desno; ako da, prikaži lijevo.
   // Compute poslije render-a kroz ref + getBoundingClientRect.

@@ -30,6 +30,9 @@ class Request(Base):
     adapter: Mapped[str] = mapped_column(String(64), index=True)
     channel: Mapped[str] = mapped_column(String(16), index=True)  # chat / voice / email / compare
     model: Mapped[str] = mapped_column(String(128))
+    # low / medium / high — Anthropic thinking budget mapping ili PWR reasoning_effort.
+    # Nullable za istorijske redove prije mdef kartice.
+    effort: Mapped[str | None] = mapped_column(String(8), nullable=True)
     prompt: Mapped[str] = mapped_column(Text)
     response: Mapped[str | None] = mapped_column(Text, nullable=True)
     tokens_in: Mapped[int | None] = mapped_column(Integer, nullable=True)

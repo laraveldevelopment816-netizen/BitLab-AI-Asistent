@@ -11,7 +11,6 @@ sažetak. Sadržaj <voice> taga ide ISKLJUČIVO u TTS, ne u UI.
 """
 from __future__ import annotations
 
-import pytest
 
 from app.agent import (
     _strip_voice_tags, _parse_voice_xml,

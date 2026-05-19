@@ -5,8 +5,6 @@ Bearer auth iz settings.dashboard_api_key.
 from __future__ import annotations
 
 import asyncio
-import json
-import time
 import uuid
 from datetime import datetime
 from typing import Any
@@ -19,7 +17,7 @@ from sqlalchemy.orm import selectinload
 from ..agent import run_agent
 from ..config import settings
 from ..storage.db import get_session_factory
-from ..storage.models import Request, ToolCall
+from ..storage.models import Request
 from ..storage.repo import (
     get_request_with_tool_calls,
     insert_request,
@@ -71,6 +69,7 @@ class RequestRow(BaseModel):
     adapter: str
     channel: str
     model: str
+    effort: str | None
     status: str
     tokens_in: int | None
     tokens_out: int | None
@@ -86,6 +85,7 @@ class RequestDetail(BaseModel):
     adapter: str
     channel: str
     model: str
+    effort: str | None
     status: str
     tokens_in: int | None
     tokens_out: int | None
@@ -255,6 +255,7 @@ router = APIRouter(
 def _to_row(r: Request) -> RequestRow:
     return RequestRow(
         id=r.id, adapter=r.adapter, channel=r.channel, model=r.model,
+        effort=r.effort,
         status=r.status, tokens_in=r.tokens_in, tokens_out=r.tokens_out,
         latency_ms=r.latency_ms, iterations=r.iterations,
         cost_usd=_cost(r.model, r.tokens_in, r.tokens_out),
@@ -266,6 +267,7 @@ def _to_row(r: Request) -> RequestRow:
 def _to_detail(r: Request) -> RequestDetail:
     return RequestDetail(
         id=r.id, adapter=r.adapter, channel=r.channel, model=r.model,
+        effort=r.effort,
         status=r.status, tokens_in=r.tokens_in, tokens_out=r.tokens_out,
         latency_ms=r.latency_ms, iterations=r.iterations,
         cost_usd=_cost(r.model, r.tokens_in, r.tokens_out),
@@ -390,7 +392,7 @@ async def list_errors(
 async def get_overview():
     """Agregat za Pregled stranicu — sve top metrike + chart data + recent
     aktivnost u jednom pozivu (brz UI render)."""
-    from datetime import date, timedelta, datetime as _dt
+    from datetime import date, timedelta
 
     async with get_session_factory()() as session:
         rows = (await session.execute(select(Request))).scalars().all()
@@ -685,6 +687,7 @@ async def _persist_trace(
                 error=error,
                 compare_group_id=compare_group_id,
                 session_id=session_id,
+                effort=trace.get("effort"),
             )
             for tc in trace.get("tool_calls", []):
                 await insert_tool_call(

@@ -16,7 +16,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const location = useLocation()
 
-  // Zatvori drawer kad se promijeni ruta (mobilni — klik na nav link)
+  // Zatvori drawer kad se promijeni ruta (mobilni — klik na nav link).
+  // Route-change reset je legitimni use case za setState u effect-u.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setDrawerOpen(false) }, [location.pathname])
 
   // Escape key zatvara drawer

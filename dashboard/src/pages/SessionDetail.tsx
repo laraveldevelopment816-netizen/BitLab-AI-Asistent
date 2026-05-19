@@ -62,6 +62,7 @@ export function SessionDetailPage() {
   const errorCount = reqs.filter(r => r.status === 'error').length
   const firstChannel = reqs[0]?.channel ?? '—'
   const firstModel = reqs[0]?.model ?? '—'
+  const firstEffort = reqs[0]?.effort ?? null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -122,7 +123,7 @@ export function SessionDetailPage() {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <Tag color={channelColor(firstChannel)}>{firstChannel}</Tag>
-          <Tag color={modelColor(_modelKey(firstModel))}>{_modelKey(firstModel)}</Tag>
+          <Tag color={modelColor(_modelKey(firstModel))}>{_modelKey(firstModel)}{firstEffort ? ` · ${firstEffort}` : ''}</Tag>
           <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: C.textMute }}>
             session_id: {data.session_id}
           </span>
@@ -234,7 +235,7 @@ function Bubble({ role, children }: { role: 'user' | 'assistant' | 'error'; chil
 
 function ToolCallRow({ tc }: { tc: ToolCall }) {
   const [open, setOpen] = useState(false)
-  let parsed: any = tc.input_json
+  let parsed: unknown = tc.input_json
   try { parsed = JSON.parse(tc.input_json) } catch { /* keep raw */ }
   return (
     <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4, marginBottom: 4, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>

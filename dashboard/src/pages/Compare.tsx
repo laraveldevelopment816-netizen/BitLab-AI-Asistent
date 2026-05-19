@@ -31,8 +31,9 @@ export function Compare() {
     try {
       const data = await api.compare(prompt, channel, [...picked])
       setResults(data.results)
-    } catch (e: any) {
-      setErr(e?.response?.data?.detail || e?.message || 'Greška pri poređenju')
+    } catch (e) {
+      const err = e as { response?: { data?: { detail?: string } }; message?: string }
+      setErr(err?.response?.data?.detail || err?.message || 'Greška pri poređenju')
     } finally {
       setRunning(false)
     }

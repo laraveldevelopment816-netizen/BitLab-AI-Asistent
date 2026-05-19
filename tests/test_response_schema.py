@@ -15,10 +15,8 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas import (
-    AssistantResponse,
     EmptyResponse,
     MessageResponse,
-    Product,
     ProductsResponse,
     assistant_response_adapter,
 )

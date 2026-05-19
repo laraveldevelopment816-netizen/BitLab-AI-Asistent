@@ -35,11 +35,8 @@ def test_custom_build_response_has_warm_call_to_action(query: str):
     result = run_agent([{"role": "user", "content": query}], "chat")
     reply = result["reply"].lower()
 
-    # Anti-pattern: suho "nemamo" bez išta drugog
-    forbidden_endings = [
-        "nemamo to", "ne prodajemo", "ne držimo",
-    ]
-    # Ne smije biti samo "nemamo X" bez drugog sadržaja
+    # Anti-pattern: suho "nemamo X" bez drugog sadržaja — minimum 30 riječi
+    # garantuje topao odgovor (custom build + kontakt + dalji koraci).
     word_count = len(reply.split())
     assert word_count >= 30, (
         f"Reply prekratak ({word_count} riječi) za upit '{query}': "

@@ -29,6 +29,7 @@ async def insert_request(
     error: str | None = None,
     compare_group_id: str | None = None,
     session_id: str | None = None,
+    effort: str | None = None,
 ) -> Request:
     row = Request(
         adapter=adapter,
@@ -44,6 +45,7 @@ async def insert_request(
         error=error,
         compare_group_id=compare_group_id,
         session_id=session_id,
+        effort=effort,
     )
     session.add(row)
     await session.commit()

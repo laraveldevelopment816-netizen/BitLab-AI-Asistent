@@ -23,7 +23,11 @@ export function Overview() {
 
 function ErrorPanel({ error }: { error: unknown }) {
   // axios greške imaju response sa status / data
-  const err = error as any
+  const err = error as {
+    response?: { status?: number; data?: { detail?: string } }
+    code?: string
+    message?: string
+  }
   const status = err?.response?.status
   const detail = err?.response?.data?.detail
   const isAuth = status === 401 || status === 503

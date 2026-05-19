@@ -61,7 +61,7 @@ export function RequestDetail() {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <Tag color={ch}>{r.channel}</Tag>
-          <Tag color={md}>{_modelKey(r.model)}</Tag>
+          <Tag color={md}>{_modelKey(r.model)}{r.effort ? ` · ${r.effort}` : ''}</Tag>
           <StatusBadge status={r.status} />
           {r.compare_group_id && (
             <Tag color={C.warn}>poređenje {r.compare_group_id.slice(0, 8)}</Tag>
@@ -113,7 +113,7 @@ export function RequestDetail() {
 
 function ToolCallRow({ tc }: { tc: ToolCall }) {
   const [open, setOpen] = useState(false)
-  let parsedInput: any = tc.input_json
+  let parsedInput: unknown = tc.input_json
   try { parsedInput = JSON.parse(tc.input_json) } catch { /* keep raw */ }
 
   return (
