@@ -113,42 +113,55 @@ def compute_delta(
     children_of: dict[str, list[str]],
     counts: Counter,
     threshold_pct: float,
+    fix_applied: bool,
 ) -> dict[str, dict]:
-    """Za svaki cat: pool before, pool after, % coverage, verdict.
+    """Za svaki cat računa:
+    - direct: pool koji equality filter vidi (samo cat sam)
+    - subtree: pool koji set membership filter vidi (cat + descendant-i)
+    - current: STVARNA produkcijska brojka, zavisi od fix_applied
+    - alternative: hipotetička brojka u drugom modu
 
-    Verdict mehanika:
-    - LEAF: nema djecu — before == after. Verdict = "NA" (nije parent-relevant).
-    - PARENT PASS: before/after >= threshold (npr. ≥30%). Cat dobro koristi
-      direct proizvode čak i bez expansion-a — nema problema.
-    - PARENT FAIL: before/after < threshold. Bez fix-a ovaj cat vrati malo
-      proizvoda. Sa fix-om dobija pun subtree pool. Ovo su cat-ovi koje fix
-      drama  tično popravlja — vidi listu "Notable wins".
+    Tako BEFORE HTML (fix_applied=False) prikazuje current=direct (mala
+    brojka), a AFTER HTML (fix_applied=True) prikazuje current=subtree
+    (velika brojka). Iste sirove brojke, ali "current" se mijenja — što je
+    ono što DoD treba da pokaže.
+
+    Verdict mehanika (na CURRENT brojke):
+    - LEAF: nema djecu — direct == subtree. Verdict = "NA".
+    - PASS: cat trenutno pokriva ≥ threshold% subtree pool-a (znači ili je
+      leaf, ili je fix primijenjen, ili je root sa puno direct proizvoda).
+    - FAIL: cat trenutno pokriva < threshold% — fix bi pomogao.
     """
     out: dict[str, dict] = {}
     for cid, row in by_id.items():
         kids = children_of.get(cid, [])
         is_leaf = len(kids) == 0
-        before = counts.get(cid, 0)
-        subtree = descendants(cid, children_of)
-        after = sum(counts.get(c, 0) for c in subtree)
-        delta = after - before
-        coverage_pct = (100 * before / after) if after > 0 else 0.0
+        direct = counts.get(cid, 0)
+        subtree_set = descendants(cid, children_of)
+        subtree = sum(counts.get(c, 0) for c in subtree_set)
+
+        current = subtree if fix_applied else direct
+        alternative = direct if fix_applied else subtree
+        # Coverage = koliko subtree pool-a CURRENT mode pokriva
+        coverage_pct = (100 * current / subtree) if subtree > 0 else 0.0
 
         if is_leaf:
             verdict = "NA"
         elif coverage_pct >= threshold_pct:
-            verdict = "PASS"  # cat ne treba expansion da bude zdrav
+            verdict = "PASS"
         else:
-            verdict = "FAIL"  # cat dramatično rasta sa expansion-om
+            verdict = "FAIL"
 
         out[cid] = {
             "name": row["name"],
             "is_leaf": is_leaf,
-            "n_children_recursive": len(subtree) - 1,
+            "n_children_recursive": len(subtree_set) - 1,
             "parent_id": (row.get("parent_id") or "").strip(),
-            "before": before,
-            "after": after,
-            "delta": delta,
+            "direct": direct,
+            "subtree": subtree,
+            "current": current,
+            "alternative": alternative,
+            "delta": subtree - direct,  # potencijalni gain ili realizovani gain
             "coverage_pct": coverage_pct,
             "verdict": verdict,
         }
@@ -166,8 +179,8 @@ def build_tree_nodes(
         return {
             "id": cid,
             "name": d["name"],
-            "before": d["before"],
-            "after": d["after"],
+            "current": d["current"],
+            "alternative": d["alternative"],
             "delta": d["delta"],
             "coverage_pct": d["coverage_pct"],
             "verdict": d["verdict"],
@@ -280,11 +293,12 @@ HTML = r"""<!doctype html>
 <h2>Summary</h2>
 <div class="stats" id="stats"></div>
 
-<h2>Top 15 root cats — biggest pool gain</h2>
+<h2 id="leaderboard-title">Top 15 root cats</h2>
 <table class="leaderboard">
   <thead><tr>
     <th>Cat</th><th>Name</th>
-    <th class="num">Before</th><th class="num">After</th>
+    <th class="num" id="col-current">Current</th>
+    <th class="num" id="col-alt">Alternative</th>
     <th class="num">Δ</th><th>Coverage</th>
   </tr></thead>
   <tbody id="leaderboard"></tbody>
@@ -306,63 +320,82 @@ document.getElementById("meta").textContent =
   `Generated ${DATA.meta.run_at}  ·  Data: ${DATA.meta.products_count} products, ` +
   `${DATA.meta.cats_count} active cats  ·  Threshold: ${DATA.meta.threshold}%`;
 
-// Verdict banner — bazirano na inspekciji rag.py source-a, ne na math-u.
-// Math je uvijek isti (CSV + products); verdict mijenja stanje koda.
+// Verdict banner i kolone — sve se mijenja prema fix_state.applied.
+// Iste sirove brojke iz CSV+JSON, ali "current" mijenja smisao između
+// runova: kod FAIL-a current=direct (mala), kod PASS-a current=subtree (velika).
 const fix = DATA.fix_state;
 const verdictEl = document.getElementById("verdict");
 const evidenceHtml = fix.evidence.map(([name, status]) =>
   `<li><code style="color:${status==='YES'?'var(--ok)':'var(--fail)'}">${status}</code> ${name}</li>`
 ).join("");
 
+// Postavi labele za "current" i "alternative" kolone prema stanju
+if (fix.applied) {
+  document.getElementById("col-current").textContent = "Sa fix-om (current)";
+  document.getElementById("col-alt").textContent = "Bez fix-a (bilo bi)";
+  document.getElementById("leaderboard-title").textContent =
+    "Top 15 root cats — realizovani gain sa parent expansion fix-om";
+} else {
+  document.getElementById("col-current").textContent = "Bez fix-a (current)";
+  document.getElementById("col-alt").textContent = "Sa fix-om (bilo bi)";
+  document.getElementById("leaderboard-title").textContent =
+    "Top 15 root cats — potencijalni gain ako se fix primijeni";
+}
+
 if (fix.applied) {
   verdictEl.innerHTML = `<div class="verdict-banner pass">
     ✓ PASS — rag.py parent expansion fix JE primijenjen
-    <small>Trenutni produkcijski kod koristi AFTER brojke. Svaki root cat
-    vraća proizvode iz cijelog podstabla. ${DATA.summary.fail_count} cat-ova
-    je BIO ispod ${DATA.meta.threshold}% coverage threshold-a bez fix-a;
-    sada je 0 — svi pokrivaju 100%.
+    <small>Trenutni produkcijski kod vraća ${DATA.summary.total_current.toLocaleString()}
+    proizvoda kroz root cat upite (bilo bi ${DATA.summary.total_alternative.toLocaleString()}
+    bez fix-a). Sve brojke ispod su REALIZED — ono što search() trenutno vraća.
     <ul style="margin:6px 0 0;padding-left:18px">${evidenceHtml}</ul></small>
   </div>`;
 } else {
   verdictEl.innerHTML = `<div class="verdict-banner fail">
     ✗ FAIL — rag.py parent expansion fix NIJE primijenjen
-    <small>Trenutni produkcijski kod koristi BEFORE brojke (equality filter).
-    ${DATA.summary.fail_count} parent cat-ova vraća ispod ${DATA.meta.threshold}%
-    subtree pool-a (vidi Top 15 ispod). Apliciraj fix da bi se brojke pomakle
-    sa ${DATA.summary.total_before} na ${DATA.summary.total_after} ukupno
-    dostupnih proizvoda kroz root cat upite.
+    <small>Trenutni produkcijski kod vraća samo ${DATA.summary.total_current.toLocaleString()}
+    proizvoda kroz root cat upite. Sa fix-om bi vraćao
+    ${DATA.summary.total_alternative.toLocaleString()} — delta od
+    +${(DATA.summary.total_alternative - DATA.summary.total_current).toLocaleString()}
+    proizvoda. ${DATA.summary.fail_count} parent cat-ova ispod ${DATA.meta.threshold}%
+    coverage threshold-a.
     <ul style="margin:6px 0 0;padding-left:18px">${evidenceHtml}</ul></small>
   </div>`;
 }
 
-// Stats
+// Stats — "Σ root pool" mijenja vrijednost između BEFORE i AFTER
+const currentLabel = fix.applied ? "Σ root pool sa fix-om (current)" : "Σ root pool bez fix-a (current)";
+const altLabel = fix.applied ? "Σ bez fix-a (bilo bi)" : "Σ sa fix-om (bilo bi)";
 document.getElementById("stats").innerHTML = [
   ["", `${DATA.meta.products_count}`, "Total products"],
-  ["", `${DATA.meta.cats_count}`, "Active cats"],
-  ["", `${DATA.summary.root_count}`, "Root cats (parent_id=0)"],
-  ["fail", `${DATA.summary.fail_count}`, "Parents FAIL bez fix-a"],
-  ["pass", `${DATA.summary.pass_count}`, "Parents PASS sa fix-om"],
-  ["", `+${DATA.summary.total_delta}`, "Σ products reachable"],
+  ["", `${DATA.summary.root_count}`, "Root cats"],
+  [fix.applied ? "pass" : "fail", `${DATA.summary.total_current.toLocaleString()}`, currentLabel],
+  [fix.applied ? "fail" : "pass", `${DATA.summary.total_alternative.toLocaleString()}`, altLabel],
+  ["fail", `${DATA.summary.fail_count}`, "Parents FAIL (current)"],
+  ["pass", `${DATA.summary.pass_count}`, "Parents PASS (current)"],
 ].map(([cls, v, l]) =>
   `<div class="stat ${cls}"><div class="v">${v}</div><div class="l">${l}</div></div>`
 ).join("");
 
-// Leaderboard
-const maxAfter = Math.max(...DATA.leaderboard.map(r => r.after)) || 1;
+// Leaderboard — current je prominent kolona (boja prema verdict-u).
+// Bar chart pokazuje current/alternative pozicije.
+const maxAlt = Math.max(...DATA.leaderboard.map(r => Math.max(r.current, r.alternative))) || 1;
+const currentColor = fix.applied ? "var(--ok)" : "var(--fail)";
+const altColor = fix.applied ? "var(--fail)" : "var(--ok)";
+
 document.getElementById("leaderboard").innerHTML = DATA.leaderboard.map(r => {
-  const w1 = Math.max(2, 100 * r.before / maxAfter);
-  const w2 = Math.max(2, 100 * (r.after - r.before) / maxAfter);
+  const wCur = Math.max(2, 100 * r.current / maxAlt);
+  const wAlt = Math.max(2, 100 * r.alternative / maxAlt);
   return `<tr>
     <td class="id">${r.id}</td>
     <td>${r.name}</td>
-    <td class="num" style="color:var(--fail)">${r.before}</td>
-    <td class="num" style="color:var(--ok)">${r.after}</td>
-    <td class="delta">+${r.delta}</td>
+    <td class="num" style="color:${currentColor};font-weight:600">${r.current}</td>
+    <td class="num" style="color:${altColor}">${r.alternative}</td>
+    <td class="delta">${fix.applied ? "+" : "−"}${Math.abs(r.alternative - r.current)}</td>
     <td class="bar">
       <div class="barpair">
-        <div class="b1" style="width:${w1.toFixed(1)}%"></div>
-        <div class="b2" style="width:${w2.toFixed(1)}%"></div>
-        <span class="blab">${r.coverage_pct.toFixed(1)}% → 100%</span>
+        <div class="b1" style="width:${wCur.toFixed(1)}%;background:${currentColor};opacity:0.5"></div>
+        <span class="blab">${r.coverage_pct.toFixed(1)}% pool coverage</span>
       </div>
     </td>
   </tr>`;
@@ -396,11 +429,18 @@ function renderNode(n) {
 
   const ba = document.createElement("span");
   ba.className = "before-after";
+  // Prikazi current (prominent) + alternative (mala anotacija)
+  const curColor = fix.applied ? "var(--ok)" : "var(--fail)";
   if (n.is_leaf) {
-    ba.innerHTML = `<span class="b">${n.before}</span> = <span class="a">${n.after}</span>`;
+    // Leaf: current = alternative; jednostavno
+    ba.innerHTML = `<span style="color:${curColor};font-weight:600">${n.current}</span>`;
   } else {
-    ba.innerHTML = `<span class="b">${n.before}</span> → <span class="a">${n.after}</span>` +
-                   (n.delta > 0 ? `<span class="d">+${n.delta}</span>` : "");
+    // Parent: current je primarna brojka, alternative kao sekundarna info
+    const altColor = fix.applied ? "var(--fail)" : "var(--ok)";
+    const annotation = n.delta > 0
+      ? ` <span style="color:var(--muted);font-size:10px">(${fix.applied ? "was" : "with fix"}: <span style="color:${altColor}">${n.alternative}</span>)</span>`
+      : "";
+    ba.innerHTML = `<span style="color:${curColor};font-weight:600">${n.current}</span>${annotation}`;
   }
   row.appendChild(ba);
 
@@ -453,12 +493,13 @@ def render(
 ) -> str:
     """Generiši HTML sa svim brojkama unutar."""
 
-    # Top 15 root cats po delti
+    # Top 15 root cats po delti — sa current/alternative koji reflektuju
+    # stanje rag.py-a (fix_state.applied).
     leaderboard = sorted(
         [
             {
                 "id": cid, "name": d["name"],
-                "before": d["before"], "after": d["after"],
+                "current": d["current"], "alternative": d["alternative"],
                 "delta": d["delta"], "coverage_pct": d["coverage_pct"],
             }
             for cid, d in delta_map.items()
@@ -470,9 +511,8 @@ def render(
     root_count = sum(1 for d in delta_map.values() if d["parent_id"] == "0")
     fail_count = sum(1 for d in delta_map.values() if d["verdict"] == "FAIL")
     pass_count = sum(1 for d in delta_map.values() if d["verdict"] == "PASS")
-    total_delta = sum(d["delta"] for d in delta_map.values() if d["parent_id"] == "0")
-    total_before = sum(d["before"] for d in delta_map.values() if d["parent_id"] == "0")
-    total_after = sum(d["after"] for d in delta_map.values() if d["parent_id"] == "0")
+    total_current = sum(d["current"] for d in delta_map.values() if d["parent_id"] == "0")
+    total_alternative = sum(d["alternative"] for d in delta_map.values() if d["parent_id"] == "0")
 
     data = {
         "meta": {
@@ -486,9 +526,8 @@ def render(
             "root_count": root_count,
             "fail_count": fail_count,
             "pass_count": pass_count,
-            "total_delta": total_delta,
-            "total_before": total_before,
-            "total_after": total_after,
+            "total_current": total_current,
+            "total_alternative": total_alternative,
         },
         "leaderboard": leaderboard,
         "tree": tree_nodes,
@@ -524,9 +563,12 @@ def main() -> int:
     by_id, children_of = load_tree()
     counts = load_product_counts()
     n_products = sum(counts.values())
-    delta_map = compute_delta(by_id, children_of, counts, args.threshold)
-    tree_nodes = build_tree_nodes(by_id, children_of, delta_map)
     fix_state = detect_fix_state()
+    delta_map = compute_delta(
+        by_id, children_of, counts, args.threshold,
+        fix_applied=fix_state["applied"],
+    )
+    tree_nodes = build_tree_nodes(by_id, children_of, delta_map)
 
     out_path = Path(args.out).expanduser() if args.out else default_out_path()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -555,13 +597,16 @@ def main() -> int:
         print(f"         {fail_count} root cat-ova ispod {args.threshold}% coverage threshold-a")
         exit_code = 1
     print()
-    print(f"Top 10 root cats po delti:")
+    print(f"Top 10 root cats — current vs alternative pool:")
     leaderboard = sorted(
         [(cid, d) for cid, d in delta_map.items() if d["parent_id"] == "0" and d["delta"] > 0],
         key=lambda x: -x[1]["delta"],
     )[:10]
+    cur_label = "with-fix" if fix_state["applied"] else "no-fix"
+    alt_label = "no-fix" if fix_state["applied"] else "with-fix"
+    print(f"  {'':>4}  {'name':<40}  {cur_label:>10}  {alt_label:>10}  delta")
     for cid, d in leaderboard:
-        print(f"  cat {cid:>4}  {d['name']:<40}  {d['before']:>5} → {d['after']:>5}  +{d['delta']}")
+        print(f"  cat {cid:>4}  {d['name']:<40}  {d['current']:>10}  {d['alternative']:>10}  +{d['delta']}")
     print()
     print(f"HTML:  {out_path}")
     print("─" * 72)
