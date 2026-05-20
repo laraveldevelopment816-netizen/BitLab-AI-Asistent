@@ -173,6 +173,9 @@ class ChatResponse(BaseModel):
     reply_voice: str = ""
     channel: str
     tools_used: list[str] = Field(default_factory=list)
+    # Pun zapis svakog tool poziva (name + input + output). Eval/debug only —
+    # dashboard koristi `_trace` direktno iz baze, a widget ignoriše ovo polje.
+    tool_calls: list[dict] = Field(default_factory=list)
     escalated: bool = False
     iterations: int = 0
 
@@ -243,6 +246,7 @@ async def api_chat(request: Request, req: ChatRequest) -> ChatResponse:
         reply_voice=result.get("reply_voice", ""),
         channel=req.channel,
         tools_used=result["tools_used"],
+        tool_calls=(result.get("_trace") or {}).get("tool_calls", []),
         escalated=result["escalated"],
         iterations=result["iterations"],
     )
