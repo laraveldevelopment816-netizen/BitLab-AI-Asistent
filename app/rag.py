@@ -8,8 +8,10 @@ Indeks se učitava jednom pri startu; model se inicijalizuje na prvom upitu.
 """
 from __future__ import annotations
 
+import csv
 import json
 import re
+from collections import defaultdict
 from typing import Any
 
 import numpy as np
@@ -21,8 +23,48 @@ from .config import settings
 # torch + transformers (~50s na WSL2 /mnt/c). Bez ovoga startup je nepodnošljiv.
 
 _CATEGORY_TERMS_PATH = settings.data_dir / "category_terms.json"
+_CATEGORIES_CSV_PATH = settings.data_dir / "categories.csv"
 _BRAND_PATH = settings.data_dir / "brend.json"
 _MISSING_IMAGES_PATH = settings.data_dir / "missing_images.json"
+
+
+def _load_cat_descendants() -> dict[str, set[str]]:
+    """Iz categories.csv izgradi mapu cat_id → {cat_id i svi descendant-i}.
+
+    Koristi se za parent expansion u hard filteru pretrage: kad Claude pošalje
+    category_id koji je parent (npr. 17 Računari), filter prihvati i sve
+    descendant cat-ove (98 Notebook, 99 Tablet, 93 Desktop Brand, …) umjesto
+    samo 18 direktnih proizvoda u cat 17. Leaf cat-ovi ostaju nepromijenjeni
+    (rezultat sadrži samo {sebe}). Bez ovoga, "računari" upit vraća 18/234
+    pool coverage; sa ovim, vraća 234/234.
+
+    Deterministički, O(n) jednom pri startu. Inaktivni cat-ovi (status=0) se
+    preskaču — neće biti u djeci nikoga.
+    """
+    if not _CATEGORIES_CSV_PATH.exists():
+        return {}
+
+    children: dict[str, list[str]] = defaultdict(list)
+    active_ids: set[str] = set()
+    with open(_CATEGORIES_CSV_PATH, "r", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            if r.get("status") != "1":
+                continue
+            cid = (r.get("id") or "").strip()
+            pid = (r.get("parent_id") or "").strip()
+            if not cid:
+                continue
+            active_ids.add(cid)
+            if pid and pid != "0":
+                children[pid].append(cid)
+
+    def _walk(cat: str) -> set[str]:
+        result = {cat}
+        for c in children.get(cat, []):
+            result |= _walk(c)
+        return result
+
+    return {cat: _walk(cat) for cat in active_ids}
 
 
 def _load_missing_image_sifras() -> frozenset[str]:
@@ -189,6 +231,12 @@ class ProductIndex:
             (self._products.get(str(int(pid)), {}).get("categories_id") or "").strip()
             for pid in self.ids
         ]
+
+        # Parent expansion mapa: cat_id → {sebe + svi descendant-i}. Hard filter
+        # u search() koristi membership umjesto equality, tako da Claude može
+        # pošljati root cat (npr. 17 Računari) i dobiti proizvode iz cijelog
+        # podstabla, ne samo iz roota. Vidi _load_cat_descendants() doctring.
+        self._cat_descendants = _load_cat_descendants()
 
         # Pripremi brand lookup-e
         self._brands = _load_brands()
@@ -376,7 +424,12 @@ class ProductIndex:
             if not meta:
                 continue
             if category_id is not None:
-                if (meta.get("categories_id") or "").strip() != category_id:
+                # Parent expansion: cat 17 (Računari) prihvata i {98, 99, 93, …}.
+                # Leaf cat-ovi se ponašaju kao prije (set = {cat_id}). Fallback
+                # na single-cat ako cat_id nije u CSV-u (defensive — npr. ghost
+                # cat 277 koji ima status=0 ali se pojavljuje u tools enum-u).
+                valid_cats = self._cat_descendants.get(category_id, {category_id})
+                if (meta.get("categories_id") or "").strip() not in valid_cats:
                     continue
             if brand_id is not None:
                 if (meta.get("id_brend") or "").strip() != brand_id:
