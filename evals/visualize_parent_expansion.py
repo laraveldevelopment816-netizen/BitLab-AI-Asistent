@@ -536,13 +536,59 @@ def render(
 
 
 def default_out_path() -> Path:
-    """Vrati ~/Downloads/parent-expansion-{TS}.html ako Downloads postoji,
-    inače fallback na cwd."""
+    """Vrati path do Downloads foldera za default output.
+
+    Probava redom:
+    1. Linux native: ~/Downloads
+    2. WSL → Windows side: /mnt/c/Users/{USER}/Downloads gdje USER probava
+       više varijabli (USER, USERNAME, USERPROFILE basename)
+    3. WSL fallback: skenira /mnt/c/Users/*/Downloads/ — uzima prvi koji
+       postoji (preskače Default, Public, All Users, system folder-e)
+    4. Cwd ako ništa od navedenog nije dostupno
+    """
+    import os
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     fname = f"parent-expansion-{ts}.html"
-    downloads = Path.home() / "Downloads"
-    if downloads.exists() and downloads.is_dir():
-        return downloads / fname
+
+    candidates: list[Path] = []
+
+    # 1. Linux native ~/Downloads
+    candidates.append(Path.home() / "Downloads")
+
+    # 2. WSL → Windows side: probaj poznate env varijable
+    if Path("/mnt/c").exists():
+        win_user_candidates: list[str] = []
+        for env_var in ("USER", "USERNAME"):
+            v = os.environ.get(env_var)
+            if v:
+                win_user_candidates.append(v)
+        # USERPROFILE je tipa "C:\Users\Kule" — uzmi basename
+        userprofile = os.environ.get("USERPROFILE", "")
+        if userprofile:
+            win_user_candidates.append(userprofile.replace("\\", "/").rstrip("/").split("/")[-1])
+        for u in win_user_candidates:
+            candidates.append(Path(f"/mnt/c/Users/{u}/Downloads"))
+
+        # 3. Fallback: skeniraj /mnt/c/Users/*/Downloads/, preskači system folder-e
+        users_root = Path("/mnt/c/Users")
+        if users_root.exists():
+            skip = {"Default", "Default User", "All Users", "Public",
+                    "defaultuser0", "WDAGUtilityAccount", "desktop.ini"}
+            try:
+                for d in users_root.iterdir():
+                    if d.name in skip or not d.is_dir():
+                        continue
+                    dl = d / "Downloads"
+                    if dl.exists() and dl.is_dir():
+                        candidates.append(dl)
+            except (PermissionError, OSError):
+                pass
+
+    for c in candidates:
+        if c.exists() and c.is_dir():
+            return c / fname
+
+    # 4. Last resort: cwd
     return Path.cwd() / fname
 
 
