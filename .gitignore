@@ -56,3 +56,6 @@ build/
 
 # scan.sh output
 repo-scan.md
+
+# Eval visualizer outputs (parent-expansion / parent-runtime HTML dumps)
+evals/runs/

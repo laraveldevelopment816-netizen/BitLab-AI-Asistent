@@ -12,7 +12,7 @@ git checkout claude/analyze-category-hierarchy-dIVqm -- evals/visualize_parent_e
 
 # 2. RUN #1 — rag.py BEZ fix-a (npr. main grana ili pre-merge stanje)
 python evals/visualize_parent_expansion.py
-# → HTML u ~/Downloads/parent-expansion-{TS}.html, FAIL banner
+# → HTML u evals/runs/parent-expansion-{TS}.html, FAIL banner
 
 # 3. Apliciraj fix (merge / cherry-pick / git checkout 93b7502 -- app/rag.py)
 

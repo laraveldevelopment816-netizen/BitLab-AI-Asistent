@@ -12,7 +12,7 @@ columns:
 
 # STATUS — bitlab-ai-asistent
 
-Ažurirano: 2026-05-19
+Ažurirano: 2026-05-21
 
 Taktički nivo (dnevne taske) prema bitlab-standards shemi
 (`bitlab-standards/docs/standards/status-schema.md`). Strateški nivo —
@@ -125,6 +125,61 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
   - `app/config.py` +28 net (feature flag + PWR settings + cross-field validator)
   - `app/tools.py` +40 net (OpenAI shape + escalation dedup)
   - `pyproject.toml` +3 (openai dep)
+- [ ] Routing: Claude bira leaf cat 175 umjesto parent cat 151 za upit "Mobiteli" <!-- id:rtct -->
+  Sa upitom `"Mobiteli"` Claude konzistentno proslijedi `search_products`
+  sa `category_id="175"` (leaf "Mobilni telefoni", 167 proizvoda u indeksu)
+  umjesto `category_id="151"` (parent "Mobiteli", subtree {151, 175, 176,
+  394} = 1575 proizvoda). Posljedica: eval pokazuje 165 proizvoda umjesto
+  očekivanih 1575 čak i sa `SEARCH_TOP_K_OVERRIDE=5287`. Parent_id
+  expansion fix iz `app/rag.py` (`_load_cat_descendants`) radi dobro **kad
+  Claude pošalje parent ID** — ali Claude tu šansu ne koristi.
+
+  Hipoteze za istragu:
+  1. Tool description (`app/tools.py:80-130`) listuje sve kategorije sa
+     punim labelama; vjerovatno "Mobilni telefoni" (cat 175) Claude-u
+     izgleda kao najprirodniji match za riječ "Mobiteli", umjesto da
+     prepozna parent ime.
+  2. Sistem prompt (`app/system_prompts.py`) ne kaže eksplicitno da
+     parent cat-ovi pokrivaju i descendante; Claude vjerovatno
+     pretpostavlja da treba "tačnu" kategoriju.
+  3. Možda treba dodati few-shot primjer: *"upit 'Mobiteli' → category_id=151
+     (parent) jer obuhvata i 175, 176, 394."*
+
+  DoD:
+  - Pokreni eval za 15 upita iz `evals/parent_eval_set.json`; ≥80% upita
+    mora imati `routing_verdict=EXACT_PARENT` (ili `DESCENDANT` ako Claude
+    namjerno bira specifičniji leaf — ali bez gubljenja pun pool).
+  - Eval HTML mora pokazati ≥80% PASS verdict za upite gdje porodica
+    ima >100 proizvoda.
+
+  Procjena: 0.5-1 dan. Izvor: hard testing sesija 2026-05-21.
+
+- [ ] PWR/Claude CLI tool call flakiness pri Haiku adapteru <!-- id:pwhk -->
+  Haiku 4.5 preko `claude-cli` adaptera (PWR backend) povremeno ignoriše
+  bitlab-ov tekstualni protokol `⟦tool_use⟧{...}⟦/tool_use⟧` i pokušava
+  native Claude Code tool call. Token budget potroši unutar tog envelope-a
+  koji adapter ne hvata; `result` polje ostaje prazno; bitlab vidi
+  fallback/escalation umjesto pravog tool poziva. Dokumentovani uzrok u
+  `playwright_router/adapters/claude_cli_adapter.py:124-128`. Pattern u
+  dashboard-u: 46 grešaka u 200 zahtjeva (~23% failure rate); flaky obrazac
+  "ok, ok, error, ok, ok, error" — ne deterministički, ali ne ni random.
+
+  Opcije (sa procjenom rizika):
+  1. **Few-shot u sistem prompt-u** (`bitlab-ai-asistent`) — eksplicitan
+     primjer protokola sa očekivanim `⟦tool_use⟧{...}⟦/tool_use⟧` blokom.
+     Niski blast radius, srednja efikasnost (smanjuje %, ne eliminiše).
+  2. **Adapter intermediate output recovery** (`playwright-router`) — kad
+     `result==""` ali `tokens_out>0`, parse-uj internal Claude CLI envelope
+     i transliteriraj native tool_use u tekstualni protokol. Veći fix-rate,
+     ali fragilno na promjene Claude CLI internals.
+  3. **Jednokratni retry u adapteru** — ako `result==""`, ponovi isti
+     prompt; stohastički problemi tipično prolaze drugi put.
+
+  Preporuka: kombinacija 1 + 3. Opciju 2 izbjeći — vezuje nas za internals.
+
+  Procjena: 0.5-1 dan (opcija 1) + 0.5 dan (opcija 3). Izvor: hard testing
+  sesija 2026-05-21, paralelna dijagnoza u playwright-router sesiji.
+
 - [ ] Strukturisani search output (JSON shema + Pydantic + Layout) <!-- id:srcv -->
   AI output za search rezultate trenutno nije konzistentan — isti tip upita
   može vratiti različite strukture, layout puca na 6-7 rezultata (dokumentovan
@@ -176,6 +231,21 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
   billing/quota, ConnectionError, happy path regression) — svi prolaze, ne
   troše pravi API. Plan ručnog testa (uživo curl + browser widget render):
   [`TEST-anthropic-errors.md`](TEST-anthropic-errors.md).
+- [x] Eval visualizer output u `evals/runs/` + RUNBOOK u `docs/` <!-- id:erun -->
+  Oba parent visualizera (`evals/visualize_parent_runtime.py`,
+  `evals/visualize_parent_expansion.py`) sad imaju deterministički default output
+  path `evals/runs/parent-{expansion|runtime}-…html`. Ranije: `~/Downloads`
+  fallback → cwd (root repoa u WSL-u gdje `~/Downloads` ne postoji), pa se
+  ~30 HTML artefakata akumuliralo u root-u. `default_out_path()` u obje skripte
+  pravi folder i vraća putanju u `evals/runs/` (`PROJECT_ROOT/evals/runs/`); `--out`
+  i dalje override-uje. 29 postojećih HTML artefakata premješteno u
+  `evals/runs/`, root čist. `evals/runs/` dodato u `.gitignore` da se runtime
+  artefakti ne trackuju. `RUNBOOK-debug.md` premješten iz root-a u
+  `docs/RUNBOOK-debug.md` (cijeli runbook pokriva servere/dashboard/Playwright +
+  evals; root je bio pogrešan dom). Path reference-i ispravljeni u
+  `TEST_category-parent_id_fix.md` i u samom RUNBOOK-u (`~/Downloads/parent-*` →
+  `evals/runs/parent-*`); brainstorm log/decisions nisu dirani (istorijski
+  zapis). Izvor: housekeeping sesija 2026-05-21.
 - [x] Voice modul off (chat-only) <!-- id:vmoff -->
   Backend: dekoratori `/api/tts`, `/api/stt`, `/api/voice/status` komentarisani
   u `app/main.py` (funkcije ostaju za reaktivaciju), "Whisper" leftover uklonjen
