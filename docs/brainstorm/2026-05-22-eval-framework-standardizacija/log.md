@@ -358,3 +358,66 @@ Tako kad negativni entry padne, vidimo *zašto* je očekivano da padne — razdv
 ### Mišljenje
 
 Plan ide u dobrom smjeru. Razdvajanje seta + invarijantni negativni primjeri = bolji signal/šum. Pre-router kao top layer **tek nakon** što oba baseline-a stoje — slijedi [[feedback-one-fix-at-a-time]]. Way forward potvrđen.
+
+## Update: druga instanca već refaktorisala strukturu
+
+Provjereno stanje:
+
+```
+evals/
+  README.md
+  run_categories.py          # PLACEHOLDER (13 LOC docstring, no implementacija)
+  run_products.py            # PLACEHOLDER (16 LOC docstring, no implementacija)
+  sets/
+    categories_cold.json     # 245 entry-ja (235 auto-gen + 10 manual negative)
+  archives/
+    visualize_parent_runtime.py   # stari engine, RADI ali zna stari format
+    ... (svi raniji eval skripta)
+  runs/
+```
+
+`categories_cold.json` ima **novi schema** — `expect.tool`, `expect.category_id`, `history`, `tags`. Arhivska `visualize_parent_runtime.py` traži **stari schema** — `expected_category_id`, `category_label`. Šema mismatch.
+
+## Ivanov novi zahtjev: kako pokriti products bez promjene koda
+
+Pitanje: može li arhivska skripta da radi za products bez izmjena?
+
+**Odgovor: DA, ako se products_cold.json napravi u STAROM formatu.** Šema mismatch postoji samo za nove fajlove (`categories_cold.json`). Stari engine prima `expected_category_id` direktno iz JSON-a (`run_categories.py:703-704` u arhivskoj verziji).
+
+### Plan minimalne invazije
+
+1. Kreiraj `evals/sets/products_cold.json` u **starom formatu** sa product upitima:
+   ```json
+   [
+     {"query": "iPhone 17", "expected_category_id": "175", "category_label": "Mobilni telefoni / iPhone"},
+     {"query": "gaming miš do 100 KM", "expected_category_id": "222", "category_label": "Miševi i grafički tableti"},
+     ...
+   ]
+   ```
+
+2. Pokreni arhivsku skripte:
+   ```bash
+   python evals/archives/visualize_parent_runtime.py \
+     --queries evals/sets/products_cold.json \
+     --label products-cold-smoke \
+     --limit 5
+   ```
+
+3. Output: `evals/runs/parent-runtime-products-cold-smoke-<TS>.html`.
+
+4. **Verdikt logika već radi za product upite:**
+   - Claude pozove `search_products(cat_id=X, max_price_km=Y, brand_id=Z, query=...)`.
+   - `routing_verdict` → `EXACT_PARENT` (cat_id se poklapa sa expected) ili `DESCENDANT` (smart routing).
+   - `result_verdict` → PASS ako ≥3 proizvoda iz subtree-a.
+   - `overall_verdict` → naslanja se na result za search grane.
+
+5. **Šta NE radi bez izmjena (refaktor kasnije):**
+   - Filter verifikacija (`max_price_km`, `brand_id` u args_subset) — nije implementirano u arhivskoj skripti.
+   - HTML naslov će i dalje reći "Parent kategorije" za product run — kozmetika, label u file imenu razdvaja.
+   - Novi tags / failure_reason iz schema nisu korišćeni.
+
+**Ovo daje smoke signal za product upite SADA**, bez engine rada. Refaktor (`run_products.py`) može doći nakon što vidimo šta arhivska skripta već hvata a šta promaši.
+
+### Drift od mog ranijeg plana
+
+Ranije sam predložio "auto-gen products entry-ja iz categories.csv". Za products to ne radi — products imaju kvalifikatore (cijena, brend, model) koji nisu u CSV-u. Auto-gen je validan za kategorije (245 entry-ja iz 238 cat-ova), ali za products treba ručna kreacija. Manji set (10-30) sa pažljivim odabirom je bolji od velikog auto-gen šuma.
