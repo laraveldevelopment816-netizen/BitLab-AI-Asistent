@@ -178,25 +178,36 @@ def parse_products(reply: str) -> list[dict]:
     return out
 
 
-def extract_search_calls(tool_calls: list[dict]) -> list[dict]:
-    """Izvuci samo `search_products` pozive sa parsed argumentima."""
+def extract_tool_calls(tool_calls: list[dict]) -> list[dict]:
+    """Izvuci routing-relevantne pozive (`search_products` + `category_overview`)
+    sa parsed argumentima. Svaki dict ima `tool` polje za razlikovanje."""
     out: list[dict] = []
     for tc in tool_calls or []:
-        if tc.get("tool_name") != "search_products":
+        name = tc.get("tool_name")
+        if name not in ("search_products", "category_overview"):
             continue
         try:
             args = json.loads(tc.get("input_json") or "{}")
         except json.JSONDecodeError:
             args = {}
-        out.append({
-            "iteration": tc.get("iteration"),
-            "query": args.get("query", ""),
-            "category_id": args.get("category_id"),
-            "brand_id": args.get("brand_id"),
-            "top_k": args.get("top_k"),
-            "max_price_km": args.get("max_price_km"),
-            "latency_ms": tc.get("latency_ms"),
-        })
+        if name == "search_products":
+            out.append({
+                "tool": "search_products",
+                "iteration": tc.get("iteration"),
+                "query": args.get("query", ""),
+                "category_id": args.get("category_id"),
+                "brand_id": args.get("brand_id"),
+                "top_k": args.get("top_k"),
+                "max_price_km": args.get("max_price_km"),
+                "latency_ms": tc.get("latency_ms"),
+            })
+        else:  # category_overview
+            out.append({
+                "tool": "category_overview",
+                "iteration": tc.get("iteration"),
+                "category_id": args.get("cat_id"),
+                "latency_ms": tc.get("latency_ms"),
+            })
     return out
 
 
@@ -255,22 +266,32 @@ def match_product_cat(name: str, url: str, lookup: dict) -> tuple[str | None, st
 # ─── Per-query analiza ──────────────────────────────────────────────────
 
 def routing_verdict(
+    routed_tool: str | None,
     routed_cat: str | None,
     expected_cat: str,
     expected_subtree: set[str],
 ) -> str:
-    """Klasifikacija šta je Claude poslao kao category_id u search_products."""
-    if routed_cat is None:
-        return "NULL"           # nije poslao filter — pusto za hybrid + soft boost
+    """Klasifikacija Claude-ovog routing-a: koji tool je pozvao i sa kojim cat_id-om."""
+    if routed_tool is None or routed_cat is None:
+        return "NULL"               # nije pozvao routing tool — pusto
+    if routed_tool == "category_overview":
+        if routed_cat == expected_cat:
+            return "OVERVIEW_PASS"   # overview na tačnom parent-u (očekivano za parent upite)
+        return "OVERVIEW_WRONG"      # overview na pogrešnom parent-u (npr. leaf upit → parent overview)
+    # routed_tool == "search_products"
     if routed_cat == expected_cat:
-        return "EXACT_PARENT"   # poslao baš parent — najopasniji case za BEFORE staging
+        return "EXACT_PARENT"        # poslao baš očekivani cat (parent ili leaf — zavisi od test case-a)
     if routed_cat in expected_subtree:
-        return "DESCENDANT"     # smart routing — child cat unutar subtree
-    return "OUT"                # promašaj — cat van subtree
+        return "DESCENDANT"          # smart routing — child cat unutar subtree
+    return "OUT"                     # promašaj — cat van subtree
 
 
-def result_verdict(n_returned: int, n_in_subtree: int) -> str:
-    """Da li je end-user dobio relevantne proizvode."""
+def result_verdict(n_returned: int, n_in_subtree: int, routed_tool: str | None) -> str:
+    """Da li je end-user dobio relevantne proizvode. Za `category_overview` je
+    N/A jer overview ne dostavlja proizvode nego routing odluku — mjeri se kroz
+    routing_verdict, ne kroz result_verdict."""
+    if routed_tool == "category_overview":
+        return "NA"
     if n_returned == 0:
         return "FAIL"
     if n_in_subtree == 0:
@@ -280,13 +301,32 @@ def result_verdict(n_returned: int, n_in_subtree: int) -> str:
     return "WARN"
 
 
+def overall_verdict(routing: str, result: str) -> str:
+    """Sjedinjeni per-upit verdict: PASS / WARN / FAIL. Banner i leaderboard
+    glavnu kolonu koriste ovo umjesto da gledaju routing i result odvojeno —
+    za overview rute result je N/A pa bi inače izgledalo kao "ni dobro ni loše".
+
+    - search_products: pratimo result_verdict (PASS/WARN/FAIL).
+    - category_overview: OVERVIEW_PASS → PASS, OVERVIEW_WRONG → FAIL.
+    - NULL/OUT routing: FAIL bez obzira na result.
+    """
+    if routing in ("NULL", "NA", "OUT"):
+        return "FAIL"
+    if routing == "OVERVIEW_PASS":
+        return "PASS"
+    if routing == "OVERVIEW_WRONG":
+        return "FAIL"
+    # search_products grane (EXACT_PARENT, DESCENDANT) → naslanja se na result
+    return result if result in ("PASS", "WARN", "FAIL") else "FAIL"
+
+
 # ─── HTML ───────────────────────────────────────────────────────────────
 
 HTML = r"""<!doctype html>
 <html lang="bs">
 <head>
 <meta charset="utf-8">
-<title>Parent kategorije — runtime ponašanje</title>
+<title>Rutiranje po kategorijama — ponašanje uživo</title>
 <style>
   :root {
     --bg:#0f1419; --panel:#161c24; --border:#232b36; --text:#d7dbe0;
@@ -345,10 +385,12 @@ HTML = r"""<!doctype html>
   .badge.warn{background:rgba(255,211,74,0.18);color:var(--warn)}
   .badge.fail{background:rgba(255,107,138,0.18);color:var(--fail)}
   .badge.na{background:rgba(255,255,255,0.04);color:var(--na)}
-  .badge.exact_parent{background:rgba(255,107,138,0.18);color:var(--fail)}
+  .badge.exact_parent{background:rgba(110,231,160,0.18);color:var(--ok)}
   .badge.descendant{background:rgba(110,231,160,0.18);color:var(--ok)}
   .badge.null{background:rgba(76,194,255,0.18);color:var(--accent)}
   .badge.out{background:rgba(255,211,74,0.18);color:var(--warn)}
+  .badge.overview_pass{background:rgba(110,231,160,0.18);color:var(--ok)}
+  .badge.overview_wrong{background:rgba(255,107,138,0.18);color:var(--fail)}
   details.qdetail{background:var(--panel);border:1px solid var(--border);
     border-radius:6px;padding:8px 14px;margin-bottom:8px}
   details.qdetail summary{cursor:pointer;font-weight:500;list-style:none;outline:none}
@@ -373,7 +415,7 @@ HTML = r"""<!doctype html>
 </head>
 <body>
 <header>
-  <h1>Parent kategorije — runtime ponašanje (/api/chat)</h1>
+  <h1>Rutiranje po kategorijama — ponašanje uživo (/api/chat)</h1>
   <div class="sub" id="meta"></div>
   <div class="model-badge" id="model-badge"><span class="lab">model</span><span id="model-name">—</span></div>
 </header>
@@ -381,26 +423,26 @@ HTML = r"""<!doctype html>
 
 <div id="verdict"></div>
 
-<h2>Summary</h2>
+<h2>Pregled</h2>
 <div class="stats" id="stats"></div>
 
-<h2>Per-query leaderboard</h2>
+<h2>Tabela po upitima</h2>
 <table class="leaderboard">
   <thead><tr>
-    <th>Upit (ime parent kategorije)</th>
+    <th>Upit (očekivana kategorija)</th>
     <th>Rutovano na (kategorija)</th>
     <th>Kako je rutovao</th>
     <th class="num">Vraćeno</th>
-    <th class="num">Pogodaka</th>
-    <th class="num">Porodica ima</th>
-    <th>Rezultat</th>
+    <th class="num">Pogodaka u porodici</th>
+    <th class="num">Porodica ukupno</th>
+    <th>Ishod</th>
     <th class="num">Iter</th>
     <th class="num">Trajanje</th>
   </tr></thead>
   <tbody id="leaderboard"></tbody>
 </table>
 
-<h2>Detalji po upitu (klikni red za otvoriti)</h2>
+<h2>Detalji po upitu (kliknite red da otvorite)</h2>
 <div id="details"></div>
 
 </main>
@@ -432,53 +474,58 @@ if (effortTxt) badgeParts.push(effortTxt);
 if (backendTxt) badgeParts.push("via " + backendTxt);
 document.getElementById("model-name").textContent = badgeParts.join(" · ");
 
-// Prevod tehničkih enum-a u prirodan jezik (za badge tekst)
+// Prevod tehničkih enum-a u prirodan jezik (crnogorski ijekavica)
 const ROUTING_LABEL = {
-  "EXACT_PARENT": "baš parent",
-  "DESCENDANT": "podkategorija",
-  "NULL": "bez filtera",
-  "OUT": "promašena",
+  "EXACT_PARENT": "pretraga — tačna kategorija",
+  "DESCENDANT": "pretraga — podkategorija iz iste porodice",
+  "NULL": "bez kategorijskog filtera",
+  "OUT": "pretraga — van porodice",
+  "OVERVIEW_PASS": "pregled porodice — tačan roditelj",
+  "OVERVIEW_WRONG": "pregled porodice — pogrešan roditelj",
   "NA": "—",
 };
 const RESULT_LABEL = {
-  "PASS": "dobar",
+  "PASS": "prošlo",
   "WARN": "upozorenje",
-  "FAIL": "promaši",
-  "NA": "—",
+  "FAIL": "promašaj",
+  "NA": "ne primjenjuje se",
 };
 function routingLabel(v) { return ROUTING_LABEL[v] || v; }
 function resultLabel(v) { return RESULT_LABEL[v] || v; }
 
-// Verdict banner
+// Glavni baner — koristi ukupni ishod koji sjedinjuje pretragu i pregled porodice
 const v = DATA.summary;
 let vClass, vTitle, vBody;
 if (v.fail_count === 0 && v.warn_count === 0) {
   vClass = "pass";
-  vTitle = "✓ Sve dobro — Claude vraća relevantne proizvode za sve parent kategorije";
-  vBody = `${v.pass_count} od ${v.total} upita ima dobre rezultate. Prosjek ${v.avg_in_subtree.toFixed(1)} relevantnih proizvoda po upitu.`;
+  vTitle = "✓ Sve prošlo — Claude pravilno rutira upite";
+  vBody = `${v.pass_count} prošlo od ${v.total} upita.`;
 } else if (v.fail_count > 0) {
   vClass = "fail";
-  vTitle = `✗ ${v.fail_count} upita promašeno — Claude ne vraća relevantne proizvode`;
-  vBody = `${v.pass_count} dobro, ${v.warn_count} upozorenje, ${v.fail_count} promaši od ${v.total} upita. ` +
-    `${v.exact_parent_count} upita gdje je Claude poslao baš parent kao filter (najopasnije bez fix-a).`;
+  vTitle = `✗ ${v.fail_count} upita promašeno`;
+  vBody = `${v.pass_count} prošlo, ${v.warn_count} upozorenje, ${v.fail_count} promašaj od ${v.total} upita. ` +
+    `Razrada rute: pretraga ${v.search_pass_count||0} prošlo / ${v.search_warn_count||0} upozorenje / ${v.search_fail_count||0} promašaj; ` +
+    `pregled porodice ${v.overview_pass_count||0} tačan / ${v.overview_wrong_count||0} pogrešan.`;
 } else {
   vClass = "warn";
   vTitle = `⚠ ${v.warn_count} upita sa upozorenjem — slabi rezultati`;
-  vBody = `${v.pass_count} dobro, ${v.warn_count} upozorenje. Pogledaj detalje po upitu.`;
+  vBody = `${v.pass_count} prošlo, ${v.warn_count} upozorenje od ${v.total} upita.`;
 }
 document.getElementById("verdict").innerHTML =
   `<div class="verdict-banner ${vClass}">${vTitle}<small>${vBody}</small></div>`;
 
-// Stats cards
+// Pregled — sažete kartice po metrikama
 document.getElementById("stats").innerHTML = [
   ["", `${v.total}`, "Ukupno upita"],
-  ["pass", `${v.pass_count}`, "Dobri rezultati"],
-  ["warn", `${v.warn_count}`, "Upozorenje (slabi)"],
-  ["fail", `${v.fail_count}`, "Promašeni"],
-  ["", `${v.exact_parent_count}`, "Poslao baš parent (rizik)"],
-  ["", `${v.descendant_count}`, "Poslao podkategoriju (smart)"],
-  ["", `${v.null_count}`, "Bez filtera"],
-  ["", `${v.total_returned}`, "Σ vraćenih proizvoda"],
+  ["pass", `${v.pass_count}`, "Ukupno prošlo"],
+  ["warn", `${v.warn_count}`, "Ukupno upozorenje"],
+  ["fail", `${v.fail_count}`, "Ukupno promašaj"],
+  ["pass", `${v.overview_pass_count || 0}`, "Pregled — tačan roditelj"],
+  ["fail", `${v.overview_wrong_count || 0}`, "Pregled — pogrešan roditelj"],
+  ["", `${v.search_pass_count || 0}`, "Pretraga — prošlo"],
+  ["", `${v.search_fail_count || 0}`, "Pretraga — promašaj"],
+  ["", `${v.null_count}`, "Bez kategorijskog filtera"],
+  ["", `${v.total_returned}`, "Ukupno vraćeno proizvoda"],
 ].map(([cls, val, lab]) =>
   `<div class="stat ${cls}"><div class="v">${val}</div><div class="l">${lab}</div></div>`
 ).join("");
@@ -497,9 +544,9 @@ function routedDisplay(cid) {
 // Leaderboard
 document.getElementById("leaderboard").innerHTML = DATA.rows.map(r => {
   const rt = r.routing_verdict.toLowerCase();
-  const res = r.result_verdict.toLowerCase();
+  const ovr = (r.overall_verdict || r.result_verdict).toLowerCase();
   const parentName = catName(r.expected_cat_id);
-  const parentTxt = parentName ? `parent kat. ${r.expected_cat_id} — ${parentName}` : `parent kat. ${r.expected_cat_id}`;
+  const parentTxt = parentName ? `očekivana kat. ${r.expected_cat_id} — ${parentName}` : `očekivana kat. ${r.expected_cat_id}`;
   return `<tr>
     <td class="q">${escapeHtml(r.query)}<br><span style="color:var(--muted);font-size:10px">${escapeHtml(parentTxt)}</span></td>
     <td class="id">${routedDisplay(r.routed_cat_id)}</td>
@@ -507,7 +554,7 @@ document.getElementById("leaderboard").innerHTML = DATA.rows.map(r => {
     <td class="num">${r.n_returned} <span style="color:var(--muted);font-size:10px">(proizvoda)</span></td>
     <td class="num">${r.n_in_subtree} <span style="color:var(--muted);font-size:10px">(proizvoda)</span></td>
     <td class="num">${r.subtree_total} <span style="color:var(--muted);font-size:10px">(proizvoda)</span></td>
-    <td><span class="badge ${res}">${resultLabel(r.result_verdict)}</span></td>
+    <td><span class="badge ${ovr}">${resultLabel(r.overall_verdict || r.result_verdict)}</span></td>
     <td class="num">${r.iterations}</td>
     <td class="num">${r.latency_ms}ms</td>
   </tr>`;
@@ -518,14 +565,22 @@ document.getElementById("details").innerHTML = DATA.rows.map(r => {
   if (r.error) {
     return `<details class="qdetail"><summary>${escapeHtml(r.query)} — <span class="err">${escapeHtml(r.error)}</span></summary></details>`;
   }
-  const callsHtml = r.search_calls.length
-    ? r.search_calls.map(c =>
-        `<div class="toolcall">iter ${c.iteration} · pretraga "${escapeHtml(c.query)}" · ` +
-        `kategorija=${c.category_id ?? "—"} · brend=${c.brand_id ?? "—"} · ` +
-        `top_k=${c.top_k ?? "default"} · max_cijena=${c.max_price_km ?? "—"} · ` +
-        `(${c.latency_ms ?? "?"}ms)</div>`
-      ).join("")
-    : `<div class="toolcall" style="color:var(--muted)">— Claude nije pozvao search_products —</div>`;
+  const calls = r.tool_calls || [];
+  const callsHtml = calls.length
+    ? calls.map(c => {
+        const catTxt = c.category_id ?? "—";
+        const catNm = catName(c.category_id);
+        const catDisp = catNm ? `${catTxt} (${escapeHtml(catNm)})` : catTxt;
+        if (c.tool === "category_overview") {
+          return `<div class="toolcall">iteracija ${c.iteration} · <b>pregled porodice</b> · ` +
+            `roditelj=${catDisp} · (${c.latency_ms ?? "?"}ms)</div>`;
+        }
+        return `<div class="toolcall">iteracija ${c.iteration} · <b>pretraga proizvoda</b> "${escapeHtml(c.query || "")}" · ` +
+          `kategorija=${catDisp} · brend=${c.brand_id ?? "—"} · ` +
+          `top_k=${c.top_k ?? "podrazumijevani"} · max_cijena=${c.max_price_km ?? "—"} · ` +
+          `(${c.latency_ms ?? "?"}ms)</div>`;
+      }).join("")
+    : `<div class="toolcall" style="color:var(--muted)">— Claude nije pozvao alat za rutiranje —</div>`;
   // Prevod debug-flag-a (kako smo mapirali proizvod iz Claude-ovog odgovora
   // na red u bazi) u ljudski jezik.
   const VIA_LABEL = {
@@ -539,8 +594,8 @@ document.getElementById("details").innerHTML = DATA.rows.map(r => {
     ? `<ul class="products">${r.products.map(p => {
         const viaTxt = p.match_via && VIA_LABEL[p.match_via] ? ` · ${VIA_LABEL[p.match_via]}` : "";
         const inTxt = p.in_subtree
-          ? " ✓ pogodak"
-          : (p.cat_id ? ` ✗ promaši (kategorija ${p.cat_id})` : " ✗ nije pronađen u bazi proizvoda");
+          ? " ✓ pogodak u porodici"
+          : (p.cat_id ? ` ✗ van porodice (kategorija ${p.cat_id})` : " ✗ nije pronađen u bazi proizvoda");
         return `<li class="${p.in_subtree ? "in-subtree" : "out-subtree"}">` +
         `${escapeHtml(p.name)} <span style="color:var(--muted);font-size:10px">` +
         `${inTxt}${viaTxt}</span></li>`;
@@ -548,8 +603,9 @@ document.getElementById("details").innerHTML = DATA.rows.map(r => {
     : `<div style="color:var(--muted);font-size:11px">— Nijedan proizvod nije izvučen iz odgovora —</div>`;
   const parentNm = catName(r.expected_cat_id);
   const famTxt = parentNm ? `porodica ${parentNm}` : "porodica";
+  const sumVerdict = r.overall_verdict || r.result_verdict;
   return `<details class="qdetail">
-    <summary>${escapeHtml(r.query)} — <span class="badge ${r.result_verdict.toLowerCase()}">${resultLabel(r.result_verdict)}</span> ${r.n_in_subtree} pogodaka od ${r.n_returned} vraćenih proizvoda (${famTxt} ima ${r.subtree_total} proizvoda)</summary>
+    <summary>${escapeHtml(r.query)} — <span class="badge ${sumVerdict.toLowerCase()}">${resultLabel(sumVerdict)}</span> ${r.n_in_subtree} pogodaka od ${r.n_returned} vraćenih proizvoda (${famTxt} ima ${r.subtree_total} proizvoda)</summary>
     <div class="grid">
       <div class="section">
         <h3>Šta je Claude pozvao</h3>
@@ -561,7 +617,7 @@ document.getElementById("details").innerHTML = DATA.rows.map(r => {
       </div>
     </div>
     <div class="section" style="margin-top:10px">
-      <h3>Sirov odgovor od Claude-a</h3>
+      <h3>Sirov odgovor Claude-a</h3>
       <div class="reply">${escapeHtml(r.reply)}</div>
     </div>
   </details>`;
@@ -631,8 +687,8 @@ def main() -> int:
             chat_model = hz.get("chat_model", "?")
             chat_effort = hz.get("chat_model_effort", "?")
             llm_backend = hz.get("llm_backend", "?")
-            print(f"healthz: {r.status_code}  model: {chat_model}  "
-                  f"effort: {chat_effort}  backend: {llm_backend}")
+            print(f"provjera servera: {r.status_code}  model: {chat_model}  "
+                  f"napor: {chat_effort}  backend: {llm_backend}")
     except Exception as e:
         print(f"GREŠKA: server nedostupan na {args.url}: {e}", file=sys.stderr)
         return 1
@@ -655,28 +711,36 @@ def main() -> int:
             elapsed_ms = int((time.monotonic() - t0) * 1000)
 
             if "_error" in resp:
-                print(f"ERROR ({elapsed_ms}ms): {resp['_error']}")
+                print(f"GREŠKA ({elapsed_ms}ms): {resp['_error']}")
                 rows.append({
                     "query": query, "expected_cat_id": expected_cat,
                     "category_label": label,
                     "error": resp["_error"],
+                    "routed_tool": None,
                     "routed_cat_id": None, "routing_verdict": "NA",
                     "n_returned": 0, "n_in_subtree": 0,
                     "subtree_total": subtree_product_count,
-                    "result_verdict": "FAIL", "iterations": 0,
+                    "result_verdict": "FAIL", "overall_verdict": "FAIL",
+                    "iterations": 0,
                     "latency_ms": elapsed_ms, "products": [],
-                    "search_calls": [], "reply": "",
+                    "tool_calls": [], "reply": "",
                 })
                 continue
 
             reply = resp.get("reply", "")
-            tool_calls = resp.get("tool_calls", [])
+            tool_calls_raw = resp.get("tool_calls", [])
             iterations = resp.get("iterations", 0)
-            search_calls = extract_search_calls(tool_calls)
+            tool_calls_parsed = extract_tool_calls(tool_calls_raw)
 
-            # Routing — uzmi prvi search_products poziv (najčešće je samo jedan)
-            routed_cat = search_calls[0]["category_id"] if search_calls else None
-            r_verdict = routing_verdict(routed_cat, expected_cat, subtree)
+            # Routing — uzmi prvi routing-relevantan poziv (search_products ili
+            # category_overview, šta god Claude prvo uradi).
+            if tool_calls_parsed:
+                routed_tool = tool_calls_parsed[0]["tool"]
+                routed_cat = tool_calls_parsed[0]["category_id"]
+            else:
+                routed_tool = None
+                routed_cat = None
+            r_verdict = routing_verdict(routed_tool, routed_cat, expected_cat, subtree)
 
             products_raw = parse_products(reply)
             products: list[dict] = []
@@ -693,9 +757,20 @@ def main() -> int:
                     "match_via": via,
                 })
 
-            res_verdict = result_verdict(len(products), n_in_subtree)
-            # Stdout linija — natural language: "5 vraćeno, 2 u porodici (Mobiteli porodica ima 167)"
-            print(f"{res_verdict:<4} ruta={r_verdict:<13} vraćeno={len(products)} "
+            res_verdict = result_verdict(len(products), n_in_subtree, routed_tool)
+            ovr_verdict = overall_verdict(r_verdict, res_verdict)
+            # Stdout — prirodan jezik (crnogorski ijekavica)
+            verdict_label = {"PASS": "prošlo", "WARN": "upozorenje", "FAIL": "promašaj"}.get(ovr_verdict, ovr_verdict)
+            routing_label = {
+                "EXACT_PARENT": "tačna kategorija",
+                "DESCENDANT": "podkategorija",
+                "NULL": "bez filtera",
+                "OUT": "van porodice",
+                "OVERVIEW_PASS": "pregled — tačan roditelj",
+                "OVERVIEW_WRONG": "pregled — pogrešan roditelj",
+                "NA": "—",
+            }.get(r_verdict, r_verdict)
+            print(f"{verdict_label:<10} ruta='{routing_label}' vraćeno={len(products)} "
                   f"u_porodici={n_in_subtree}/{len(products)} "
                   f"porodica_ima={subtree_product_count} ({elapsed_ms}ms)")
 
@@ -703,16 +778,18 @@ def main() -> int:
                 "query": query,
                 "expected_cat_id": expected_cat,
                 "category_label": label,
+                "routed_tool": routed_tool,
                 "routed_cat_id": routed_cat,
                 "routing_verdict": r_verdict,
                 "n_returned": len(products),
                 "n_in_subtree": n_in_subtree,
                 "subtree_total": subtree_product_count,
                 "result_verdict": res_verdict,
+                "overall_verdict": ovr_verdict,
                 "iterations": iterations,
                 "latency_ms": elapsed_ms,
                 "products": products,
-                "search_calls": search_calls,
+                "tool_calls": tool_calls_parsed,
                 "reply": reply,
                 "error": None,
             })
@@ -720,14 +797,23 @@ def main() -> int:
     wall_s = time.monotonic() - t_wall
 
     # Aggregates
-    pass_n = sum(1 for r in rows if r["result_verdict"] == "PASS")
-    warn_n = sum(1 for r in rows if r["result_verdict"] == "WARN")
-    fail_n = sum(1 for r in rows if r["result_verdict"] == "FAIL")
+    pass_n = sum(1 for r in rows if r["overall_verdict"] == "PASS")
+    warn_n = sum(1 for r in rows if r["overall_verdict"] == "WARN")
+    fail_n = sum(1 for r in rows if r["overall_verdict"] == "FAIL")
+    # Search-only granularnost (za detaljne stats kartice — koliko od search ruta je dobro)
+    search_pass_n = sum(1 for r in rows if r["result_verdict"] == "PASS")
+    search_warn_n = sum(1 for r in rows if r["result_verdict"] == "WARN")
+    search_fail_n = sum(1 for r in rows if r["result_verdict"] == "FAIL")
     exact_n = sum(1 for r in rows if r["routing_verdict"] == "EXACT_PARENT")
     desc_n = sum(1 for r in rows if r["routing_verdict"] == "DESCENDANT")
     null_n = sum(1 for r in rows if r["routing_verdict"] == "NULL")
+    overview_pass_n = sum(1 for r in rows if r["routing_verdict"] == "OVERVIEW_PASS")
+    overview_wrong_n = sum(1 for r in rows if r["routing_verdict"] == "OVERVIEW_WRONG")
     total_returned = sum(r["n_returned"] for r in rows)
-    avg_in_subtree = sum(r["n_in_subtree"] for r in rows) / len(rows) if rows else 0.0
+    # Prosjek u_porodici računamo SAMO preko search_products redova (overview je N/A).
+    search_rows = [r for r in rows if r["routed_tool"] == "search_products"]
+    avg_in_subtree = (sum(r["n_in_subtree"] for r in search_rows) / len(search_rows)
+                      if search_rows else 0.0)
 
     # cat_id → ime kategorije (potrebno HTML-u za prijateljskije badge-ove
     # u tabeli — "175 (Mobiteli)" umjesto golog "175").
@@ -754,9 +840,14 @@ def main() -> int:
             "pass_count": pass_n,
             "warn_count": warn_n,
             "fail_count": fail_n,
+            "search_pass_count": search_pass_n,
+            "search_warn_count": search_warn_n,
+            "search_fail_count": search_fail_n,
             "exact_parent_count": exact_n,
             "descendant_count": desc_n,
             "null_count": null_n,
+            "overview_pass_count": overview_pass_n,
+            "overview_wrong_count": overview_wrong_n,
             "total_returned": total_returned,
             "avg_in_subtree": avg_in_subtree,
         },
@@ -767,13 +858,14 @@ def main() -> int:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(render(data), encoding="utf-8")
 
-    # Terminal summary
+    # Terminal sažetak (crnogorski ijekavica)
     print()
     print("─" * 72)
-    print(f"Total: {len(rows)} upita | PASS={pass_n} WARN={warn_n} FAIL={fail_n}")
-    print(f"Routing: EXACT_PARENT={exact_n} DESCENDANT={desc_n} NULL={null_n}")
-    print(f"Wall time: {wall_s:.1f}s | Σ products returned: {total_returned}")
-    print(f"HTML: {out_path}")
+    print(f"Ukupno: {len(rows)} upita | ishod: prošlo={pass_n} upozorenje={warn_n} promašaj={fail_n}")
+    print(f"Rute: tačna kategorija={exact_n}  podkategorija={desc_n}  bez filtera={null_n}  "
+          f"pregled tačan={overview_pass_n}  pregled pogrešan={overview_wrong_n}")
+    print(f"Trajanje: {wall_s:.1f}s | ukupno vraćeno proizvoda: {total_returned}")
+    print(f"HTML izvještaj: {out_path}")
     print("─" * 72)
     return 0 if fail_n == 0 else 1
 
