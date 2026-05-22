@@ -1,32 +1,28 @@
-"""Runtime parent-category visualizer — sibling of `visualize_parent_expansion.py`.
+"""run_products.py — engine za pretragu proizvoda (kvalifikovani upiti, cold scenario).
 
-Razlika:
-- `visualize_parent_expansion.py` — deterministička simulacija "šta bi hard filter
-  vratio sa/bez fix-a". Ne dotiče server, samo CSV+JSON.
-- `visualize_parent_runtime.py` — pravi HTTP poziv ka `/api/chat` za svaki upit iz
-  `parent_eval_set.json`. Bilježi koje tool-call argumente Claude STVARNO šalje, koje
-  proizvode vraća, i mapira ih na njihov `categories_id` u stablu kategorija.
+Šalje svaki upit iz `evals/sets/products_cold.json` na `/api/chat` i mjeri:
+- da li je Claude pozvao `search_products` (overview je WRONG_TOOL za kvalifikovan upit)
+- da li je proslijedio očekivane filtere (`category_id`, `brand_id`, `max_price_km`)
+- da li su vraćeni proizvodi relevantni (in-subtree + brand match + u cjenovnom opsegu)
 
-Cilj: dva HTML fajla otvori side-by-side. Lijevo "teoretski hard filter (with/without
-fix)". Desno "realno ponašanje sa LLM-om u petlji". Razlika pokazuje koliko LLM sloj
-zaobilazi problem (smart routing, soft boost, hybrid search bez filtera).
+Eval set ima dva tipa entry-ja, oba sa unifikovanim shape-om
+`{query, history, expect, tags}`:
 
-Versioning: `--label v1` ulazi u filename + meta — koristi za A/B comparison nakon
-promjena system_prompt-a ili tool description-a.
+- pozitivni — `expect.tool="search_products"` + `category_id` + opciono
+  `args_subset` (brand_id, max_price_km) + `min_results`. Engine provjerava
+  routing, args, i da li su rezultati relevantni.
+- negativni — `expect.tool=null` + `failure_reason`
+  (brand_not_carried / price_unreachable / not_in_catalog / combo_impossible);
+  sistem treba odbiti, ne lažno vratiti proizvode.
+
+Verdict pipeline: `routing_verdict` → `args_verdict` (NOVO za products) →
+`result_verdict` → `overall_verdict` (PASS / WARN / FAIL).
 
 Pokretanje:
-    # Lokalni server na default portu
-    python evals/visualize_parent_runtime.py
-
-    # Staging
-    python evals/visualize_parent_runtime.py --url https://staging.aiasistent.bitlab.rs
-
-    # Sa labelom za regression compare
-    python evals/visualize_parent_runtime.py --label v1
-    python evals/visualize_parent_runtime.py --label v2-prompt-tweak
-
-    # Custom query set
-    python evals/visualize_parent_runtime.py --queries evals/some_other.json
+    python evals/run_products.py                           # cijeli set (21)
+    python evals/run_products.py --limit 5 --label smoke   # smoke
+    python evals/run_products.py --url https://staging.aiasistent.bitlab.rs
+    python evals/run_products.py --label v2-prompt-fix     # A/B compare
 """
 from __future__ import annotations
 
@@ -46,7 +42,7 @@ import httpx
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CSV_PATH = PROJECT_ROOT / "data" / "categories.csv"
 PRODUCTS_PATH = PROJECT_ROOT / "data" / "all-products.json"
-DEFAULT_EVAL_PATH = PROJECT_ROOT / "evals" / "parent_eval_set.json"
+DEFAULT_EVAL_PATH = PROJECT_ROOT / "evals" / "sets" / "products_cold.json"
 
 DEFAULT_URL = "http://127.0.0.1:7778"
 # Hard testing override: sa SEARCH_TOP_K_OVERRIDE=5287 + max_output_tokens=64000,
@@ -67,7 +63,7 @@ PROD_RE = re.compile(
 )
 
 
-# ─── Loader-i (subset of visualize_parent_expansion.py) ──────────────────
+# ─── Loader-i ────────────────────────────────────────────────────────────
 
 def load_tree() -> tuple[dict[str, dict], dict[str, list[str]]]:
     """Vrati (by_id, children_of) iz `data/categories.csv` — samo aktivne cat-ove."""
@@ -268,55 +264,129 @@ def match_product_cat(name: str, url: str, lookup: dict) -> tuple[str | None, st
 def routing_verdict(
     routed_tool: str | None,
     routed_cat: str | None,
+    expected_tool: str | None,
     expected_cat: str,
     expected_subtree: set[str],
 ) -> str:
-    """Klasifikacija Claude-ovog routing-a: koji tool je pozvao i sa kojim cat_id-om."""
-    if routed_tool is None or routed_cat is None:
-        return "NULL"               # nije pozvao routing tool — pusto
-    if routed_tool == "category_overview":
-        if routed_cat == expected_cat:
-            return "OVERVIEW_PASS"   # overview na tačnom parent-u (očekivano za parent upite)
-        return "OVERVIEW_WRONG"      # overview na pogrešnom parent-u (npr. leaf upit → parent overview)
-    # routed_tool == "search_products"
+    """Klasifikacija Claude-ovog routing-a za products engine.
+
+    Pozitivni (expected_tool="search_products"):
+    - EXACT_PARENT: search_products sa tačno očekivanim cat_id.
+    - DESCENDANT: search_products sa cat_id iz očekivanog subtree-a.
+    - OUT: search_products sa cat_id van subtree-a, ili bez cat-a.
+    - WRONG_TOOL: Claude pozvao category_overview umjesto search_products
+      (overview za kvalifikovan upit je promašaj).
+    - NULL: nijedan routing tool pozvan.
+
+    Negativni (expected_tool=None):
+    - NEG_PASS: nijedan routing tool pozvan (sistem odbio).
+    - NEG_REGRESSION: Claude lažno pozvao search/overview sa nepostojećom kombinacijom.
+    """
+    if expected_tool is None:
+        if routed_tool is None:
+            return "NEG_PASS"
+        return "NEG_REGRESSION"
+
+    if routed_tool is None:
+        return "NULL"
+    if routed_tool != expected_tool:
+        return "WRONG_TOOL"
+    # search_products + nije proslijedio cat
+    if routed_cat is None:
+        return "OUT"
     if routed_cat == expected_cat:
-        return "EXACT_PARENT"        # poslao baš očekivani cat (parent ili leaf — zavisi od test case-a)
+        return "EXACT_PARENT"
     if routed_cat in expected_subtree:
-        return "DESCENDANT"          # smart routing — child cat unutar subtree
-    return "OUT"                     # promašaj — cat van subtree
+        return "DESCENDANT"
+    return "OUT"
 
 
-def result_verdict(n_returned: int, n_in_subtree: int, routed_tool: str | None) -> str:
-    """Da li je end-user dobio relevantne proizvode. Za `category_overview` je
-    N/A jer overview ne dostavlja proizvode nego routing odluku — mjeri se kroz
-    routing_verdict, ne kroz result_verdict."""
-    if routed_tool == "category_overview":
+def args_verdict(routed_args: dict, expected_args: dict | None) -> str:
+    """Provjera da li je Claude prosledio očekivane filtere (brand_id, max_price_km).
+
+    - ARGS_NA: entry ne specifikuje `expect.args_subset` — ne mjeri se.
+    - ARGS_PASS: svi očekivani filteri se poklapaju.
+    - ARGS_PARTIAL: barem jedan se poklapa, ali ne svi.
+    - ARGS_MISSING: nijedan očekivani filter nije proslijeđen.
+    """
+    if not expected_args:
+        return "ARGS_NA"
+    matched = 0
+    total = 0
+    for k, v in expected_args.items():
+        total += 1
+        actual = routed_args.get(k)
+        if actual is None:
+            continue
+        # poređenje kao string da brand_id "11" matchuje i int 11
+        if str(actual) == str(v):
+            matched += 1
+    if matched == total:
+        return "ARGS_PASS"
+    if matched > 0:
+        return "ARGS_PARTIAL"
+    return "ARGS_MISSING"
+
+
+def parse_price_km(price_str: str) -> float | None:
+    """'1.299,90 KM' → 1299.90. BCS format (tačka kao thousands, zarez kao decimal)."""
+    if not price_str:
+        return None
+    s = price_str.replace("KM", "").strip()
+    s = s.replace(".", "").replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def result_verdict(
+    n_returned: int,
+    n_in_subtree: int,
+    n_in_price_range: int | None,
+    min_results: int,
+    routed_tool: str | None,
+) -> str:
+    """Da li je end-user dobio relevantne proizvode.
+
+    - NA: nije pozvao search (overview / nijedan) — mjeri se kroz routing_verdict.
+    - FAIL: 0 vraćenih, ili 0 u očekivanoj porodici, ili ispod min_results.
+    - WARN: ima u porodici ali ispod min_results, ili price filter nije ispoštovan.
+    - PASS: ≥min_results u porodici (+ u cjenovnom opsegu ako je filter specifikovan).
+    """
+    if routed_tool != "search_products":
         return "NA"
     if n_returned == 0:
         return "FAIL"
     if n_in_subtree == 0:
         return "FAIL"
-    if n_in_subtree >= 3:
-        return "PASS"
-    return "WARN"
+    if n_in_subtree < min_results:
+        return "WARN"
+    # ako je price filter specifikovan, sve relevantne mora biti i u opsegu
+    if n_in_price_range is not None and n_in_price_range < min_results:
+        return "WARN"
+    return "PASS"
 
 
-def overall_verdict(routing: str, result: str) -> str:
-    """Sjedinjeni per-upit verdict: PASS / WARN / FAIL. Banner i leaderboard
-    glavnu kolonu koriste ovo umjesto da gledaju routing i result odvojeno —
-    za overview rute result je N/A pa bi inače izgledalo kao "ni dobro ni loše".
+def overall_verdict(routing: str, args: str, result: str) -> str:
+    """Sjedinjeni per-upit verdict: PASS / WARN / FAIL.
 
-    - search_products: pratimo result_verdict (PASS/WARN/FAIL).
-    - category_overview: OVERVIEW_PASS → PASS, OVERVIEW_WRONG → FAIL.
-    - NULL/OUT routing: FAIL bez obzira na result.
+    - Negativni: NEG_PASS → PASS, NEG_REGRESSION → FAIL.
+    - Pozitivni: routing mora dobro, args bar parcijalno, result PASS/WARN.
+    - NULL/OUT/WRONG_TOOL → FAIL (sistem promašio route).
     """
-    if routing in ("NULL", "NA", "OUT"):
-        return "FAIL"
-    if routing == "OVERVIEW_PASS":
+    if routing == "NEG_PASS":
         return "PASS"
-    if routing == "OVERVIEW_WRONG":
+    if routing in ("NEG_REGRESSION", "NULL", "OUT", "WRONG_TOOL"):
         return "FAIL"
-    # search_products grane (EXACT_PARENT, DESCENDANT) → naslanja se na result
+    # routing OK (EXACT_PARENT / DESCENDANT)
+    if args == "ARGS_MISSING":
+        return "FAIL"
+    if args == "ARGS_PARTIAL":
+        return "WARN" if result in ("PASS", "WARN") else "FAIL"
+    # args OK (ARGS_PASS) ili NA → result odlučuje
+    if result == "NA":
+        return "PASS"
     return result if result in ("PASS", "WARN", "FAIL") else "FAIL"
 
 
@@ -391,6 +461,13 @@ HTML = r"""<!doctype html>
   .badge.out{background:rgba(255,211,74,0.18);color:var(--warn)}
   .badge.overview_pass{background:rgba(110,231,160,0.18);color:var(--ok)}
   .badge.overview_wrong{background:rgba(255,107,138,0.18);color:var(--fail)}
+  .badge.wrong_tool{background:rgba(255,107,138,0.18);color:var(--fail)}
+  .badge.neg_pass{background:rgba(110,231,160,0.18);color:var(--ok)}
+  .badge.neg_regression{background:rgba(255,107,138,0.18);color:var(--fail)}
+  .badge.args_pass{background:rgba(110,231,160,0.18);color:var(--ok)}
+  .badge.args_partial{background:rgba(255,211,74,0.18);color:var(--warn)}
+  .badge.args_missing{background:rgba(255,107,138,0.18);color:var(--fail)}
+  .badge.args_na{background:rgba(255,255,255,0.04);color:var(--na)}
   details.qdetail{background:var(--panel);border:1px solid var(--border);
     border-radius:6px;padding:8px 14px;margin-bottom:8px}
   details.qdetail summary{cursor:pointer;font-weight:500;list-style:none;outline:none}
@@ -432,9 +509,10 @@ HTML = r"""<!doctype html>
     <th>Upit (očekivana kategorija)</th>
     <th>Rutovano na (kategorija)</th>
     <th>Kako je rutovao</th>
+    <th>Filteri</th>
     <th class="num">Vraćeno</th>
-    <th class="num">Pogodaka u porodici</th>
-    <th class="num">Porodica ukupno</th>
+    <th class="num">U porodici</th>
+    <th class="num">U cijeni</th>
     <th>Ishod</th>
     <th class="num">Iter</th>
     <th class="num">Trajanje</th>
@@ -480,9 +558,16 @@ const ROUTING_LABEL = {
   "DESCENDANT": "pretraga — podkategorija iz iste porodice",
   "NULL": "bez kategorijskog filtera",
   "OUT": "pretraga — van porodice",
-  "OVERVIEW_PASS": "pregled porodice — tačan roditelj",
-  "OVERVIEW_WRONG": "pregled porodice — pogrešan roditelj",
+  "WRONG_TOOL": "pogrešan alat (pregled porodice umjesto pretrage)",
+  "NEG_PASS": "negativan — sistem pravilno odbio",
+  "NEG_REGRESSION": "negativan — regresija (lažno rutirao)",
   "NA": "—",
+};
+const ARGS_LABEL = {
+  "ARGS_PASS": "filteri tačni",
+  "ARGS_PARTIAL": "filteri parcijalni",
+  "ARGS_MISSING": "filteri nedostaju",
+  "ARGS_NA": "—",
 };
 const RESULT_LABEL = {
   "PASS": "prošlo",
@@ -491,21 +576,24 @@ const RESULT_LABEL = {
   "NA": "ne primjenjuje se",
 };
 function routingLabel(v) { return ROUTING_LABEL[v] || v; }
+function argsLabel(v) { return ARGS_LABEL[v] || v; }
 function resultLabel(v) { return RESULT_LABEL[v] || v; }
 
-// Glavni baner — koristi ukupni ishod koji sjedinjuje pretragu i pregled porodice
+// Glavni baner — koristi ukupni ishod (routing + args + result) sjedinjen u jedan signal
 const v = DATA.summary;
 let vClass, vTitle, vBody;
 if (v.fail_count === 0 && v.warn_count === 0) {
   vClass = "pass";
-  vTitle = "✓ Sve prošlo — Claude pravilno rutira upite";
+  vTitle = "✓ Sve prošlo — Claude pravilno rutira proizvode";
   vBody = `${v.pass_count} prošlo od ${v.total} upita.`;
 } else if (v.fail_count > 0) {
   vClass = "fail";
   vTitle = `✗ ${v.fail_count} upita promašeno`;
   vBody = `${v.pass_count} prošlo, ${v.warn_count} upozorenje, ${v.fail_count} promašaj od ${v.total} upita. ` +
-    `Razrada rute: pretraga ${v.search_pass_count||0} prošlo / ${v.search_warn_count||0} upozorenje / ${v.search_fail_count||0} promašaj; ` +
-    `pregled porodice ${v.overview_pass_count||0} tačan / ${v.overview_wrong_count||0} pogrešan.`;
+    `Razrada: pretraga ${v.search_pass_count||0}/${v.search_warn_count||0}/${v.search_fail_count||0} (P/W/F); ` +
+    `filteri ${v.args_pass_count||0}/${v.args_partial_count||0}/${v.args_missing_count||0} (tačni/parcijalni/nedostaju); ` +
+    `negativni ${v.neg_pass_count||0}/${v.neg_regression_count||0} (odbijen/regresija); ` +
+    `pogrešan alat ${v.wrong_tool_count||0}.`;
 } else {
   vClass = "warn";
   vTitle = `⚠ ${v.warn_count} upita sa upozorenjem — slabi rezultati`;
@@ -514,17 +602,20 @@ if (v.fail_count === 0 && v.warn_count === 0) {
 document.getElementById("verdict").innerHTML =
   `<div class="verdict-banner ${vClass}">${vTitle}<small>${vBody}</small></div>`;
 
-// Pregled — sažete kartice po metrikama
+// Pregled — sažete kartice po metrikama (products engine)
 document.getElementById("stats").innerHTML = [
   ["", `${v.total}`, "Ukupno upita"],
   ["pass", `${v.pass_count}`, "Ukupno prošlo"],
   ["warn", `${v.warn_count}`, "Ukupno upozorenje"],
   ["fail", `${v.fail_count}`, "Ukupno promašaj"],
-  ["pass", `${v.overview_pass_count || 0}`, "Pregled — tačan roditelj"],
-  ["fail", `${v.overview_wrong_count || 0}`, "Pregled — pogrešan roditelj"],
+  ["pass", `${v.args_pass_count || 0}`, "Filteri tačni"],
+  ["warn", `${v.args_partial_count || 0}`, "Filteri parcijalni"],
+  ["fail", `${v.args_missing_count || 0}`, "Filteri nedostaju"],
   ["", `${v.search_pass_count || 0}`, "Pretraga — prošlo"],
   ["", `${v.search_fail_count || 0}`, "Pretraga — promašaj"],
-  ["", `${v.null_count}`, "Bez kategorijskog filtera"],
+  ["pass", `${v.neg_pass_count || 0}`, "Negativni — pravilno odbijen"],
+  ["fail", `${v.neg_regression_count || 0}`, "Negativni — regresija"],
+  ["fail", `${v.wrong_tool_count || 0}`, "Pogrešan alat"],
   ["", `${v.total_returned}`, "Ukupno vraćeno proizvoda"],
 ].map(([cls, val, lab]) =>
   `<div class="stat ${cls}"><div class="v">${val}</div><div class="l">${lab}</div></div>`
@@ -544,16 +635,19 @@ function routedDisplay(cid) {
 // Leaderboard
 document.getElementById("leaderboard").innerHTML = DATA.rows.map(r => {
   const rt = r.routing_verdict.toLowerCase();
+  const av = (r.args_verdict || "ARGS_NA").toLowerCase();
   const ovr = (r.overall_verdict || r.result_verdict).toLowerCase();
   const parentName = catName(r.expected_cat_id);
   const parentTxt = parentName ? `očekivana kat. ${r.expected_cat_id} — ${parentName}` : `očekivana kat. ${r.expected_cat_id}`;
+  const inPriceTxt = (r.n_in_price_range === null || r.n_in_price_range === undefined) ? "—" : r.n_in_price_range;
   return `<tr>
     <td class="q">${escapeHtml(r.query)}<br><span style="color:var(--muted);font-size:10px">${escapeHtml(parentTxt)}</span></td>
     <td class="id">${routedDisplay(r.routed_cat_id)}</td>
     <td><span class="badge ${rt}">${routingLabel(r.routing_verdict)}</span></td>
-    <td class="num">${r.n_returned} <span style="color:var(--muted);font-size:10px">(proizvoda)</span></td>
-    <td class="num">${r.n_in_subtree} <span style="color:var(--muted);font-size:10px">(proizvoda)</span></td>
-    <td class="num">${r.subtree_total} <span style="color:var(--muted);font-size:10px">(proizvoda)</span></td>
+    <td><span class="badge ${av}">${argsLabel(r.args_verdict || "ARGS_NA")}</span></td>
+    <td class="num">${r.n_returned}</td>
+    <td class="num">${r.n_in_subtree}</td>
+    <td class="num">${inPriceTxt}</td>
     <td><span class="badge ${ovr}">${resultLabel(r.overall_verdict || r.result_verdict)}</span></td>
     <td class="num">${r.iterations}</td>
     <td class="num">${r.latency_ms}ms</td>
@@ -643,18 +737,18 @@ def render(data: dict) -> str:
 def default_out_path(label: str | None) -> Path:
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     suffix = f"-{label}" if label else ""
-    fname = f"parent-runtime{suffix}-{ts}.html"
+    fname = f"products{suffix}-{ts}.html"
     runs_dir = PROJECT_ROOT / "evals" / "runs"
     runs_dir.mkdir(parents=True, exist_ok=True)
     return runs_dir / fname
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Runtime parent visualizer")
+    p = argparse.ArgumentParser(description="Engine za pretragu proizvoda (kvalifikovani upiti)")
     p.add_argument("--url", default=DEFAULT_URL,
                    help=f"Base URL servera (default: {DEFAULT_URL})")
     p.add_argument("--out", default=None,
-                   help="Output HTML path (default: evals/runs/parent-runtime[-label]-{TS}.html)")
+                   help="Output HTML path (default: evals/runs/products[-label]-{TS}.html)")
     p.add_argument("--queries", default=str(DEFAULT_EVAL_PATH),
                    help=f"Path do query-set JSON-a (default: {DEFAULT_EVAL_PATH})")
     p.add_argument("--label", default="",
@@ -700,12 +794,21 @@ def main() -> int:
     with httpx.Client() as client:
         for i, q in enumerate(queries, 1):
             query = q["query"]
-            expected_cat = q.get("expected_category_id", "")
-            label = q.get("category_label", "")
+            # Novi unifikovani entry shape (evals/sets/products_cold.json):
+            #   { "query", "history", "expect": {tool, category_id, args_subset?,
+            #      min_results?, failure_reason?}, "tags" }
+            expect = q.get("expect") or {}
+            expected_cat = (expect.get("category_id") or "") if expect.get("category_id") else ""
+            expected_tool = expect.get("tool")
+            expected_args = expect.get("args_subset") or None
+            expected_min_results = int(expect.get("min_results") or 1)
+            failure_reason = expect.get("failure_reason")
+            tags = q.get("tags") or []
+            label = f"{query} ({', '.join(tags)})" if tags else query
             subtree = descendants(expected_cat, children_of) if expected_cat else set()
             subtree_product_count = sum(products_per_cat.get(c, 0) for c in subtree)
 
-            print(f"  [{i:2}/{len(queries)}] {query!r:<40}", end=" ", flush=True)
+            print(f"  [{i:3}/{len(queries)}] {query!r:<40}", end=" ", flush=True)
             t0 = time.monotonic()
             resp = chat_call(client, args.url, query)
             elapsed_ms = int((time.monotonic() - t0) * 1000)
@@ -714,11 +817,18 @@ def main() -> int:
                 print(f"GREŠKA ({elapsed_ms}ms): {resp['_error']}")
                 rows.append({
                     "query": query, "expected_cat_id": expected_cat,
+                    "expected_tool": expected_tool,
+                    "expected_args": expected_args,
+                    "expected_min_results": expected_min_results,
+                    "failure_reason": failure_reason,
+                    "tags": tags,
                     "category_label": label,
                     "error": resp["_error"],
                     "routed_tool": None,
                     "routed_cat_id": None, "routing_verdict": "NA",
+                    "args_verdict": "ARGS_NA",
                     "n_returned": 0, "n_in_subtree": 0,
+                    "n_in_price_range": None,
                     "subtree_total": subtree_product_count,
                     "result_verdict": "FAIL", "overall_verdict": "FAIL",
                     "iterations": 0,
@@ -732,33 +842,51 @@ def main() -> int:
             iterations = resp.get("iterations", 0)
             tool_calls_parsed = extract_tool_calls(tool_calls_raw)
 
-            # Routing — uzmi prvi routing-relevantan poziv (search_products ili
-            # category_overview, šta god Claude prvo uradi).
+            # Routing — uzmi prvi routing-relevantan poziv.
             if tool_calls_parsed:
                 routed_tool = tool_calls_parsed[0]["tool"]
                 routed_cat = tool_calls_parsed[0]["category_id"]
+                routed_args = {
+                    k: tool_calls_parsed[0].get(k)
+                    for k in ("brand_id", "max_price_km", "top_k")
+                    if tool_calls_parsed[0].get(k) is not None
+                }
             else:
                 routed_tool = None
                 routed_cat = None
-            r_verdict = routing_verdict(routed_tool, routed_cat, expected_cat, subtree)
+                routed_args = {}
+            r_verdict = routing_verdict(routed_tool, routed_cat, expected_tool, expected_cat, subtree)
+            a_verdict = args_verdict(routed_args, expected_args)
 
             products_raw = parse_products(reply)
             products: list[dict] = []
             n_in_subtree = 0
+            n_in_price_range = 0
+            max_price_km = (expected_args or {}).get("max_price_km")
             for p_ in products_raw:
                 cid, via = match_product_cat(p_["name"], p_.get("url", ""), product_lookup)
                 in_st = cid in subtree if cid else False
                 if in_st:
                     n_in_subtree += 1
+                price = parse_price_km(p_.get("price", ""))
+                in_price = (max_price_km is not None and price is not None and price <= float(max_price_km))
+                if in_price:
+                    n_in_price_range += 1
                 products.append({
                     "name": p_["name"],
                     "cat_id": cid,
                     "in_subtree": in_st,
+                    "price_km": price,
+                    "in_price_range": in_price,
                     "match_via": via,
                 })
 
-            res_verdict = result_verdict(len(products), n_in_subtree, routed_tool)
-            ovr_verdict = overall_verdict(r_verdict, res_verdict)
+            n_in_price_range_val: int | None = n_in_price_range if max_price_km is not None else None
+            res_verdict = result_verdict(
+                len(products), n_in_subtree, n_in_price_range_val,
+                expected_min_results, routed_tool,
+            )
+            ovr_verdict = overall_verdict(r_verdict, a_verdict, res_verdict)
             # Stdout — prirodan jezik (crnogorski ijekavica)
             verdict_label = {"PASS": "prošlo", "WARN": "upozorenje", "FAIL": "promašaj"}.get(ovr_verdict, ovr_verdict)
             routing_label = {
@@ -766,23 +894,39 @@ def main() -> int:
                 "DESCENDANT": "podkategorija",
                 "NULL": "bez filtera",
                 "OUT": "van porodice",
-                "OVERVIEW_PASS": "pregled — tačan roditelj",
-                "OVERVIEW_WRONG": "pregled — pogrešan roditelj",
+                "WRONG_TOOL": "pogrešan alat",
+                "NEG_PASS": "negativan — pravilno odbijen",
+                "NEG_REGRESSION": "negativan — regresija",
                 "NA": "—",
             }.get(r_verdict, r_verdict)
-            print(f"{verdict_label:<10} ruta='{routing_label}' vraćeno={len(products)} "
-                  f"u_porodici={n_in_subtree}/{len(products)} "
-                  f"porodica_ima={subtree_product_count} ({elapsed_ms}ms)")
+            args_label = {
+                "ARGS_PASS": "filteri tačni",
+                "ARGS_PARTIAL": "filteri parcijalni",
+                "ARGS_MISSING": "filteri nedostaju",
+                "ARGS_NA": "—",
+            }.get(a_verdict, a_verdict)
+            print(f"{verdict_label:<10} ruta='{routing_label}' filteri='{args_label}' "
+                  f"vraćeno={len(products)} u_porodici={n_in_subtree} "
+                  f"u_cijeni={n_in_price_range_val if n_in_price_range_val is not None else '—'} "
+                  f"({elapsed_ms}ms)")
 
             rows.append({
                 "query": query,
                 "expected_cat_id": expected_cat,
+                "expected_tool": expected_tool,
+                "expected_args": expected_args,
+                "expected_min_results": expected_min_results,
+                "failure_reason": failure_reason,
+                "tags": tags,
                 "category_label": label,
                 "routed_tool": routed_tool,
                 "routed_cat_id": routed_cat,
+                "routed_args": routed_args,
                 "routing_verdict": r_verdict,
+                "args_verdict": a_verdict,
                 "n_returned": len(products),
                 "n_in_subtree": n_in_subtree,
+                "n_in_price_range": n_in_price_range_val,
                 "subtree_total": subtree_product_count,
                 "result_verdict": res_verdict,
                 "overall_verdict": ovr_verdict,
@@ -800,17 +944,24 @@ def main() -> int:
     pass_n = sum(1 for r in rows if r["overall_verdict"] == "PASS")
     warn_n = sum(1 for r in rows if r["overall_verdict"] == "WARN")
     fail_n = sum(1 for r in rows if r["overall_verdict"] == "FAIL")
-    # Search-only granularnost (za detaljne stats kartice — koliko od search ruta je dobro)
+    # Search-only granularnost (samo za pozitivne entry-je koji su išli kroz search)
     search_pass_n = sum(1 for r in rows if r["result_verdict"] == "PASS")
     search_warn_n = sum(1 for r in rows if r["result_verdict"] == "WARN")
     search_fail_n = sum(1 for r in rows if r["result_verdict"] == "FAIL")
+    # Routing breakdown
     exact_n = sum(1 for r in rows if r["routing_verdict"] == "EXACT_PARENT")
     desc_n = sum(1 for r in rows if r["routing_verdict"] == "DESCENDANT")
+    out_n = sum(1 for r in rows if r["routing_verdict"] == "OUT")
     null_n = sum(1 for r in rows if r["routing_verdict"] == "NULL")
-    overview_pass_n = sum(1 for r in rows if r["routing_verdict"] == "OVERVIEW_PASS")
-    overview_wrong_n = sum(1 for r in rows if r["routing_verdict"] == "OVERVIEW_WRONG")
+    wrong_tool_n = sum(1 for r in rows if r["routing_verdict"] == "WRONG_TOOL")
+    neg_pass_n = sum(1 for r in rows if r["routing_verdict"] == "NEG_PASS")
+    neg_regression_n = sum(1 for r in rows if r["routing_verdict"] == "NEG_REGRESSION")
+    # Args breakdown (provjera filtera — products-specific signal)
+    args_pass_n = sum(1 for r in rows if r.get("args_verdict") == "ARGS_PASS")
+    args_partial_n = sum(1 for r in rows if r.get("args_verdict") == "ARGS_PARTIAL")
+    args_missing_n = sum(1 for r in rows if r.get("args_verdict") == "ARGS_MISSING")
     total_returned = sum(r["n_returned"] for r in rows)
-    # Prosjek u_porodici računamo SAMO preko search_products redova (overview je N/A).
+    # Prosjek u_porodici računamo SAMO preko search_products redova.
     search_rows = [r for r in rows if r["routed_tool"] == "search_products"]
     avg_in_subtree = (sum(r["n_in_subtree"] for r in search_rows) / len(search_rows)
                       if search_rows else 0.0)
@@ -845,9 +996,14 @@ def main() -> int:
             "search_fail_count": search_fail_n,
             "exact_parent_count": exact_n,
             "descendant_count": desc_n,
+            "out_count": out_n,
             "null_count": null_n,
-            "overview_pass_count": overview_pass_n,
-            "overview_wrong_count": overview_wrong_n,
+            "wrong_tool_count": wrong_tool_n,
+            "neg_pass_count": neg_pass_n,
+            "neg_regression_count": neg_regression_n,
+            "args_pass_count": args_pass_n,
+            "args_partial_count": args_partial_n,
+            "args_missing_count": args_missing_n,
             "total_returned": total_returned,
             "avg_in_subtree": avg_in_subtree,
         },
@@ -862,8 +1018,10 @@ def main() -> int:
     print()
     print("─" * 72)
     print(f"Ukupno: {len(rows)} upita | ishod: prošlo={pass_n} upozorenje={warn_n} promašaj={fail_n}")
-    print(f"Rute: tačna kategorija={exact_n}  podkategorija={desc_n}  bez filtera={null_n}  "
-          f"pregled tačan={overview_pass_n}  pregled pogrešan={overview_wrong_n}")
+    print(f"Rute: tačna kategorija={exact_n}  podkategorija={desc_n}  van porodice={out_n}  "
+          f"bez filtera={null_n}  pogrešan alat={wrong_tool_n}")
+    print(f"Negativni: pravilno odbijen={neg_pass_n}  regresija={neg_regression_n}")
+    print(f"Filteri: tačni={args_pass_n}  parcijalni={args_partial_n}  nedostaju={args_missing_n}")
     print(f"Trajanje: {wall_s:.1f}s | ukupno vraćeno proizvoda: {total_returned}")
     print(f"HTML izvještaj: {out_path}")
     print("─" * 72)
