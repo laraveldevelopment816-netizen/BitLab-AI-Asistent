@@ -421,3 +421,80 @@ Pitanje: može li arhivska skripta da radi za products bez izmjena?
 ### Drift od mog ranijeg plana
 
 Ranije sam predložio "auto-gen products entry-ja iz categories.csv". Za products to ne radi — products imaju kvalifikatore (cijena, brend, model) koji nisu u CSV-u. Auto-gen je validan za kategorije (245 entry-ja iz 238 cat-ova), ali za products treba ručna kreacija. Manji set (10-30) sa pažljivim odabirom je bolji od velikog auto-gen šuma.
+
+## Smoke run analiza — categories-smoke-20260523-003009 (--limit 5)
+
+Druga instanca pokrenula prvi categories smoke. Rezultat: 4 PASS, 1 FAIL.
+
+| Upit | Expected cat | Routing | Overall | Routed |
+|---|---|---|---|---|
+| Računari | 17 (parent) | OVERVIEW_PASS | PASS | 17 |
+| **Desktop Brand Name** | 93 (leaf) | **OUT** | **FAIL** | 17 |
+| UPS, stabilizatori, … | 94 (parent) | OVERVIEW_PASS | PASS | 94 |
+| Printeri i skeneri | 97 (parent) | OVERVIEW_PASS | PASS | 97 |
+| Notebook | 98 (leaf) | EXACT_PARENT | PASS | 98 |
+
+**Ivanovo zapažanje da je "Računari" pao — netačno.** Računari je `OVERVIEW_PASS`. Pao je **"Desktop Brand Name"**. Vjerovatno gleda banner ("1 upit promašen") i prvi red u tabeli pa zaključi prvi.
+
+### Zašto je "Desktop Brand Name" pao
+
+Iz `data/categories.csv`:
+
+```csv
+"93","Desktop Brand Name","Desktop Brand Name računari", ...
+```
+
+Ime kategorije je **placeholder/template** iz baze — ostao nesređen kad je BitLab dodavao desktop brand line-ove. **Korisnik nikad ne kuca "Desktop Brand Name"** — to nije realno ime.
+
+Claude je pomislio "user traži desktop računare generalno" pa pozvao `search_products(category_id=17)` (parent "Računari"), umjesto očekivanog `search_products(category_id=93)` (leaf). Verdict: `OUT` jer 17 nije u subtree-u 93.
+
+### Šta nam ovo pokazuje
+
+**Ovo je slabost auto-gen-a**, ne sistema. Auto-gen entry-ja iz `categories.csv` slijepo uzima sva imena, uključujući placeholder/template stubove. Slični kandidati za "junk imena" u CSV-u koje treba flagovati:
+
+- "Desktop Brand Name"
+- Bilo šta sa "Brand Name", "Stub", "Template", "Test"
+- Imena koja sadrže "..." na kraju (npr. "UPS, stabilizatori, ..." — ali to nije placeholder, to je skraćeno ime; OVERVIEW_PASS prošlo, valjda Claude prepoznaje)
+
+### Predlog popravke
+
+1. **Filter u `gen_categories_eval.py`**: preskoči kategorije čije ime sadrži regex `(?i)\b(brand name|stub|template|test|placeholder)\b`. Manji set, čišći signal.
+2. **CSV cleanup**: ako "Desktop Brand Name" *treba* da postoji u CSV-u (kao real kategorija sa loše izabranim imenom), Ivan može sredi ime u admin panelu. Ali to je product decision, ne eval.
+3. **Eval entry tag**: ako *ostaje* u setu, dodaj `tags: ["known-placeholder", "negative"]` i `expect.failure_reason: "placeholder_name"` da verdict ne broji to kao FAIL nego kao očekivano (negativni primjer).
+
+Mišljenje: opcija 1 (filter u auto-genu) je najčistija. Junk imena u CSV-u nisu test cases — oni su data hygiene problem koji ne treba mješati sa eval-om.
+
+## Šta će se razlikovati kod products eval-a u odnosu na categories
+
+| Aspekt | Categories cold | Products cold |
+|---|---|---|
+| Tip upita | Bare ime ("Mobiteli", "Notebook") | Kvalifikovan ("gaming miš do 100 KM", "iPhone 17", "tastatura sa pozadinskim osvjetljenjem") |
+| Očekivani tool | Dvosmislen — parent → overview, leaf → search | **Uvijek `search_products`** (sa filterima) |
+| Tool dispatch verdict | Primaran signal (PASS/FAIL) | Sekundaran — uvijek isti tool, mjeri se *kako* je pozvan |
+| Args koje mjerimo | `cat_id` / `parent_id` | `cat_id` + `max_price_km` + `brand_id` + `top_k` + `query` semantika |
+| Primarni signal | Routing tačnost | **Filter tačnost + relevance proizvoda** |
+| Halucinacija | N/A (overview ne vraća proizvode) | **Glavni failure mode** — Claude može izmisliti model/SKU |
+| Coverage strategija | Auto-gen iz CSV-a (245 entry-ja) | Ručno + sample iz `all-products.json` (manji set, dublji testovi) |
+| Negativni primjeri | nepostojeća kategorija, placeholder ime | cijena van ranga ("tastatura ispod 5 KM"), brend ne postoji ("Apple frižider"), model ne postoji ("iPhone 25") |
+| Engine reuse | Arhivska skripta radi nativno | Arhivska skripta radi za ~80% (već broji `n_in_subtree`, mapira name → cat) — fali filter verification |
+
+### Tri konkretne razlike koje engine mora dobiti za products
+
+1. **Filter verification.** Novo polje u expect: `args_subset: {"max_price_km": 100, "brand_id": "Apple"}`. Verdict provjerava da li Claude prosleđuje argumente koji se poklapaju sa traženim (tolerance npr. ±10% za cijenu, exact za brand). Postojeća `extract_tool_calls` već hvata args — treba samo comparator.
+
+2. **Halucinacija check.** Postojeća `match_product_cat` već radi: za svaki vraćeni proizvod traži URL hash / ime u `all-products.json`. Ako je `match_via == "miss"` → proizvod ne postoji u bazi → halucinacija. Trenutno se broji u `via` tags ali ne ulazi u verdict. Treba novi verdict: `HALLUCINATION_FAIL` ako bilo koji top-3 proizvod ima `match_via == "miss"`.
+
+3. **Top-k smisao.** Za upit "gaming miš do 100 KM" — top-3 treba da budu (a) iz `Miševi` subtree-a, (b) ispod 100 KM, (c) opis sadrži "gaming"/"gejming"/sl. Trenutno provjera (a) postoji, (b) i (c) ne.
+
+### Šta NE treba mijenjati
+
+- Arhivska skripta osnovni flow (HTTP poziv, parse_products, name lookup) radi za products.
+- Verdict pipeline (`routing_verdict` → `result_verdict` → `overall_verdict`) ostaje, samo se proširuje.
+- HTML template — može se reuse-ovati, samo nove kolone u leaderboard-u za filtere i halucinaciju badge.
+
+### Najmanje invazivan plan za products smoke (po Ivanovoj direktivi "bez velikih izmjena")
+
+1. **Sada**: `evals/sets/products_cold.json` u starom formatu, 5-10 kvalifikovanih entry-ja. Pokreni arhivsku skripte. Mjeri *samo* cat dispatch + n_in_subtree (postojeći signal). Vidiš grubo da li Claude bira pravu kategoriju za kvalifikovane upite.
+2. **Sledeća iteracija (kad `run_products.py` bude implementiran)**: dodaj filter verification + halucinacija check kao zasebne verdict grane. Tek tada full products eval.
+
+Ne miješati to dvoje u istom koraku — [[feedback-one-fix-at-a-time]].

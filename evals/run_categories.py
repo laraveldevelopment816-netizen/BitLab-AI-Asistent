@@ -1,32 +1,27 @@
-"""Runtime parent-category visualizer — sibling of `visualize_parent_expansion.py`.
+"""run_categories.py — engine za kategorijsko rutiranje (cold scenario).
 
-Razlika:
-- `visualize_parent_expansion.py` — deterministička simulacija "šta bi hard filter
-  vratio sa/bez fix-a". Ne dotiče server, samo CSV+JSON.
-- `visualize_parent_runtime.py` — pravi HTTP poziv ka `/api/chat` za svaki upit iz
-  `parent_eval_set.json`. Bilježi koje tool-call argumente Claude STVARNO šalje, koje
-  proizvode vraća, i mapira ih na njihov `categories_id` u stablu kategorija.
+Šalje svaki upit iz `evals/sets/categories_cold.json` na `/api/chat` i mjeri:
+- koji routing tool je Claude pozvao (`search_products` vs `category_overview`)
+- koji `category_id` je proslijedio
+- da li se to poklapa sa `expect.tool` + `expect.category_id` iz entry-ja
 
-Cilj: dva HTML fajla otvori side-by-side. Lijevo "teoretski hard filter (with/without
-fix)". Desno "realno ponašanje sa LLM-om u petlji". Razlika pokazuje koliko LLM sloj
-zaobilazi problem (smart routing, soft boost, hybrid search bez filtera).
+Eval set ima tri tipa entry-ja, svi sa unifikovanim shape-om
+`{query, history, expect, tags}`:
 
-Versioning: `--label v1` ulazi u filename + meta — koristi za A/B comparison nakon
-promjena system_prompt-a ili tool description-a.
+- leaf pozitivni — očekivano `tool=search_products`, `category_id=<leaf_id>`
+- parent pozitivni — očekivano `tool=category_overview`, `category_id=<parent_id>`
+- negativni — `tool=null` + `failure_reason` (not_in_catalog / ambiguous_name /
+  typo_likely / out_of_scope); sistem treba odbiti, ne lažno rutirati
+
+Verdict pipeline: `routing_verdict` (po expected_tool) → `result_verdict` →
+`overall_verdict` (PASS / WARN / FAIL). Za overview i negativne rute result je N/A
+— mjeri se kroz routing, ne kroz produkte.
 
 Pokretanje:
-    # Lokalni server na default portu
-    python evals/visualize_parent_runtime.py
-
-    # Staging
-    python evals/visualize_parent_runtime.py --url https://staging.aiasistent.bitlab.rs
-
-    # Sa labelom za regression compare
-    python evals/visualize_parent_runtime.py --label v1
-    python evals/visualize_parent_runtime.py --label v2-prompt-tweak
-
-    # Custom query set
-    python evals/visualize_parent_runtime.py --queries evals/some_other.json
+    python evals/run_categories.py                           # cijeli set (245)
+    python evals/run_categories.py --limit 5 --label smoke   # smoke test
+    python evals/run_categories.py --url https://staging.aiasistent.bitlab.rs
+    python evals/run_categories.py --label v2-prompt-fix     # za A/B compare
 """
 from __future__ import annotations
 
@@ -46,7 +41,7 @@ import httpx
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CSV_PATH = PROJECT_ROOT / "data" / "categories.csv"
 PRODUCTS_PATH = PROJECT_ROOT / "data" / "all-products.json"
-DEFAULT_EVAL_PATH = PROJECT_ROOT / "evals" / "parent_eval_set.json"
+DEFAULT_EVAL_PATH = PROJECT_ROOT / "evals" / "sets" / "categories_cold.json"
 
 DEFAULT_URL = "http://127.0.0.1:7778"
 # Hard testing override: sa SEARCH_TOP_K_OVERRIDE=5287 + max_output_tokens=64000,
@@ -67,7 +62,7 @@ PROD_RE = re.compile(
 )
 
 
-# ─── Loader-i (subset of visualize_parent_expansion.py) ──────────────────
+# ─── Loader-i ────────────────────────────────────────────────────────────
 
 def load_tree() -> tuple[dict[str, dict], dict[str, list[str]]]:
     """Vrati (by_id, children_of) iz `data/categories.csv` — samo aktivne cat-ove."""
@@ -268,22 +263,47 @@ def match_product_cat(name: str, url: str, lookup: dict) -> tuple[str | None, st
 def routing_verdict(
     routed_tool: str | None,
     routed_cat: str | None,
+    expected_tool: str | None,
     expected_cat: str,
     expected_subtree: set[str],
 ) -> str:
-    """Klasifikacija Claude-ovog routing-a: koji tool je pozvao i sa kojim cat_id-om."""
+    """Klasifikacija Claude-ovog routing-a po `expected_tool` iz entry-ja.
+
+    Pozitivni entry-ji (`expected_tool` ∈ {"search_products", "category_overview"}):
+    - EXACT_PARENT: search_products sa tačno očekivanim cat_id.
+    - DESCENDANT: search_products sa cat_id iz očekivanog subtree-a (smart routing).
+    - OUT: search_products sa cat_id van subtree-a.
+    - OVERVIEW_PASS: category_overview sa tačno očekivanim cat_id.
+    - OVERVIEW_WRONG: category_overview sa pogrešnim cat_id.
+    - WRONG_TOOL: Claude pozvao drugi routing tool nego što je expected.
+    - NULL: Claude nije pozvao routing tool.
+
+    Negativni entry-ji (`expected_tool=None`):
+    - NEG_PASS: Claude nije pozvao routing tool (search_products / category_overview).
+      Sistem je pravilno odbio (kako tačno odbio — text reply, FAQ, eskalacija — ne mjerimo).
+    - NEG_REGRESSION: Claude je lažno pozvao routing tool sa nepostojećom/sumnjivom kategorijom.
+    """
+    # Negativni put — engine očekuje da Claude NE pozove routing tool.
+    if expected_tool is None:
+        if routed_tool is None:
+            return "NEG_PASS"
+        return "NEG_REGRESSION"
+
+    # Pozitivni put — Claude treba pozvati expected_tool sa expected_cat.
     if routed_tool is None or routed_cat is None:
-        return "NULL"               # nije pozvao routing tool — pusto
+        return "NULL"                # nije pozvao nijedan routing tool
+    if routed_tool != expected_tool:
+        return "WRONG_TOOL"          # pozvao drugi routing tool (npr. overview umjesto search)
     if routed_tool == "category_overview":
         if routed_cat == expected_cat:
-            return "OVERVIEW_PASS"   # overview na tačnom parent-u (očekivano za parent upite)
-        return "OVERVIEW_WRONG"      # overview na pogrešnom parent-u (npr. leaf upit → parent overview)
-    # routed_tool == "search_products"
+            return "OVERVIEW_PASS"
+        return "OVERVIEW_WRONG"
+    # routed_tool == expected_tool == "search_products"
     if routed_cat == expected_cat:
-        return "EXACT_PARENT"        # poslao baš očekivani cat (parent ili leaf — zavisi od test case-a)
+        return "EXACT_PARENT"
     if routed_cat in expected_subtree:
-        return "DESCENDANT"          # smart routing — child cat unutar subtree
-    return "OUT"                     # promašaj — cat van subtree
+        return "DESCENDANT"
+    return "OUT"
 
 
 def result_verdict(n_returned: int, n_in_subtree: int, routed_tool: str | None) -> str:
@@ -304,17 +324,17 @@ def result_verdict(n_returned: int, n_in_subtree: int, routed_tool: str | None) 
 def overall_verdict(routing: str, result: str) -> str:
     """Sjedinjeni per-upit verdict: PASS / WARN / FAIL. Banner i leaderboard
     glavnu kolonu koriste ovo umjesto da gledaju routing i result odvojeno —
-    za overview rute result je N/A pa bi inače izgledalo kao "ni dobro ni loše".
+    za overview/negativne rute result je N/A pa bi inače izgledalo kao "ni
+    dobro ni loše".
 
     - search_products: pratimo result_verdict (PASS/WARN/FAIL).
     - category_overview: OVERVIEW_PASS → PASS, OVERVIEW_WRONG → FAIL.
-    - NULL/OUT routing: FAIL bez obzira na result.
+    - Negativni: NEG_PASS → PASS, NEG_REGRESSION → FAIL.
+    - WRONG_TOOL / NULL / NA / OUT: FAIL bez obzira na result.
     """
-    if routing in ("NULL", "NA", "OUT"):
-        return "FAIL"
-    if routing == "OVERVIEW_PASS":
+    if routing == "OVERVIEW_PASS" or routing == "NEG_PASS":
         return "PASS"
-    if routing == "OVERVIEW_WRONG":
+    if routing in ("NULL", "NA", "OUT", "OVERVIEW_WRONG", "NEG_REGRESSION", "WRONG_TOOL"):
         return "FAIL"
     # search_products grane (EXACT_PARENT, DESCENDANT) → naslanja se na result
     return result if result in ("PASS", "WARN", "FAIL") else "FAIL"
@@ -391,6 +411,9 @@ HTML = r"""<!doctype html>
   .badge.out{background:rgba(255,211,74,0.18);color:var(--warn)}
   .badge.overview_pass{background:rgba(110,231,160,0.18);color:var(--ok)}
   .badge.overview_wrong{background:rgba(255,107,138,0.18);color:var(--fail)}
+  .badge.wrong_tool{background:rgba(255,107,138,0.18);color:var(--fail)}
+  .badge.neg_pass{background:rgba(110,231,160,0.18);color:var(--ok)}
+  .badge.neg_regression{background:rgba(255,107,138,0.18);color:var(--fail)}
   details.qdetail{background:var(--panel);border:1px solid var(--border);
     border-radius:6px;padding:8px 14px;margin-bottom:8px}
   details.qdetail summary{cursor:pointer;font-weight:500;list-style:none;outline:none}
@@ -482,6 +505,9 @@ const ROUTING_LABEL = {
   "OUT": "pretraga — van porodice",
   "OVERVIEW_PASS": "pregled porodice — tačan roditelj",
   "OVERVIEW_WRONG": "pregled porodice — pogrešan roditelj",
+  "WRONG_TOOL": "pogrešan alat (overview umjesto pretrage ili obrnuto)",
+  "NEG_PASS": "negativan — sistem pravilno odbio",
+  "NEG_REGRESSION": "negativan — regresija (lažno rutirao)",
   "NA": "—",
 };
 const RESULT_LABEL = {
@@ -643,18 +669,18 @@ def render(data: dict) -> str:
 def default_out_path(label: str | None) -> Path:
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     suffix = f"-{label}" if label else ""
-    fname = f"parent-runtime{suffix}-{ts}.html"
+    fname = f"categories{suffix}-{ts}.html"
     runs_dir = PROJECT_ROOT / "evals" / "runs"
     runs_dir.mkdir(parents=True, exist_ok=True)
     return runs_dir / fname
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Runtime parent visualizer")
+    p = argparse.ArgumentParser(description="Engine za kategorijsko rutiranje")
     p.add_argument("--url", default=DEFAULT_URL,
                    help=f"Base URL servera (default: {DEFAULT_URL})")
     p.add_argument("--out", default=None,
-                   help="Output HTML path (default: evals/runs/parent-runtime[-label]-{TS}.html)")
+                   help="Output HTML path (default: evals/runs/categories[-label]-{TS}.html)")
     p.add_argument("--queries", default=str(DEFAULT_EVAL_PATH),
                    help=f"Path do query-set JSON-a (default: {DEFAULT_EVAL_PATH})")
     p.add_argument("--label", default="",
@@ -700,12 +726,20 @@ def main() -> int:
     with httpx.Client() as client:
         for i, q in enumerate(queries, 1):
             query = q["query"]
-            expected_cat = q.get("expected_category_id", "")
-            label = q.get("category_label", "")
+            # Novi unifikovani entry shape (vidi evals/sets/categories_cold.json):
+            #   { "query", "history", "expect": {tool, category_id, failure_reason?}, "tags" }
+            expect = q.get("expect") or {}
+            expected_cat = (expect.get("category_id") or "") if expect.get("category_id") else ""
+            expected_tool = expect.get("tool")          # None za negativne entry-je
+            failure_reason = expect.get("failure_reason")
+            tags = q.get("tags") or []
+            # category_label nije više polje u entry-ju — generišem iz tag-ova
+            # (npr. "Mobiteli (auto-gen, parent)" ili "automobili (manual, negative, not_in_catalog)").
+            label = f"{query} ({', '.join(tags)})" if tags else query
             subtree = descendants(expected_cat, children_of) if expected_cat else set()
             subtree_product_count = sum(products_per_cat.get(c, 0) for c in subtree)
 
-            print(f"  [{i:2}/{len(queries)}] {query!r:<40}", end=" ", flush=True)
+            print(f"  [{i:3}/{len(queries)}] {query!r:<40}", end=" ", flush=True)
             t0 = time.monotonic()
             resp = chat_call(client, args.url, query)
             elapsed_ms = int((time.monotonic() - t0) * 1000)
@@ -714,6 +748,9 @@ def main() -> int:
                 print(f"GREŠKA ({elapsed_ms}ms): {resp['_error']}")
                 rows.append({
                     "query": query, "expected_cat_id": expected_cat,
+                    "expected_tool": expected_tool,
+                    "failure_reason": failure_reason,
+                    "tags": tags,
                     "category_label": label,
                     "error": resp["_error"],
                     "routed_tool": None,
@@ -740,7 +777,7 @@ def main() -> int:
             else:
                 routed_tool = None
                 routed_cat = None
-            r_verdict = routing_verdict(routed_tool, routed_cat, expected_cat, subtree)
+            r_verdict = routing_verdict(routed_tool, routed_cat, expected_tool, expected_cat, subtree)
 
             products_raw = parse_products(reply)
             products: list[dict] = []
@@ -768,6 +805,9 @@ def main() -> int:
                 "OUT": "van porodice",
                 "OVERVIEW_PASS": "pregled — tačan roditelj",
                 "OVERVIEW_WRONG": "pregled — pogrešan roditelj",
+                "WRONG_TOOL": "pogrešan alat",
+                "NEG_PASS": "negativan — pravilno odbijen",
+                "NEG_REGRESSION": "negativan — regresija (lažno rutirao)",
                 "NA": "—",
             }.get(r_verdict, r_verdict)
             print(f"{verdict_label:<10} ruta='{routing_label}' vraćeno={len(products)} "
@@ -777,6 +817,9 @@ def main() -> int:
             rows.append({
                 "query": query,
                 "expected_cat_id": expected_cat,
+                "expected_tool": expected_tool,
+                "failure_reason": failure_reason,
+                "tags": tags,
                 "category_label": label,
                 "routed_tool": routed_tool,
                 "routed_cat_id": routed_cat,
