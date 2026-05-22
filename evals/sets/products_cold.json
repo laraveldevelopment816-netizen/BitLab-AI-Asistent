@@ -1,0 +1,128 @@
+[
+  {
+    "query": "iPhone 17",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "175", "args_subset": {"brand_id": "11"}, "min_results": 1},
+    "tags": ["manual", "qualified", "brand+model"]
+  },
+  {
+    "query": "Samsung mobitel",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "175", "args_subset": {"brand_id": "68"}, "min_results": 3},
+    "tags": ["manual", "qualified", "brand+cat"]
+  },
+  {
+    "query": "Xiaomi telefon",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "175", "args_subset": {"brand_id": "88"}, "min_results": 1},
+    "tags": ["manual", "qualified", "brand+cat"]
+  },
+  {
+    "query": "laptop do 1500 KM",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "98", "args_subset": {"max_price_km": 1500}, "min_results": 3},
+    "tags": ["manual", "qualified", "cat+price"]
+  },
+  {
+    "query": "Dell laptop",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "98", "args_subset": {"brand_id": "23"}, "min_results": 1},
+    "tags": ["manual", "qualified", "brand+cat"]
+  },
+  {
+    "query": "Apple MacBook",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "98", "args_subset": {"brand_id": "11"}, "min_results": 1},
+    "tags": ["manual", "qualified", "brand+model"]
+  },
+  {
+    "query": "Samsung TV",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "163", "args_subset": {"brand_id": "68"}, "min_results": 3},
+    "tags": ["manual", "qualified", "brand+cat"]
+  },
+  {
+    "query": "Sony TV",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "163", "args_subset": {"brand_id": "71"}, "min_results": 1},
+    "tags": ["manual", "qualified", "brand+cat"]
+  },
+  {
+    "query": "27 inch monitor",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "224", "min_results": 1},
+    "tags": ["manual", "qualified", "cat+spec"]
+  },
+  {
+    "query": "HP printer",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "125", "args_subset": {"brand_id": "39"}, "min_results": 1},
+    "tags": ["manual", "qualified", "brand+cat"]
+  },
+  {
+    "query": "Kingston SSD",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "115", "args_subset": {"brand_id": "44"}, "min_results": 1},
+    "tags": ["manual", "qualified", "brand+cat"]
+  },
+  {
+    "query": "gaming tastatura",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "220", "min_results": 1},
+    "tags": ["manual", "qualified", "cat+spec"]
+  },
+  {
+    "query": "gaming miš do 100 KM",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "277", "args_subset": {"max_price_km": 100}, "min_results": 1},
+    "tags": ["manual", "qualified", "cat+price"]
+  },
+  {
+    "query": "tableti do 500 KM",
+    "history": [],
+    "expect": {"tool": "search_products", "category_id": "99", "args_subset": {"max_price_km": 500}, "min_results": 1},
+    "tags": ["manual", "qualified", "cat+price"]
+  },
+  {
+    "query": "BlackBerry mobitel",
+    "history": [],
+    "expect": {"tool": null, "failure_reason": "brand_not_carried"},
+    "tags": ["manual", "negative", "brand_not_carried"]
+  },
+  {
+    "query": "iPhone do 50 KM",
+    "history": [],
+    "expect": {"tool": null, "failure_reason": "price_unreachable"},
+    "tags": ["manual", "negative", "price_unreachable"]
+  },
+  {
+    "query": "namještaj",
+    "history": [],
+    "expect": {"tool": null, "failure_reason": "not_in_catalog"},
+    "tags": ["manual", "negative", "not_in_catalog"]
+  },
+  {
+    "query": "biciklo",
+    "history": [],
+    "expect": {"tool": null, "failure_reason": "not_in_catalog"},
+    "tags": ["manual", "negative", "not_in_catalog"]
+  },
+  {
+    "query": "auto akumulator",
+    "history": [],
+    "expect": {"tool": null, "failure_reason": "not_in_catalog"},
+    "tags": ["manual", "negative", "not_in_catalog"]
+  },
+  {
+    "query": "knjige",
+    "history": [],
+    "expect": {"tool": null, "failure_reason": "not_in_catalog"},
+    "tags": ["manual", "negative", "not_in_catalog"]
+  },
+  {
+    "query": "gaming laptop do 100 KM",
+    "history": [],
+    "expect": {"tool": null, "failure_reason": "combo_impossible"},
+    "tags": ["manual", "negative", "combo_impossible"]
+  }
+]
