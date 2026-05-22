@@ -19,6 +19,18 @@ _ESCALATION_DEDUP_TTL_S = 300  # 5 min
 _escalation_dedup: dict[str, float] = {}
 
 
+class ToolValidationError(Exception):
+    """Expected, business-level greška u tool handleru (npr. malformiran input
+    od LLM-a, validation fail). Prevodi se u Claude-friendly poruku tako da
+    model može da preformuliše ili obavijesti korisnika.
+
+    Sistemske greške (RAG indeks ne radi, FAISS pukao, file system error)
+    NE smiju da koriste ovu klasu — one moraju da propagiraju ka HTTP 5xx
+    da bi se frontend pokazao "imamo tehnički problem", umjesto da Claude
+    halucinira proizvode misleći da je prazan rezultat. Fail-fast > silent
+    fail (industrijski standard za production search/RAG sistemove)."""
+
+
 # ── Kategorije + brendovi — load jednom pri import-u ─────────
 # AI vidi listu validnih cat_id-ova i brand_id-ova u tool description-u +
 # kao enum, tako da single-call zaokruži klasifikaciju + tool decision atomski.
@@ -270,6 +282,14 @@ def handle_search_products(
     category_id: str | None = None,
     brand_id: str | None = None,
 ) -> str:
+    # Eval override — vidi `settings.search_top_k_override` docstring u config.py.
+    # Kad je ENV `SEARCH_TOP_K_OVERRIDE` setovan, koristimo tu vrijednost
+    # umjesto Claude-ovog izbora. Cilj: eval skripte mogu da vide pun RAG
+    # pool, nezavisno od toga koliko Claude inače bira. U produkciji ostaje
+    # None i Claude-ov `top_k` se poštuje.
+    from .config import settings
+    if settings.search_top_k_override is not None:
+        top_k = settings.search_top_k_override
     results = _get_index().search(
         query,
         top_k=top_k,
@@ -389,20 +409,17 @@ def dispatch(name: str, tool_input: dict[str, Any]) -> str:
         return f"Nepoznat alat: {name}"
     try:
         return handler(tool_input)
-    except Exception as exc:
-        # Loguj puni traceback u server konzolu da možemo dijagnozirati root cause
-        import traceback
-        print(f"[TOOL ERROR] {name}({tool_input!r}) → {type(exc).__name__}: {exc}")
-        traceback.print_exc()
-        # Vrati neutralnu poruku Claude-u — ne "tehnička greška u bazi" jer to
-        # tjera Claude-a da paniči i odbija korisnika. Umjesto toga, daj mu
-        # info da pokuša ponovo ili predloži alternative.
-        if name == "search_products":
-            return ("Pretraga trenutno vraća prazan rezultat za ovaj upit. "
-                    "Predloži korisniku da preformuliše upit (npr. konkretniji brand, "
-                    "specifikacije, cjenovni opseg) ili da pita o nekoj drugoj kategoriji.")
-        if name == "get_faq":
-            return ("FAQ pretraga nije pronašla relevantnu sekciju. "
-                    "Odgovori iz opšteg znanja o BitLab politikama ili predloži kontakt "
-                    "prodajnom timu.")
-        return f"Alat '{name}' privremeno nedostupan. Pokušaj alternativni pristup."
+    except ToolValidationError as exc:
+        # Expected business case — Claude će vidjeti poruku i nastaviti razgovor.
+        print(f"[TOOL VALIDATION] {name}({tool_input!r}) → {exc}")
+        return str(exc)
+    # NB (industrijski standard, fail-fast): sve ostale exceptions
+    # (RAG indeks ne radi, FAISS pukao, AttributeError, FileNotFoundError…)
+    # NAMJERNO ne hvatamo ovdje. Propagiraju ka /api/chat i izazivaju
+    # HTTP 5xx. Razlog: ranija varijanta sa generic `except Exception` je
+    # prevodila sistemske greške u poruku "pretraga vraća prazan rezultat",
+    # što je tjerali Claude da halucinira proizvode misleći da je prazan
+    # rezultat legitiman. Bolji ishod: app pukne, frontend prikaže
+    # "imamo tehnički problem" — korisnik zove podršku, mi vidimo error
+    # u logu i fix-ujemo. Silent fail u search/RAG sloju je opasniji od
+    # vidljive greške.

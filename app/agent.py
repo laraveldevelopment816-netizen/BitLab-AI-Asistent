@@ -69,13 +69,18 @@ def _get_anthropic_client() -> anthropic.Anthropic:
 def _get_pwr_client() -> openai.OpenAI:
     global _pwr_client
     if _pwr_client is None:
-        # timeout=180.0 obavezno per PWR docs §11.9 — multi-iteration kroz
-        # web UI / CLI subprocess ide 60-90s end-to-end, SDK default ~60s
-        # bi pucao prije finalne iteracije.
+        # Hard testing (2026-05-21): podignuto sa 180 na 1800 (30 min) jer
+        # eval sa SEARCH_TOP_K_OVERRIDE + max_output_tokens=64000 može
+        # da generiše dugačak markdown spisak. PWR adapter timeout je
+        # uparen (vidi playwright-router DEFAULT_TIMEOUT_S=1800). VRATITI
+        # NA 180 prije produkcije.
+        # Original komentar: timeout=180.0 obavezno per PWR docs §11.9 —
+        # multi-iteration kroz web UI / CLI subprocess ide 60-90s
+        # end-to-end, SDK default ~60s bi pucao prije finalne iteracije.
         _pwr_client = openai.OpenAI(
             base_url=settings.pwr_base_url,
             api_key=settings.pwr_api_key,
-            timeout=180.0,
+            timeout=1800.0,
         )
     return _pwr_client
 

@@ -273,13 +273,20 @@ class ProductIndex:
     def preload_model(self) -> None:
         """Pozovi pri startu da bi prvi upit bio brz. Skupo na WSL2 (~50s).
 
-        device="cpu" eksplicitno — bez toga torch novije verzije ide preko
-        "meta tensor" lazy loading-a, pa kasniji `.to(device)` baca
-        NotImplementedError ("Cannot copy out of meta tensor"). Bug iz
-        TEST-failures-pwr-migration.md §3."""
+        VAŽNO o `device=` parametru:
+        - Stara verzija ovog koda je prosljeđivala `device="cpu"` da pobjegne od
+          meta-tensor lazy load problema (TEST-failures-pwr-migration.md §3).
+        - U novijoj torch verziji (>=2.x) sentence-transformers interno zove
+          `self.to(device)` koji opet padne sa istim `NotImplementedError:
+          Cannot copy out of meta tensor; no data!` — jer model dolazi sa
+          `device="meta"` (samo metadata, bez podataka), pa `.to("cpu")` ne
+          može da kopira.
+        - Ispravan obrazac: NE prosljeđivati `device=` u konstruktor.
+          sentence-transformers default-uje CPU kad nema GPU. Loaduje se
+          pravilno sa `to_empty()` interno gdje treba."""
         if self._model is None:
             from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(settings.embed_model, device="cpu")
+            self._model = SentenceTransformer(settings.embed_model)
 
     def _embed(self, text: str) -> np.ndarray:
         if self._model is None:

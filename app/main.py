@@ -22,18 +22,50 @@ from .config import PROJECT_ROOT, settings
 logger = logging.getLogger(__name__)
 
 
+# RAG health stanje — eksponovano kroz /healthz. Background warmup task ga
+# popuni nakon što preload + smoke test završe (ili padne). Cilj: regression
+# tipa "tihi torch/sentence-transformers upgrade je promijenio API" mora biti
+# vidljiva u healthz-u prije nego što korisnik pošalje prvi upit.
+_rag_ready: bool = False
+_rag_error: str | None = None
+
+
+def _warmup_rag_sync() -> None:
+    """Background warmup: preload embedding model + smoke search test.
+
+    Hvata sve regresije RAG sloja (corrupt index, torch verzija promijenila
+    API, dimension mismatch, file fali). Ne fail-uje server — drugi endpoint-i
+    još mogu da rade. Ali /healthz eksplicitno javlja `rag_ready: false` i
+    `rag_error` poruku tako da operativci znaju prije nego što stigne prvi
+    chat request."""
+    global _rag_ready, _rag_error
+    try:
+        from .rag import get_index
+        idx = get_index()
+        idx.preload_model()
+        # Smoke test — punkt RAG search da otkrijemo silent API regressions
+        results = idx.search("test", top_k=1)
+        _rag_ready = True
+        _rag_error = None
+        logger.info("[STARTUP OK] RAG warmup završen, smoke vratio %d rezultata", len(results))
+    except Exception as exc:
+        _rag_ready = False
+        _rag_error = f"{type(exc).__name__}: {exc}"
+        logger.error("[STARTUP FAIL] RAG warmup pukao: %s", exc, exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Preload RAG indeks odmah (čisti numpy/json — brzo).
-    # Embedding model se grije u BACKGROUND task-u — server ne čeka.
+    # Embedding model + smoke test idu u BACKGROUND task-u — server ne čeka.
     # Razlog: na WSL2 /mnt/c sentence-transformers import traje ~50s. Bez ovoga
-    # startup je minut+. Sa ovim, /healthz odgovara odmah, prvi /api/chat čeka model.
+    # startup je minut+. Sa ovim, /healthz odgovara odmah, prvi /api/chat čeka
+    # model. Smoke test rezultat se eksponuje kroz /healthz polja
+    # `rag_ready` + `rag_error`.
     import asyncio
 
     if settings.products_index.exists() and settings.products_meta.exists():
-        from .rag import get_index
-        idx = get_index()  # učitava .npz + meta.json — brzo
-        asyncio.create_task(asyncio.to_thread(idx.preload_model))
+        asyncio.create_task(asyncio.to_thread(_warmup_rag_sync))
 
     # Dashboard storage init — idempotentno
     from .storage.db import init_db
@@ -120,8 +152,42 @@ async def _anthropic_connection_handler(
     )
 
 
+async def _system_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Catch-all za neočekivane sistemske greške (RAG indeks ne radi, FAISS
+    pukao, file system error, AttributeError u handleru). HTTPException i
+    već-registrovani specifični handleri (Anthropic*, RateLimitExceeded)
+    imaju prioritet pa ovaj uhvati samo ono što inače bi vratilo bezimeni
+    HTTP 500.
+
+    Filozofija (industrijski standard, fail-fast):
+    1. Vraćamo 503 sa structured payloadom da frontend zna kako da prikaže
+       ("imamo tehnički problem"), umjesto da Claude halucinira proizvode
+       jer mu je tool wrapper "progutao" exception.
+    2. Logujemo pun traceback u uvicorn stderr — operativci mogu da debug-uju.
+    3. Brže otkrijemo regression (RAG indeks stale, dependencies promijenile
+       se) jer pukne odmah, ne tek kad korisnik primijeti čudne odgovore."""
+    logger.error(
+        "[SYSTEM ERROR] %s %s → %s: %s",
+        request.method, request.url.path, type(exc).__name__, exc,
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": "service_unavailable",
+            "reply": (
+                "Imamo tehnički problem sa katalogom. Pokušajte ponovo "
+                "za par minuta ili nas kontaktirajte direktno na 066 516 174 "
+                "(Viber/tel) ili prodaja@bitlab.rs."
+            ),
+            "internal_type": type(exc).__name__,
+        },
+    )
+
+
 app.add_exception_handler(anthropic.APIStatusError, _anthropic_api_status_handler)
 app.add_exception_handler(anthropic.APIConnectionError, _anthropic_connection_handler)
+app.add_exception_handler(Exception, _system_exception_handler)
 
 
 app.add_middleware(
@@ -211,15 +277,42 @@ async def root():
 
 @app.get("/healthz")
 async def healthz():
-    return {
-        "status": "ok",
-        "chat_model": settings.chat_model,
-        "email_model": settings.email_model,
+    # Stvarni model koji /api/chat koristi zavisi od LLM_BACKEND, ne samo od
+    # `chat_model` polja u config-u. PWR backend ima zasebne `pwr_chat_model`
+    # + `pwr_chat_model_effort` polja. Vrati efektivni izbor tako da
+    # eval/diagnostic alati prikažu šta se STVARNO šalje, ne defaultni
+    # anthropic placeholder.
+    if settings.llm_backend == "pwr":
+        effective_chat_model = settings.pwr_chat_model
+        effective_chat_effort = settings.pwr_chat_model_effort
+        effective_email_model = settings.pwr_email_model
+    else:
+        effective_chat_model = settings.chat_model
+        effective_chat_effort = settings.chat_model_effort
+        effective_email_model = settings.email_model
+    body = {
+        "status": "ok" if _rag_ready else "rag_not_ready",
+        "llm_backend": settings.llm_backend,
+        "chat_model": effective_chat_model,
+        "chat_model_effort": effective_chat_effort,
+        "email_model": effective_email_model,
         "embed_model": settings.embed_model,
         "products_index_present": settings.products_index.exists(),
         "products_meta_present": settings.products_meta.exists(),
         "faq_present": settings.faq_path.exists(),
+        # RAG warmup status — vidi `_warmup_rag_sync`. False znači da je smoke
+        # search pri startup-u pukao (npr. torch verzija promijenila API).
+        # Operativci moraju monitor-isati ovo polje.
+        "rag_ready": _rag_ready,
+        "rag_error": _rag_error,
     }
+    # Readiness semantika: dok RAG nije ready, /healthz vraća HTTP 503 da
+    # load balanseri / monitoring alarmi tretiraju instancu kao not-ready.
+    # Tijelo response-a je isto (sa rag_error porukom) tako da operativci
+    # vide ZAŠTO. 200 OK znači "server živ + RAG sloj zdrav".
+    if not _rag_ready:
+        return JSONResponse(status_code=503, content=body)
+    return body
 
 
 @app.post("/api/chat", response_model=ChatResponse)

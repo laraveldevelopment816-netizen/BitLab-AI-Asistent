@@ -43,7 +43,20 @@ class Settings(BaseSettings):
     email_model_effort: EffortLevel = "low"
     # Voice kanal koristi chat_model + chat_model_effort (nije zasebno polje).
     max_tool_iterations: int = 5
-    max_output_tokens: int = 1024
+    # NAPOMENA (hard testing): podignuto sa 1024 na 64000 za eval gdje
+    # Claude renderira veliki broj proizvoda (SEARCH_TOP_K_OVERRIDE=5287
+    # može dati 165+ proizvoda u tool result-u). Sonnet 4.6 podržava do
+    # 64K output tokens. Vratiti na 1024 prije produkcije.
+    max_output_tokens: int = 64000
+
+    # Eval/diagnostic override: kad je setovan, `handle_search_products`
+    # ignoriše `top_k` koji Claude šalje i koristi ovu vrijednost.
+    # NIKAD ne postavljati u produkciji — chat widget bi dobio thousands
+    # of products po upitu, troši context window i pravi neupotrebljive
+    # odgovore. Setuj kroz ENV `SEARCH_TOP_K_OVERRIDE=5287` samo lokalno
+    # kad pokrećeš eval skripte koje žele puni RAG pool umjesto Claude-ovog
+    # samostalnog izbora.
+    search_top_k_override: int | None = None
 
     # ── PlaywrightRouter (test backend, vidi PWR docs sek. 11) ───
     pwr_base_url: str = "http://127.0.0.1:8765/v1"
