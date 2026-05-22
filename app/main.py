@@ -215,7 +215,7 @@ if public_dir.exists():
 
 class ChatMessage(BaseModel):
     role: str = Field(..., pattern="^(user|assistant)$")
-    content: str = Field(..., max_length=4000)
+    content: str = Field(..., max_length=20000)
 
 
 class ChatRequest(BaseModel):
