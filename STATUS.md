@@ -12,7 +12,7 @@ columns:
 
 # STATUS — bitlab-ai-asistent
 
-Ažurirano: 2026-05-22
+Ažurirano: 2026-05-23
 
 Taktički nivo (dnevne taske) prema bitlab-standards shemi
 (`bitlab-standards/docs/standards/status-schema.md`). Strateški nivo —
@@ -215,6 +215,51 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
 
   Procjena: 0.5-1 dan (opcija 1) + 0.5 dan (opcija 3). Izvor: hard testing
   sesija 2026-05-21, paralelna dijagnoza u playwright-router sesiji.
+
+- [ ] Eval framework v2 — categories + products engine + unifikovan schema <!-- id:evf2 -->
+  Refactor evals/ folder-a: postojeći `visualize_parent_runtime.py` i ostali
+  fajlovi premješteni u `evals/archives/`, runovi u `evals/runs/archives/`.
+  Novi engine fajlovi `run_categories.py` (kategorijsko rutiranje) i
+  `run_products.py` (kvalifikovani product upiti) sa unifikovanim entry
+  shape-om `{query, history, expect, tags}`. Parser-i priznaju
+  `category_overview` kao validan routing (uz `search_products`); novi
+  `overall_verdict` sjedinjuje routing+args+result u jedan PASS/WARN/FAIL.
+  UI sloj preveden na crnogorski ijekavski.
+
+  Eval setovi u `evals/sets/`:
+  - `categories_cold.json` (245 entry-ja, auto-gen iz `data/categories_new.json`
+    preko `scripts/gen_categories_eval.py` — 209 leaf + 26 parent + 10 ručno
+    održavanih negativnih sa failure_reason).
+  - `products_cold.json` (21 ručno kuriran entry — 14 pozitivnih kvalifikovanih
+    upita i 7 negativnih sa eksplicitnim failure_reason).
+
+  Urađeno do sada:
+  - Restruktura `evals/` (archives/ + sets/ + runs/archives/).
+  - `run_categories.py` adapt: routing_verdict prima expected_tool, OVERVIEW_PASS/
+    OVERVIEW_WRONG + NEG_PASS/NEG_REGRESSION grane, overall_verdict sjedinjuje.
+  - `run_products.py` adapt: dodat args_verdict (provjera filtera brand_id/
+    max_price_km), parse_price_km helper, n_in_price_range mjerenje, novi
+    stats kartice i kolone u leaderboard-u.
+  - `scripts/gen_categories_eval.py` idempotentan auto-gen iz CSV-a.
+  - Smoke runovi prošli (categories limit=5: 4/5 PASS; products tek treba
+    pokrenuti).
+  - Brainstorm log + ASCII tree 238 kategorija + pre-router skica u
+    `docs/brainstorm/2026-05-22-eval-framework-standardizacija/`.
+
+  Ostaje:
+  1. Pun smoke run na `categories_cold.json` (245 entry-ja) — baseline za
+     A/B compare sa prompt fix-evima (rtct).
+  2. Pun smoke run na `products_cold.json` (21 entry-ja) — provjera da
+     `args_verdict` i `n_in_price_range` rade ispravno na realnim odgovorima.
+  3. `multi_turn.json` set (history scenariji) — odložen do kasnije iteracije.
+  4. Auto-gen brand+cat kombinacije iz `data/brend.json` + `categories_new.json`
+     za `products_cold.json` — odloženo (kuriran set prvi).
+  5. Pre-router skica (`docs/brainstorm/.../pre_router_sketch.txt`) — top
+     deterministic layer ispred Claude-a; razmatra se tek nakon što oba
+     baseline-a stoje.
+
+  Procjena: 0.5 dan (smoke runovi + hardening). Izvor: brainstorm sesija
+  2026-05-22 ([log](docs/brainstorm/2026-05-22-eval-framework-standardizacija/log.md)).
 
 - [ ] Strukturisani search output (JSON shema + Pydantic + Layout) <!-- id:srcv -->
   AI output za search rezultate trenutno nije konzistentan — isti tip upita
