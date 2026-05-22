@@ -125,4 +125,5 @@ Detalji po feature:
 - Chat widget: [`features/chat-widget.md`](./features/chat-widget.md)
 - Voice mode: [`features/voice-mode.md`](./features/voice-mode.md)
 - AI klasifikacija + RAG: [`features/ai-classification.md`](./features/ai-classification.md)
+- Kategorijski routing + parent expansion (ASCII flow): [`features/category-routing.md`](./features/category-routing.md)
 - Logging dashboard: [`features/logging-dashboard.md`](./features/logging-dashboard.md)

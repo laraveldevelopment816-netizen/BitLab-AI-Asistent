@@ -12,7 +12,7 @@ columns:
 
 # STATUS — bitlab-ai-asistent
 
-Ažurirano: 2026-05-21
+Ažurirano: 2026-05-22
 
 Taktički nivo (dnevne taske) prema bitlab-standards shemi
 (`bitlab-standards/docs/standards/status-schema.md`). Strateški nivo —
@@ -88,6 +88,42 @@ out-of-scope ove faze. DoD: [`docs/plans/dod-chat-only.md`](docs/plans/dod-chat-
   Procjena: 2-3 dana. Izvor: DoD sekcija 5.
 
 ## Doing
+
+- [ ] Category overview tool — UX za parent kategorijske upite <!-- id:covt -->
+  Rješenje za [rtct](#rtct) routing problem ali iz UX ugla: kad upit tačno
+  match-uje ime parent kategorije ("Mobiteli", "Računari", "TV"), Claude ne
+  pogađa između leaf-eva — poziva novi `category_overview(cat_id)` tool koji
+  vraća **breakdown po djeci** (count + top 3 iz svakog djeteta). Korisnik
+  vidi 3 chipa ("📱 Telefoni 166 · 🛡️ Maske 1.274 · 🔌 Dodaci 129") umjesto
+  liste od 1.575 proizvoda ili pogrešnog poduzorka iz jednog leaf-a.
+
+  Tehnička referenca + ASCII tok pretrage:
+  [`docs/features/category-routing.md`](docs/features/category-routing.md).
+
+  Koraci:
+  1. **`app/tools.py`**: novi `CATEGORY_OVERVIEW` tool schema; handler u
+     `tools.py` koristi `_load_cat_descendants` + `categories_new.json` za
+     labele/urlhash + count po djetetu + top 3 best-sellers po djetetu.
+  2. **`categories_new.json` integracija**: minimalno učitavanje parent
+     entry-ja (id, name, urlhash, parent_id) da Claude može imenovati parent
+     po imenu u argumentu (id se rezolvira interno).
+  3. **`app/system_prompts.py`**: nudge — "ako upit tačno match-uje ime
+     parent kat. (Mobiteli, Računari, TV, Bijela tehnika), pozovi
+     `category_overview` umjesto `search_products`."
+  4. **Widget render** (slay vezano — vidi srcv): `category_chip` tip u JSON
+     layout schemi; renderer u `widget.js` (slika + count + link na webshop
+     kategoriju kroz `urlhash`).
+  5. **Eval**: novi `evals/category_overview_eval.json` (5-8 parent upita) +
+     PASS = vraća overview sa pravim cat_id-om, ne search_products poziv.
+     Postojeći parent-runtime eval mijenja semantiku: parent upiti više nisu
+     u njemu (oni idu na overview path).
+
+  Edge case za drugu rundu: `super_id` grupisanje (super_id=4 obuhvata
+  mobile/TV/audio iz `categories_new.json`) — ako broj parent-a u super
+  grupi prelazi razumnu chip-listu (>6), dvostepena navigacija. Zasad ne
+  diraj — sa ~10-15 parent-a u praksi, plitka hijerarhija je dovoljna.
+
+  Procjena: 1-1.5 dan. Izvor: brainstorm sa Claude-om 2026-05-22.
 
 - [ ] PWR backend za chat agent + test eval (LLM_BACKEND=anthropic|pwr) <!-- id:pwrt -->
   Preostalo do Done:
