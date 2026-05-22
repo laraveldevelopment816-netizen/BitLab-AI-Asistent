@@ -36,6 +36,7 @@ class ToolValidationError(Exception):
 # kao enum, tako da single-call zaokruži klasifikaciju + tool decision atomski.
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _CATEGORIES_PATH = _DATA_DIR / "categories.json"
+_CATEGORIES_NEW_PATH = _DATA_DIR / "categories_new.json"
 _BRAND_PATH = _DATA_DIR / "brend.json"
 
 
@@ -43,6 +44,54 @@ def _load_categories() -> dict[str, dict[str, Any]]:
     if not _CATEGORIES_PATH.exists():
         return {}
     return json.loads(_CATEGORIES_PATH.read_text(encoding="utf-8"))
+
+
+def _load_parent_categories() -> dict[str, dict[str, Any]]:
+    """Iz `categories_new.json` izvuci parent kategorije (parent_id=0, status=1)
+    koje imaju ≥2 aktivne direktne djece. Vraća
+    {parent_id_str: {label, urlhash, children: [{cat_id, label, urlhash}, ...]}}.
+
+    Koristi `CATEGORY_OVERVIEW` tool: Claude vidi listu parent-a sa imenima
+    djece u tool description-u i poziva overview kad upit tačno match-uje
+    parent ime (npr. 'Mobiteli' → 151 → breakdown 175/176/394).
+
+    Filter `≥2 djece`: parent sa samo 1 djetetom nema smisla za breakdown
+    UX (jedan chip = isto kao plain search_products). Top-level kategorije
+    bez djece su leaf-evi koje već pokriva search_products."""
+    if not _CATEGORIES_NEW_PATH.exists():
+        return {}
+    raw = json.loads(_CATEGORIES_NEW_PATH.read_text(encoding="utf-8"))
+    children_of: dict[int, list[dict[str, Any]]] = {}
+    by_id: dict[int, dict[str, Any]] = {}
+    for c in raw:
+        if c.get("status") != 1:
+            continue
+        by_id[c["id"]] = c
+        p = c.get("parent_id")
+        if p:
+            children_of.setdefault(p, []).append(c)
+    out: dict[str, dict[str, Any]] = {}
+    for cid, c in by_id.items():
+        if c.get("parent_id") != 0:
+            continue
+        kids = children_of.get(cid, [])
+        if len(kids) < 2:
+            continue
+        # Sortiraj djecu po sort_id (taxonomy redoslijed), pa po imenu kao tie-break
+        kids_sorted = sorted(kids, key=lambda k: (k.get("sort_id") or 999, k.get("name") or ""))
+        out[str(cid)] = {
+            "label": c.get("name") or "",
+            "urlhash": c.get("urlhash") or "",
+            "children": [
+                {
+                    "cat_id": str(k["id"]),
+                    "label": k.get("name") or "",
+                    "urlhash": k.get("urlhash") or "",
+                }
+                for k in kids_sorted
+            ],
+        }
+    return out
 
 
 def _load_brands() -> list[dict[str, Any]]:
@@ -79,6 +128,13 @@ BRANDS: list[dict[str, Any]] = _load_brands()
 _BRAND_IDS: list[str] = [b["id"] for b in BRANDS]
 _BRANDS_BLOCK = "\n".join(
     f"- {b['id']}: {b['name']}" for b in BRANDS
+)
+
+PARENT_CATEGORIES: dict[str, dict[str, Any]] = _load_parent_categories()
+_PARENT_CAT_IDS: list[str] = list(PARENT_CATEGORIES.keys())
+_PARENTS_BLOCK = "\n".join(
+    f"- {pid}: {p['label']} (djeca: {', '.join(c['label'] for c in p['children'])})"
+    for pid, p in PARENT_CATEGORIES.items()
 )
 
 
@@ -230,8 +286,38 @@ ESCALATE_TO_HUMAN: dict[str, Any] = {
 }
 
 
+CATEGORY_OVERVIEW: dict[str, Any] = {
+    "name": "category_overview",
+    "description": (
+        "Vraća breakdown PARENT kategorije po njenoj direktnoj djeci: za "
+        "svako dijete vraća count proizvoda + 3 primjera. KORISTI kad "
+        "korisnik kuca SAMO ime parent kategorije bez dodatnih kvalifikatora "
+        "(npr. 'Mobiteli', 'Računari', 'TV', 'Bijela tehnika', 'Printeri'). "
+        "Cilj: korisnik vidi 3 chipa (npr. 📱 Telefoni / 🛡️ Maske / 🔌 Dodaci) "
+        "umjesto pogrešno sužene liste od 5 proizvoda iz jednog leaf-a.\n\n"
+        "NE KORISTI ako upit ima dodatni kvalifikator ('iPhone 16', 'gaming "
+        "miš', 'laptop do 1500 KM', 'Samsung TV') — za to ide `search_products` "
+        "jer kvalifikator suzava izbor na konkretne proizvode.\n\n"
+        "VALIDNI PARENT cat_id-ovi (samo oni sa ≥2 aktivne djece):\n"
+        f"{_PARENTS_BLOCK}"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "cat_id": {
+                "type": "string",
+                "enum": _PARENT_CAT_IDS,
+                "description": "ID parent kategorije iz liste iznad.",
+            },
+        },
+        "required": ["cat_id"],
+    },
+}
+
+
 ALL_TOOLS: list[dict[str, Any]] = [
     SEARCH_PRODUCTS,
+    CATEGORY_OVERVIEW,
     GET_FAQ,
     CHECK_AVAILABILITY,
     ESCALATE_TO_HUMAN,
@@ -300,6 +386,62 @@ def handle_search_products(
     if not results:
         return "Nema proizvoda koji odgovaraju upitu."
     return json.dumps(results, ensure_ascii=False)
+
+
+def handle_category_overview(cat_id: str) -> str:
+    """Vrati JSON breakdown parent kategorije po direktnoj djeci.
+
+    Format: {parent_id, parent_label, parent_urlhash, children: [{cat_id,
+    label, urlhash, count, top3: [{name, price_km, url}, ...]}]}.
+
+    `count` = broj proizvoda u indeksu sa `categories_id == ch_id` (NE
+    descendant expansion — overview je plitak, jedan nivo dubine).
+    `top3` = prva 3 in-stock proizvoda sortirana abecedno (deterministička
+    bez embedding poziva — overview je navigacijski, ne pretraga)."""
+    parent = PARENT_CATEGORIES.get(cat_id)
+    if not parent:
+        return (
+            f"Nepoznat parent cat_id: {cat_id}. "
+            f"Validni: {', '.join(_PARENT_CAT_IDS)}"
+        )
+    idx = _get_index()
+    children_out: list[dict[str, Any]] = []
+    for ch in parent["children"]:
+        ch_id = ch["cat_id"]
+        prods_in_cat: list[dict[str, Any]] = []
+        for i, c in enumerate(idx._idx_to_cat):
+            if c == ch_id:
+                pid = str(int(idx.ids[i]))
+                meta = idx._products.get(pid)
+                if meta:
+                    prods_in_cat.append(meta)
+        prods_in_cat.sort(
+            key=lambda m: (
+                0 if (m.get("kolicina") or 0) > 0 else 1,
+                m.get("name") or "",
+            )
+        )
+        top3 = [
+            {
+                "name": m.get("name"),
+                "price_km": m.get("price_km"),
+                "url": m.get("url"),
+            }
+            for m in prods_in_cat[:3]
+        ]
+        children_out.append({
+            "cat_id": ch_id,
+            "label": ch["label"],
+            "urlhash": ch["urlhash"],
+            "count": len(prods_in_cat),
+            "top3": top3,
+        })
+    return json.dumps({
+        "parent_id": cat_id,
+        "parent_label": parent["label"],
+        "parent_urlhash": parent["urlhash"],
+        "children": children_out,
+    }, ensure_ascii=False)
 
 
 def handle_get_faq(topic: str) -> str:
@@ -397,6 +539,7 @@ def handle_escalate_to_human(reason: str, summary: str) -> str:
 
 _HANDLERS = {
     "search_products": lambda inp: handle_search_products(**inp),
+    "category_overview": lambda inp: handle_category_overview(**inp),
     "get_faq": lambda inp: handle_get_faq(**inp),
     "check_availability": lambda inp: handle_check_availability(**inp),
     "escalate_to_human": lambda inp: handle_escalate_to_human(**inp),
