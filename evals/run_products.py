@@ -149,7 +149,7 @@ def chat_call(client: httpx.Client, url: str, query: str) -> dict:
             timeout=DEFAULT_TIMEOUT_S,
         )
         if r.status_code != 200:
-            return {"_error": f"HTTP {r.status_code}: {r.text[:200]}"}
+            return {"_error": f"HTTP {r.status_code}: {r.text[:2000]}"}
         return r.json()
     except Exception as e:
         return {"_error": f"{type(e).__name__}: {e}"}
