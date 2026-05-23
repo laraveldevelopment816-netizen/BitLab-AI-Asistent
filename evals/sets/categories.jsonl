@@ -1,0 +1,4 @@
+// Auto-gen + ručno održavani eval entry-ji za kategorije (Faza 1).
+// Faza 1 task 1: scripts/gen_categories_eval.py popuni ovaj fajl iz data/categories_new.json.
+// Format: jedan JSON entry per line. Shema: vidi evals/framework/types.py (EvalEntry).
+// Komentari (// prefix) i prazne linije se ignorišu (vidi evals/framework/loader.py).

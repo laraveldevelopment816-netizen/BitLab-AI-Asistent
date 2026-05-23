@@ -2,6 +2,7 @@
 
 TDD zero base: postojeća poslovna logika je u bck/. Dodavati polja
 SAMO kad failing eval to traži."""
+
 from __future__ import annotations
 
 from pathlib import Path

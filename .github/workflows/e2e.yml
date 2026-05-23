@@ -1,0 +1,22 @@
+name: E2E (Playwright)
+
+on:
+  pull_request:
+    branches: ["claude/tdd-zero-base"]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev,e2e]" --extra-index-url https://download.pytorch.org/whl/cpu
+          playwright install chromium --with-deps
+      - name: Pytest e2e
+        run: pytest -m e2e -q

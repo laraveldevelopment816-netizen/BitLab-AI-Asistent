@@ -2,11 +2,13 @@
 
 TDD zero base: namjerno bez tool dispatch-a, bez sistem prompta. Eval će
 pokazati šta nedostaje; dodaje se po potrebi."""
+
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import anthropic
+from anthropic.types import MessageParam
 
 from .config import settings
 
@@ -31,7 +33,7 @@ def run_agent(messages: list[dict[str, Any]]) -> dict[str, Any]:
         model=settings.chat_model,
         max_tokens=settings.max_output_tokens,
         system="",
-        messages=messages,
+        messages=cast("list[MessageParam]", messages),
     )
     reply = ""
     for block in response.content:

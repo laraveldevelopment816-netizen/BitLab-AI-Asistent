@@ -3,6 +3,7 @@
 TDD zero base: nema dashboard-a, nema email/voice, nema RAG warmup-a,
 nema exception handler-a koji ovise od poslovne logike. Sve to je u
 bck/. Dodavati natrag SAMO kad failing eval to traži."""
+
 from __future__ import annotations
 
 import asyncio

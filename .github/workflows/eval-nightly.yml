@@ -1,0 +1,36 @@
+name: Eval nightly (real-LLM)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC svaki dan
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]" --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Start FastAPI (background)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          uvicorn app.main:app --port 7778 &
+          sleep 5
+          curl -fsS http://localhost:7778/healthz
+      - name: Eval suite (categories)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m evals.framework.runner --suite categories --label nightly
+      - name: Upload eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-runs
+          path: evals/runs/

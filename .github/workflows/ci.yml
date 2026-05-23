@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: ["claude/tdd-zero-base", "feat/**"]
+  pull_request:
+    branches: ["claude/tdd-zero-base"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install deps (CPU torch wheel)
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]" --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Ruff format check
+        run: ruff format --check .
+      - name: Ruff lint
+        run: ruff check .
+      - name: Mypy
+        run: mypy app/ evals/framework/
+      - name: Pytest (unit + integration; isključeno e2e/eval/anthropic_api)
+        run: pytest -q --cov=app --cov=evals/framework --cov-report=term --cov-report=xml
+      - name: Upload coverage
+        if: matrix.python == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml

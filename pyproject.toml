@@ -46,7 +46,15 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
+    "pytest-cov>=5",
+    "pytest-mock>=3.14",
     "ruff>=0.7",
+    "mypy>=1.13",
+    # Playwright je heavy install (~200MB browseri) — instaliraj samo na e2e mašini:
+    # pip install -e ".[e2e]" && playwright install chromium
+]
+e2e = [
+    "playwright>=1.48",
 ]
 mysql = [
     "pymysql>=1.1",
@@ -57,15 +65,46 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["app*", "evals*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
 
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict_optional = true
+warn_unused_ignores = true
+warn_return_any = false
+ignore_missing_imports = true
+files = ["app", "evals/framework"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# Default isključuje sporo (e2e), opt-in (eval), skupo (anthropic_api).
+# CI pokreće "unit or integration"; e2e ima poseban job; eval ide nightly.
+addopts = "-q -m 'not e2e and not eval and not anthropic_api'"
 markers = [
-    "anthropic_api: integration tests koji zovu pravi Anthropic API (skup, ~$0.02 po test)",
+    "unit: brze, čiste funkcije, no I/O",
+    "integration: FastAPI TestClient + mock Anthropic (no real LLM)",
+    "e2e: Playwright browser → widget → /api/chat (sporo, opt-in)",
+    "regression: snapshot entry-ji koji su jednom prošli eval, nikad ne smiju da padnu",
+    "eval: real-LLM eval suite (opt-in, ne u default CI)",
+    "anthropic_api: testovi koji zovu pravi Anthropic API (skup, ~$0.02 po test)",
+]
+
+[tool.coverage.run]
+source = ["app", "evals/framework"]
+omit = ["*/__init__.py", "*/__main__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
 ]
