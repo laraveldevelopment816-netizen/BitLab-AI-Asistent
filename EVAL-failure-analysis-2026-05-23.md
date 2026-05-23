@@ -1,5 +1,9 @@
 # Eval failure analysis — 2026-05-23
 
+> **Predloženi refaktor:** [SSOT-categories-refactor-plan.md](./SSOT-categories-refactor-plan.md)
+> — plan za svođenje 4 izvora kategorija + 1 brand fajla na single-source dizajn,
+> što rješava root cause opisan u sekciji "Root cause" niže.
+
 Analizirani jutrošnji smoke run-ovi (oba bez server grešaka — server flakiness
 nije faktor):
 
