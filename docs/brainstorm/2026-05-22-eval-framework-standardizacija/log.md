@@ -498,3 +498,45 @@ Mišljenje: opcija 1 (filter u auto-genu) je najčistija. Junk imena u CSV-u nis
 2. **Sledeća iteracija (kad `run_products.py` bude implementiran)**: dodaj filter verification + halucinacija check kao zasebne verdict grane. Tek tada full products eval.
 
 Ne miješati to dvoje u istom koraku — [[feedback-one-fix-at-a-time]].
+
+## Nastavak 2026-05-23 — SSOT refaktor odrađen, izbor sljedeće tačke
+
+Sa prelaskom na granu `claude/analyze-category-hierarchy-dIVqm-SSOT`. U međuvremenu odrađen SSOT refaktor (`70608eb`) — `app/categories.py` + `app/brands.py` kao jedini taxonomy loader, `categories.csv` uklonjen, parity testovi 79/79. Tokom dana napravljeno 6 categories i 6 products smoke run-ova (vidi `evals/runs/`).
+
+Ivan je već napisao `SSOT-eval-delta-analysis.md` (untracked, root repo) sa konkretnim brojkama:
+
+| eval | pre-SSOT (07:02 / 07:15) | post-SSOT (11:59 / 11:34) | delta |
+|---|---|---|---|
+| categories (50q) | 21 PASS / 29 FAIL | 25 PASS / 23 FAIL | **+4 PASS / -6 FAIL** |
+| products (21q) | 17 PASS / 4 FAIL | 12 PASS / 9 FAIL | **-5 PASS / +5 FAIL** |
+
+Glavni nalazi delta analize:
+
+1. **SSOT je riješio cat 125 fantom** — 7 printer upita prije, 5 sad rutira na realne taxonomy ID-eve (124 za Laserske, 127 za Multifunkcijske, ostali na parent 97).
+2. **Products "regresija" je parser bug**, ne SSOT — image URL regex `\S+?` puca na space u imenu fajla (`Samsung Galaxy A16 5G.jpg`), i parser uzima samo zadnji reply iako rezultati postoje u prethodnom iter-u (multi-turn "rezultati prikazani iznad" za Dell laptop, Sony TV).
+3. **Drift** — 641 proizvod (~12% kataloga) živi u cat-ovima koji nisu u `ACTIVE_IDS` (277 "Ostalo", 224 "Monitori", 125 fantom). Preegzistentno, SSOT ga je samo izložio.
+4. **Stvarni preostali bug-ovi (kandidati za posebne kartice):** Cluster B NULL routing (9 leaf cat-ova, kartica `rtct` — prompt nudge), NEG_REGRESSION (3 fail-a, kartica `tst1` — safety net).
+
+Predloženi redoslijed u delta dokumentu: parser fix → drift odluka → eval set update (`expected_cat_id=125` zastario) → sistem prompt nudge → negativni safety net.
+
+### Moj predlog za današnju tačku
+
+Krenuti od **kategorija**. Razlog: signal je čist sa SSOT-om, preostalo je konkretno i ograničeno — 9 NULL routing leaf-ova za prompt nudge i 3 negativna primjera za safety net. Produkti zavise od parser fix-a prije nego što budu pouzdan signal — sad bi miješali dva fix-a paralelno ([[feedback-one-fix-at-a-time]]).
+
+### Ivan odlučio: kategorije, test po test
+
+Ivan: "drift dva dana", želi konkretan napredak. Pristup test-po-test sa `--limit` za jedan upit, fix → re-run → potvrdi → sljedeći. Cilj 100% PASS za kategorije. Plan u rutu, do 30-40 linija, "sama rješenja".
+
+### Plan kreiran — `CATEGORIES-test-plan.md` (45 linija)
+
+Struktura:
+
+1. **Failing klasifikacija** (5 bucket-a): NULL routing (9), Parent-vs-leaf (~4), Drift cat (~5), NEG_REGRESSION (3), Eval entry bug (1).
+2. **Workflow:** `--query <upit> --label probe-<n>` → klasifikuj → jedan fix → re-run → potvrdi.
+3. **Preduslov:** `run_categories.py` nema `--query` flag (provjereno preko `grep`), treba dorada `argparse` + `load_queries` (5-10 linija).
+4. **Prvi test:** **Skeneri** (NULL routing) — najjasniji failure mode, 9 srodnih testova padaju isto, prompt nudge → mjerljiv impact.
+5. **Redoslijed:** NULL routing → eval entry bug → NEG_REGRESSION → drift cat (override vs rekat) → parent-vs-leaf.
+6. **Pravila:** eval set invariant osim entry-pokvarenih, jedan fix u jednom trenutku, baseline+fix run obavezni, sinhronizacija sa drugom instancom kroz log.
+
+Čekam Ivanovu potvrdu — krećemo sa `--query` flag patch-om ili još iteriramo plan.
+
