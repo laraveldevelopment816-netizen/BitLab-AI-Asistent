@@ -26,7 +26,6 @@ Pokretanje:
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 import sys
@@ -39,7 +38,6 @@ from urllib.parse import unquote
 import httpx
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CSV_PATH = PROJECT_ROOT / "data" / "categories.csv"
 PRODUCTS_PATH = PROJECT_ROOT / "data" / "all-products.json"
 DEFAULT_EVAL_PATH = PROJECT_ROOT / "evals" / "sets" / "categories_cold.json"
 
@@ -65,21 +63,21 @@ PROD_RE = re.compile(
 # ─── Loader-i ────────────────────────────────────────────────────────────
 
 def load_tree() -> tuple[dict[str, dict], dict[str, list[str]]]:
-    """Vrati (by_id, children_of) iz `data/categories.csv` — samo aktivne cat-ove."""
-    by_id: dict[str, dict] = {}
-    children_of: dict[str, list[str]] = defaultdict(list)
-    with open(CSV_PATH, encoding="utf-8") as f:
-        for r in csv.DictReader(f):
-            if r.get("status") != "1":
-                continue
-            cid = (r.get("id") or "").strip()
-            pid = (r.get("parent_id") or "").strip()
-            if not cid:
-                continue
-            by_id[cid] = r
-            if pid and pid != "0":
-                children_of[pid].append(cid)
-    return by_id, dict(children_of)
+    """Vrati (by_id, children_of) iz SSOT modula `app.categories`. Output
+    shape je isti kao ranije (CSV row dict format) zbog backward-kompatibilnosti
+    sa downstream kodom u ovoj skripti."""
+    from app.categories import CATEGORIES, CHILDREN_OF
+
+    by_id: dict[str, dict] = {
+        cid: {
+            "id": cid,
+            "parent_id": info["parent_id"],
+            "name": info["name"],
+            "status": "1",
+        }
+        for cid, info in CATEGORIES.items()
+    }
+    return by_id, dict(CHILDREN_OF)
 
 
 def descendants(cat_id: str, children_of: dict[str, list[str]]) -> set[str]:

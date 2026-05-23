@@ -6,6 +6,32 @@
 > kako da se svi izvori kategorija/brendova svedu na **jedan fajl po domenu**
 > + **jedan loader modul**, tako da promjena taxonomy-ja postaje jedna izmjena.
 
+## Status implementacije — 2026-05-23
+
+Plan je u potpunosti implementiran. Sažetak:
+
+| Korak | Status | Komentar |
+|---|---|---|
+| 1. Pripreme (baseline + overrides export) | ✅ | `data/category_label_overrides.json` (50 ručnih labela); MD5 starog `_CATEGORIES_BLOCK` (50 entries): `2739a7033bff3ab010abdd6263503635` (2464 B) |
+| 2. Novi modul `app/categories.py` + `app/brands.py` | ✅ | CATEGORIES (238 aktivnih), PARENT_CATEGORIES (26), CAT_DESCENDANTS (238), ACTIVE_IDS/ALL_IDS; BRANDS_SORTED (89). `tests/test_categories_ssot.py` 8/8 parity sa starim loader-ima. |
+| 3+4. Migracija `app/tools.py` + label override | ✅ | `_CATEGORIES_BLOCK` sad 117 leaf cat-ova sa ≥1 proizvod (umjesto 50 bucket-a) — render 5184 B vs 2464 B. `_CATEGORY_IDS` enum 117 entries. |
+| 5. Migracija `app/rag.py` | ✅ | `_load_cat_descendants` i `_load_brands` uklonjeni; sada `from .categories import CAT_DESCENDANTS` i `from .brands import BRANDS`. |
+| 6. `scripts/build_category_terms.py` + evals na JSON | ✅ | Skripta čita `categories_new.json` umjesto CSV-a. `evals/run_categories.py`, `evals/run_products.py`, `tests/test_parent_expansion.py` migrirani. |
+| 7. Brisanje starih fajlova | ✅ | `git rm data/categories.json data/categories.csv scripts/build_categories.py`. Docs (`docs/getting-started.md`, `docs/architecture.md`) ažurirane. |
+| 8. Eval delta | ⏳ | Pokrenuti `evals/run_categories.py` (smoke 50) + `evals/run_products.py` (21) **nakon ovog commit-a** da uhvatimo before/after. Očekivano: Cluster A (7 printer OUT) nestaje; Cluster B (17 NULL) djelimično se smanjuje (sad 117 cat-ova u enum-u umjesto 50 bucket-a). |
+
+Drift u `category_terms.json` regen-u (od 89 → 88 cat-ova sa terminima):
+cat 395 ("4G ROUTERI", status=NULL) i cat 224 ("Monitori", status=0) više
+nisu uključeni jer SSOT filter je `status=1`. Stari CSV loader nije pravio
+ovu razliku. Ovo je namjerno smanjenje — neaktivni cat-ovi neće biti u
+`_CATEGORY_IDS` enum-u pa nemaju ni razlog biti u term boost mapi.
+
+Test rezultati: 76 passed, 1 skipped (CSV parity, expected po brisanju
+CSV-a). Padajuće testove izvan refaktora (test_typo_robustness,
+test_custom_build_response, dio test_brand_category_search.TestBrandSearch)
+pokreću PWR backend kroz claude-cli subprocess — flakiness je dokumentovan u
+STATUS kartici `pwhk` i nije uzrokovan ovim refaktorom.
+
 ## Ispravke u odnosu na originalnu analizu
 
 EVAL-failure-analysis-2026-05-23.md zadržan je u originalnoj formi za

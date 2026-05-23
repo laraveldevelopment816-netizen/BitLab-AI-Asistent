@@ -1,5 +1,5 @@
 {
-  "_comment": "Auto-generisano iz data/categories.csv pomoću scripts/build_category_terms.py — NE editovati ručno; izmjene prave u CSV-u (meta_keywords, name) i regenerisati. Mapiranje cat_id → BCS termini za search-time category boost u rag.py i embedding-time prefix u embed_products.py. Iskljuceni su cat-ovi sa < 5 proizvoda (migration ghost-ovi).",
+  "_comment": "Auto-generisano iz data/categories_new.json pomoću scripts/build_category_terms.py — NE editovati ručno; izmjene prave u taxonomy izvoru (meta_keywords, name) i regenerisati. Mapiranje cat_id → BCS termini za search-time category boost u rag.py i embedding-time prefix u embed_products.py. Iskljuceni su cat-ovi sa < 5 proizvoda (migration ghost-ovi).",
   "17": [
     "računari",
     "desktop računari",
@@ -293,13 +293,6 @@
     "jbl slušalice"
   ],
   "224": [
-    "monitori",
-    "ips monitor",
-    "gaming monitor",
-    "4k monitor",
-    "144hz monitor",
-    "lg monitor",
-    "samsung monitor",
     "monitor"
   ],
   "225": [
@@ -380,7 +373,6 @@
     "preklopnik"
   ],
   "277": [
-    "ostalo",
     "miš",
     "mis",
     "miševi"
@@ -668,14 +660,5 @@
     "phone case",
     "samsung maska",
     "iphone maska"
-  ],
-  "395": [
-    "4g ruter",
-    "lte ruter",
-    "sim ruter",
-    "4g wifi ruter",
-    "mobilni internet ruter",
-    "huawei 4g",
-    "4g routeri"
   ]
 }

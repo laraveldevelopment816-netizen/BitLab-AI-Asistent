@@ -1,7 +1,6 @@
 """gen_categories_eval.py — generiše evals/sets/categories_cold.json.
 
-Pozitivni (auto-gen) iz `data/categories_new.json`:
-- aktivne (status=1) kategorije
+Pozitivni (auto-gen) iz `app.categories` SSOT-a (samo aktivne, status=1):
 - leaf (0 djece) → expected tool=search_products, category_id=<self>
 - parent (≥2 djece) → expected tool=category_overview, category_id=<self>
 - parent sa 1 djetetom — preskočeno (schema enum za overview ne dozvoljava,
@@ -24,7 +23,6 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CATS_PATH = ROOT / "data" / "categories_new.json"
 OUT_PATH = ROOT / "evals" / "sets" / "categories_cold.json"
 
 
@@ -50,8 +48,11 @@ NEGATIVE_EXAMPLES: list[dict] = [
 
 
 def main() -> int:
-    cats = json.loads(CATS_PATH.read_text(encoding="utf-8"))
-    active = [c for c in cats if c.get("status") == 1]
+    # Lazy import: app.categories load-uje taxonomy pri import-u i
+    # nudi sirov pristup samo aktivnim entry-jima preko iter_raw_entries.
+    from app.categories import iter_raw_entries
+
+    active = [c for _, c in iter_raw_entries(active_only=True)]
 
     # parent_id → [child_id, ...]
     children: dict[int, list[int]] = defaultdict(list)

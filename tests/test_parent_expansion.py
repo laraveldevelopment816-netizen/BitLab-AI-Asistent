@@ -2,13 +2,15 @@
 Testovi za parent_id expansion u rag.py hard filter-u.
 
 Pokriva:
-- _load_cat_descendants vraća tačan set descendant-a za root cat-ove
+- CAT_DESCENDANTS (SSOT iz app.categories) vraća tačan set descendant-a
+  za root cat-ove
 - Leaf cat-ovi vraćaju samo {sebe}
 - Inactive cat-ovi (status=0) se preskaču
-- Idempotentnost: cat koji nije u CSV-u → fallback na {cat_id}
+- Idempotentnost: cat koji nije u taxonomy-ju → ne smije biti u mapi
 - Stvarni numerčki dokaz: cat 17 pool raste sa ~20 na ~197 proizvoda
 
-Ne treba products.index.npz — test je čisto static nad CSV-om + JSON-om.
+Ne treba products.index.npz — test je čisto static nad JSON taxonomy-jem +
+products export-om.
 
 Pokretanje:
     pytest tests/test_parent_expansion.py -v
@@ -22,13 +24,19 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CSV_PATH = PROJECT_ROOT / "data" / "categories.csv"
 PRODUCTS_PATH = PROJECT_ROOT / "data" / "all-products.json"
 
 
-needs_csv = pytest.mark.skipif(
-    not CSV_PATH.exists(),
-    reason="data/categories.csv mora postojati",
+def _ssot_loaded() -> bool:
+    """SSOT modul `app.categories` se učitava pri import-u; ako je
+    `CATEGORIES` prazan (npr. taxonomy fajl ne postoji), test se preskače."""
+    from app.categories import CATEGORIES
+    return bool(CATEGORIES)
+
+
+needs_taxonomy = pytest.mark.skipif(
+    not _ssot_loaded(),
+    reason="app.categories.CATEGORIES je prazan (taxonomy fajl ne postoji)",
 )
 needs_products = pytest.mark.skipif(
     not PRODUCTS_PATH.exists(),
@@ -38,9 +46,9 @@ needs_products = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def descendants_map():
-    """Učitaj mapu cat_id → {sebe + descendant-i} iz rag.py."""
-    from app.rag import _load_cat_descendants
-    return _load_cat_descendants()
+    """Učitaj mapu cat_id → {sebe + descendant-i} iz SSOT modula."""
+    from app.categories import CAT_DESCENDANTS
+    return CAT_DESCENDANTS
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +59,7 @@ def product_counts() -> Counter:
     return Counter((p.get("categories_id") or "").strip() for p in rows)
 
 
-@needs_csv
+@needs_taxonomy
 class TestDescendantsStructure:
 
     def test_loads_active_cats(self, descendants_map):
@@ -103,7 +111,7 @@ class TestDescendantsStructure:
         assert "99999" not in descendants_map
 
 
-@needs_csv
+@needs_taxonomy
 @needs_products
 class TestPoolCoverageDelta:
     """Stvarni numerčki dokaz da parent expansion donosi puno više proizvoda."""
@@ -150,14 +158,15 @@ class TestPoolCoverageDelta:
         assert direct > 0, "Cat 98 (Notebook) treba imati proizvode"
 
 
-@needs_csv
+@needs_taxonomy
 class TestDeterminism:
-    """Helper mora biti čista funkcija — isti CSV → isti rezultat."""
+    """Helper mora biti čista funkcija — isti taxonomy → isti rezultat."""
 
-    def test_idempotent(self):
-        from app.rag import _load_cat_descendants
-        a = _load_cat_descendants()
-        b = _load_cat_descendants()
+    def test_module_level_constant(self, descendants_map):
+        """CAT_DESCENDANTS je modul-level konstanta — re-import vraća istu
+        instancu (ili ekvivalentnu) bez side-effect-a."""
+        from app.categories import CAT_DESCENDANTS as a
+        from app.categories import CAT_DESCENDANTS as b
         assert a == b
 
     def test_sets_not_lists(self, descendants_map):

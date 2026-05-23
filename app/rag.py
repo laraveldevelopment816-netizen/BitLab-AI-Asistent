@@ -8,63 +8,22 @@ Indeks se učitava jednom pri startu; model se inicijalizuje na prvom upitu.
 """
 from __future__ import annotations
 
-import csv
 import json
 import re
-from collections import defaultdict
 from typing import Any
 
 import numpy as np
 from rank_bm25 import BM25Okapi
 
+from .brands import BRANDS as _SSOT_BRANDS
+from .categories import CAT_DESCENDANTS as _SSOT_CAT_DESCENDANTS
 from .config import settings
 
 # sentence_transformers se lazy-importuje u _embed/preload_model — povlači
 # torch + transformers (~50s na WSL2 /mnt/c). Bez ovoga startup je nepodnošljiv.
 
 _CATEGORY_TERMS_PATH = settings.data_dir / "category_terms.json"
-_CATEGORIES_CSV_PATH = settings.data_dir / "categories.csv"
-_BRAND_PATH = settings.data_dir / "brend.json"
 _MISSING_IMAGES_PATH = settings.data_dir / "missing_images.json"
-
-
-def _load_cat_descendants() -> dict[str, set[str]]:
-    """Iz categories.csv izgradi mapu cat_id → {cat_id i svi descendant-i}.
-
-    Koristi se za parent expansion u hard filteru pretrage: kad Claude pošalje
-    category_id koji je parent (npr. 17 Računari), filter prihvati i sve
-    descendant cat-ove (98 Notebook, 99 Tablet, 93 Desktop Brand, …) umjesto
-    samo 18 direktnih proizvoda u cat 17. Leaf cat-ovi ostaju nepromijenjeni
-    (rezultat sadrži samo {sebe}). Bez ovoga, "računari" upit vraća 18/234
-    pool coverage; sa ovim, vraća 234/234.
-
-    Deterministički, O(n) jednom pri startu. Inaktivni cat-ovi (status=0) se
-    preskaču — neće biti u djeci nikoga.
-    """
-    if not _CATEGORIES_CSV_PATH.exists():
-        return {}
-
-    children: dict[str, list[str]] = defaultdict(list)
-    active_ids: set[str] = set()
-    with open(_CATEGORIES_CSV_PATH, "r", encoding="utf-8") as f:
-        for r in csv.DictReader(f):
-            if r.get("status") != "1":
-                continue
-            cid = (r.get("id") or "").strip()
-            pid = (r.get("parent_id") or "").strip()
-            if not cid:
-                continue
-            active_ids.add(cid)
-            if pid and pid != "0":
-                children[pid].append(cid)
-
-    def _walk(cat: str) -> set[str]:
-        result = {cat}
-        for c in children.get(cat, []):
-            result |= _walk(c)
-        return result
-
-    return {cat: _walk(cat) for cat in active_ids}
 
 
 def _load_missing_image_sifras() -> frozenset[str]:
@@ -93,26 +52,9 @@ def _load_category_terms() -> dict[str, list[str]]:
     return {k: v for k, v in raw.items() if not k.startswith("_") and isinstance(v, list)}
 
 
-def _load_brands() -> list[dict[str, Any]]:
-    """Učitaj brendove iz phpMyAdmin export-a (data/brend.json). Vraća listu
-    {id, name, priority}. `priority` je 1–20 za top brendove (nullable)."""
-    if not _BRAND_PATH.exists():
-        return []
-    raw = json.loads(_BRAND_PATH.read_text(encoding="utf-8"))
-    for entry in raw:
-        if entry.get("type") == "table" and entry.get("name") == "brend":
-            data = entry.get("data", [])
-            out: list[dict[str, Any]] = []
-            for row in data:
-                bid = (row.get("id") or "").strip()
-                name = (row.get("name") or "").strip()
-                if not bid or not name:
-                    continue
-                pri_raw = row.get("priority")
-                priority = int(pri_raw) if pri_raw and pri_raw != "NULL" else None
-                out.append({"id": bid, "name": name, "priority": priority})
-            return out
-    return []
+# BRANDS dolaze iz `app.brands` (SSOT). Lista {id, name, priority} sa
+# "ostalo" filtriranim i priority kao int|None — isto što je ovaj loader
+# vraćao prije refaktora, samo preko jednog modula umjesto duplog.
 
 
 # Generičke riječi koje se podudaraju sa imenom brenda ali NISU brand mention
@@ -235,11 +177,11 @@ class ProductIndex:
         # Parent expansion mapa: cat_id → {sebe + svi descendant-i}. Hard filter
         # u search() koristi membership umjesto equality, tako da Claude može
         # pošljati root cat (npr. 17 Računari) i dobiti proizvode iz cijelog
-        # podstabla, ne samo iz roota. Vidi _load_cat_descendants() doctring.
-        self._cat_descendants = _load_cat_descendants()
+        # podstabla, ne samo iz roota. SSOT iz `app.categories`.
+        self._cat_descendants = _SSOT_CAT_DESCENDANTS
 
-        # Pripremi brand lookup-e
-        self._brands = _load_brands()
+        # Pripremi brand lookup-e (SSOT iz `app.brands`)
+        self._brands = _SSOT_BRANDS
         # id_brend → priority (None ako brend nema priority)
         self._brand_priority: dict[str, int | None] = {
             b["id"]: b["priority"] for b in self._brands

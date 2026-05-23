@@ -3,6 +3,19 @@
 **Branch:** `feature/ai-search-brand-category-improvements`
 **Datum:** 2026-05-08
 
+> **⚠️ Istorijski doc — superseded.** Ovaj dokument opisuje stanje od
+> 2026-05-08 kada su kategorije bile podijeljene u 3 paralelna fajla
+> (`categories.json`, `categories.csv`, `categories_new.json`). Sistem
+> je 2026-05-23 prešao na **single source of truth** preko
+> `app/categories.py` modula koji učitava taxonomy iz jednog fajla i
+> izlaže sve derivacije. Vidi:
+> - [`SSOT-categories-refactor-plan.md`](../../SSOT-categories-refactor-plan.md)
+> - [`category-routing.md`](./category-routing.md) (osvježen post-SSOT)
+>
+> Tehnike opisane ispod (brand detection, soft boost, bidirectional prefix
+> match) i dalje važe — ali svako pominjanje `categories.csv` ili
+> `categories.json` zamijeniti mentalno sa `app/categories.py` SSOT-om.
+
 Cilj: napraviti najbolju AI pretragu webshop-a u Banjaluci/RS. Iskoristiti dva
 nova izvora podataka (`data/brend.json`, `data/categories.csv`) koje smo dobili
 iz phpMyAdmin export-a webshop baze, pa proširiti pokrivenost klasifikacije
