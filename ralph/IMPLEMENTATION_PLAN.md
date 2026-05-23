@@ -4,25 +4,13 @@ Plan koji Ralph čita i ažurira. Bira top task iz Now, implementira, commit-uje
 
 ## Now
 
-### 1. Generiši auto-gen kategorija eval set
-
-**Acceptance**: `evals/sets/categories.jsonl` ima ≥30 entry-ja (parent + leaf iz `data/categories_new.json`). Skripta `scripts/gen_categories_eval.py` deterministička (isti input → isti output, verifikovano unit testom).
-
-**Spec**: `specs/categories.md` §2 (auto-gen pravila).
-
-**Konkretni koraci**:
-- Provjeri postojanje `data/categories_new.json`; ako nema — cherry-pick iz `bck/data/categories_new.json` (sa attribucijom u commit message-u).
-- `scripts/gen_categories_eval.py` čita JSON, generiše: za svaki leaf → `{tool: search_products, args.category_id: leaf.id}`, za parent sa ≥2 djece → `{tool: category_overview, args.category_id: parent.id}`.
-- Write u `evals/sets/categories.jsonl` (jedan entry per line).
-- Unit test: `tests/unit/test_gen_categories_eval.py` validira schema (sve linije parse-uju kao JSON, sva polja prisutna) + determinizam (dva poziva, byte-identical output).
-
-### 2. Dodaj `category_overview` tool u `app/agent.py`
+### 1. Dodaj `category_overview` tool u `app/agent.py`
 
 **Acceptance**: prvi parent entry u `categories.jsonl` → eval routing PASS (tool zvan sa očekivanim category_id). Handler stub vraća listu djece iz `data/categories_new.json`. Integration test sa mock_anthropic verifikuje tool dispatch.
 
 **Spec**: `specs/categories.md` §3 (tool schema).
 
-### 3. Dodaj `search_products` tool u `app/agent.py`
+### 2. Dodaj `search_products` tool u `app/agent.py`
 
 **Acceptance**: prvi leaf entry → eval routing PASS. Handler stub vraća prazan list (`{"products": []}`); pravi RAG dolazi u Fazi 2. Integration test verifikuje dispatch.
 
@@ -45,4 +33,4 @@ Plan koji Ralph čita i ažurira. Bira top task iz Now, implementira, commit-uje
 
 ## Done
 
-(prazno — Ralph dodaje ovdje sa svakim PASS commit-om u formatu `- YYYY-MM-DD <sha> Naslov task-a`)
+- 2026-05-24 3d928f6 Generiši auto-gen kategorija eval set (250 entry-ja: 220 leaves + 30 parents; deterministička skripta, schema + determinizam unit testovi)
