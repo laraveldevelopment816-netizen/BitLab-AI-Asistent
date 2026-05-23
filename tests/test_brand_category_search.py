@@ -84,12 +84,17 @@ class TestBrandData:
             assert name in brand_names, f"Brand {name} nedostaje"
 
     def test_brands_sorted_by_priority(self):
-        """Brendovi sa priority 1–20 idu prvi u tool description-u."""
+        """Brendovi sa priority 1–20 idu prvi u tool description-u.
+        Nakon SSOT refaktora priority je `int | None` — None znači "no
+        priority" i ide na kraj (interno sortirano kao 999)."""
         from app.tools import BRANDS
-        priorities = [b["priority"] for b in BRANDS]
-        # Provjeri da je sortiran ascending (None/999 idu na kraj)
+
+        def _rank(p):
+            return p if p is not None else 999
+
+        priorities = [_rank(b["priority"]) for b in BRANDS]
         for i in range(len(priorities) - 1):
-            assert priorities[i] <= priorities[i+1], (
+            assert priorities[i] <= priorities[i + 1], (
                 f"BRANDS nije sortiran: {priorities[:5]}..."
             )
 

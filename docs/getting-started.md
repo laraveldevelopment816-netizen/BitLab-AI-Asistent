@@ -51,10 +51,14 @@ Detalji o svim varijablama: [`features/voice-mode.md`](./features/voice-mode.md)
 
 ```bash
 python scripts/embed_products.py     # ~5 min, generiše products.index.npz + meta.json
-python scripts/build_categories.py   # ~10s, generiše categories.json
+python scripts/build_category_terms.py  # ~5s, generiše category_terms.json iz categories_new.json
 python scripts/init_db.py            # idempotentno, kreira var/bitlab.db
 python scripts/migrate_session_id.py # idempotentno, ALTER TABLE za Sessions feature
 ```
+
+Napomena: kategorije se učitavaju direktno iz `data/categories_new.json` (SSOT)
+preko `app/categories.py` modula — nije potrebna posebna build-skripta. Vidi
+`SSOT-categories-refactor-plan.md`.
 
 Šta ovo radi: [`features/ai-classification.md`](./features/ai-classification.md).
 

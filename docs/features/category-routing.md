@@ -14,25 +14,34 @@ odmah se vidi koje datoteke učestvuju i ko ih čita.
 
 ```
 data/
-├── categories.csv            ← AUTORITATIVAN export iz baze (status, parent_id)
-├── categories.json           ← derivat: SAMO leaf kat. sa proizvodima (50 cat-ova)
-│                               KORISTI: app/tools.py (Claude enum + description)
-├── categories_new.json       ← NOVO: pun export svih 255 kategorija sa
-│                               h1_title, intro_text, urlhash, super_id, parent_id.
-│                               TBD: zamijeniti categories.json kao izvor labela.
-├── category_terms.json       ← BCS sinonimi po kategoriji (term → cat_id)
+├── (taxonomy fajl)           ← AUTORITATIVAN export iz baze (255 entries)
+│                               status, parent_id, name, h1_title, urlhash,
+│                               super_id, meta_keywords.
+│                               UČITAVA ga SAMO app/categories.py modul.
+├── category_label_overrides.json
+│                             ← ručno-tunirane bogatije labele (override
+│                               nad name/h1_title) za poznate kategorije.
+├── category_terms.json       ← BCS sinonimi po kategoriji (term → cat_id),
+│                               auto-gen iz taxonomy entry-ja.
 │                               KORISTI: app/rag.py — SOFT boost (+0.25)
 └── brend.json                ← brendovi + priority (vidi ai-search-improvements.md)
 ```
 
+**SSOT pravilo**: SAMO `app/categories.py` čita taxonomy fajl. Svi
+ostali konzumenti (tools.py, rag.py, evals, scripts, tests) idu kroz
+njegov public API: `CATEGORIES`, `PARENT_CATEGORIES`, `CAT_DESCENDANTS`,
+`CHILDREN_OF`, `ACTIVE_IDS`, `ALL_IDS`, plus build-time helper
+`iter_raw_entries()` za skripte kojima treba sirov pristup poljima.
+
 **Tabela uloga:**
 
-| Datoteka | Sadrži parent-e? | Ko čita | Šta radi |
-|---|---|---|---|
-| `categories.csv` | ✓ (parent_id kolona) | `app/rag.py:_load_cat_descendants` | gradi {cat → descendants} mapu |
-| `categories.json` | ✗ (samo 50 leaf-eva) | `app/tools.py:60` | Claude enum + label tekst u tool description |
-| `categories_new.json` | ✓ (svih 255) | — (zasad nigdje) | budući izvor labela kad ga uključimo |
-| `category_terms.json` | ✓ ("mobiteli"→{151}) | `app/rag.py:_detect_intent_categories` | soft boost kad Claude ne pošalje cat_id |
+| API iz `app/categories.py` | Šta sadrži | Ko ga koristi |
+|---|---|---|
+| `CATEGORIES` (dict, 238 aktivnih) | label + count + parent_id po cat_id | `app/tools.py` — Claude enum + tool description |
+| `PARENT_CATEGORIES` (dict, 26) | parent_id=0 sa ≥2 djece + children list | `app/tools.py:CATEGORY_OVERVIEW` |
+| `CAT_DESCENDANTS` (dict) | cid → set(cid + svi descendant-i) | `app/rag.py` hard-filter parent expansion |
+| `CHILDREN_OF` (dict) | parent_cid → direct children list | `evals/run_*.py` tree walking |
+| `category_terms.json` | term → {cat_id} ("mobiteli"→{151}) | `app/rag.py:_detect_intent_categories` soft boost |
 
 ---
 
@@ -45,8 +54,10 @@ USER "Mobiteli"
 ┌─────────────────────────────────────────────────────────────────────┐
 │ Claude (app/agent.py:_run_anthropic / _run_pwr)                     │
 │                                                                     │
-│  Vidi enum cat-ova iz categories.json (50 entry-ja, SAMO leaf).     │
-│  Bira: 175 "Mobilni telefoni"  (parent 151 NIJE u enumu!)           │
+│  Vidi enum cat-ova iz CATEGORIES (117 leaf-eva sa ≥1 proizvod,      │
+│  iz app/categories.py SSOT-a).                                      │
+│  Plus PARENT_CATEGORIES enum za category_overview tool.             │
+│  "Mobiteli" → tačan match parent 151 → category_overview(151)       │
 └─────────────────────────────────────────────────────────────────────┘
    │  tool_call: search_products(query="Mobiteli", category_id="175")
    ▼
@@ -83,7 +94,7 @@ Trenutni tok za "Mobiteli" gađa ⑤ (jer Claude šalje 175), pa
 ## 3. Parent expansion — kad i kako
 
 ```
-parent_id stablo iz categories.csv (samo status=1):
+parent_id stablo iz app/categories.py SSOT-a (samo status=1):
 
   151 "Mobiteli" (parent_id=0)
   ├── 175 "Mobilni telefoni"        (166 proizvoda)
@@ -155,10 +166,10 @@ Pravila u `_detect_intent_categories` (vidi `app/rag.py:329`):
 
 | Slučaj | Trenutno ponašanje | Šta bi trebalo |
 |---|---|---|
-| User piše tačno ime parent kat. ("Mobiteli", "Računari") | Claude bira leaf descendant; vraća samo dio porodice | "category_overview" tool sa breakdown-om po djeci ([covt task u STATUS.md](../../STATUS.md)) |
-| `categories.json` filtrira parent kat. bez direktnih proizvoda | Claude ih ne vidi | uključiti iz `categories_new.json` (kad odlučimo) |
-| `super_id` grupisanje (4 = mobile/TV/audio, vidi `categories_new.json`) | Ignorisano | TBD: druga runda navigacije ako bude trebalo |
-| Parent expansion na hard filter | Radi ✓ | — |
+| User piše tačno ime parent kat. ("Mobiteli", "Računari") | `category_overview` tool vraća breakdown po direktnoj djeci | — (riješeno) |
+| Cat-ovi sa 0 proizvoda u taxonomy-ju | `CATEGORIES` ih izlaže (svi status=1), ali `_CATEGORY_IDS` enum (search_products) ih filtrira preko `get_active_ids_with_products(min_products=1)` | — |
+| `super_id` grupisanje (npr. 4 = mobile/TV/audio) | Ignorisano | TBD: druga runda navigacije ako bude trebalo |
+| Parent expansion na hard filter | Radi ✓ (preko `CAT_DESCENDANTS`) | — |
 | Soft boost dok je hard filter aktivan | Skipped (by design) | — |
 
 ---

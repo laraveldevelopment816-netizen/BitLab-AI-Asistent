@@ -47,8 +47,10 @@
 ```
 data/products.index.npz     5.278 vektora, 384 dim
 data/products.meta.json     meta (ime, cijena, kolicina, URL, sifra)
-data/categories.json        top 30 kategorija sa labelama
-data/category_terms.json    build-time prefix + soft-boost terms
+data/categories_new.json    SSOT taxonomy (255 entries, status=1 → 238 aktivnih)
+data/category_label_overrides.json  ručne bogatije labele (override nad name/h1)
+data/brend.json             SSOT brendovi (phpMyAdmin export)
+data/category_terms.json    build-time prefix + soft-boost terms (auto-gen)
 data/missing_images.json    audit output — koje slike fale na CDN-u
 data/faq.md                 ručno kurirane sekcije
 var/bitlab.db               SQLite — requests + tool_calls
@@ -78,7 +80,7 @@ bitlab-ai-asistent/
 ├── deploy/                bitlab-ai.service + nginx-site.conf
 ├── scripts/
 │   ├── embed_products.py  generiše products.index.npz (jednokratno)
-│   ├── build_categories.py top 30 kategorija sa labelama
+│   ├── build_category_terms.py  generiše category_terms.json iz categories_new.json
 │   ├── init_db.py         kreira requests + tool_calls schema
 │   ├── audit_missing_images.py  paralelni HEAD check za broken slike
 │   ├── deploy.sh          install/update/rebuild/restart

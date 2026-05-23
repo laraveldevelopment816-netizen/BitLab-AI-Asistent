@@ -26,7 +26,6 @@ Pokretanje:
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 import sys
@@ -38,8 +37,11 @@ from urllib.parse import unquote
 
 import httpx
 
+# Zajednički CLI filteri (--ids / --tag / --query) — vidi `evals/_cli_filters.py`
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _cli_filters import apply_filters  # noqa: E402
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CSV_PATH = PROJECT_ROOT / "data" / "categories.csv"
 PRODUCTS_PATH = PROJECT_ROOT / "data" / "all-products.json"
 DEFAULT_EVAL_PATH = PROJECT_ROOT / "evals" / "sets" / "categories_cold.json"
 
@@ -65,21 +67,21 @@ PROD_RE = re.compile(
 # ─── Loader-i ────────────────────────────────────────────────────────────
 
 def load_tree() -> tuple[dict[str, dict], dict[str, list[str]]]:
-    """Vrati (by_id, children_of) iz `data/categories.csv` — samo aktivne cat-ove."""
-    by_id: dict[str, dict] = {}
-    children_of: dict[str, list[str]] = defaultdict(list)
-    with open(CSV_PATH, encoding="utf-8") as f:
-        for r in csv.DictReader(f):
-            if r.get("status") != "1":
-                continue
-            cid = (r.get("id") or "").strip()
-            pid = (r.get("parent_id") or "").strip()
-            if not cid:
-                continue
-            by_id[cid] = r
-            if pid and pid != "0":
-                children_of[pid].append(cid)
-    return by_id, dict(children_of)
+    """Vrati (by_id, children_of) iz SSOT modula `app.categories`. Output
+    shape je isti kao ranije (CSV row dict format) zbog backward-kompatibilnosti
+    sa downstream kodom u ovoj skripti."""
+    from app.categories import CATEGORIES, CHILDREN_OF
+
+    by_id: dict[str, dict] = {
+        cid: {
+            "id": cid,
+            "parent_id": info["parent_id"],
+            "name": info["name"],
+            "status": "1",
+        }
+        for cid, info in CATEGORIES.items()
+    }
+    return by_id, dict(CHILDREN_OF)
 
 
 def descendants(cat_id: str, children_of: dict[str, list[str]]) -> set[str]:
@@ -452,6 +454,7 @@ HTML = r"""<!doctype html>
 <h2>Tabela po upitima</h2>
 <table class="leaderboard">
   <thead><tr>
+    <th class="num">ID</th>
     <th>Upit (očekivana kategorija)</th>
     <th>Rutovano na (kategorija)</th>
     <th>Kako je rutovao</th>
@@ -574,6 +577,7 @@ document.getElementById("leaderboard").innerHTML = DATA.rows.map(r => {
   const parentName = catName(r.expected_cat_id);
   const parentTxt = parentName ? `očekivana kat. ${r.expected_cat_id} — ${parentName}` : `očekivana kat. ${r.expected_cat_id}`;
   return `<tr>
+    <td class="num id">${escapeHtml(r.id || "")}</td>
     <td class="q">${escapeHtml(r.query)}<br><span style="color:var(--muted);font-size:10px">${escapeHtml(parentTxt)}</span></td>
     <td class="id">${routedDisplay(r.routed_cat_id)}</td>
     <td><span class="badge ${rt}">${routingLabel(r.routing_verdict)}</span></td>
@@ -687,13 +691,25 @@ def main() -> int:
                    help="Label (npr. v1, v2-prompt-tweak) — ulazi u filename + meta")
     p.add_argument("--limit", type=int, default=None,
                    help="Pokreni samo prvih N upita (quick smoke test)")
+    p.add_argument("--ids", default=None,
+                   help="Filter na ID-eve: comma-list (0007,0023) ili range (0001-0009) ili oboje")
+    p.add_argument("--tag", action="append", default=None,
+                   help="Filter na tag (može više puta — AND presjek)")
+    p.add_argument("--query", default=None,
+                   help="Ad-hoc upit van seta (override --queries fajl)")
     args = p.parse_args()
 
     eval_path = Path(args.queries)
-    if not eval_path.exists():
+    if not eval_path.exists() and not args.query:
         print(f"GREŠKA: {eval_path} ne postoji.", file=sys.stderr)
         return 1
-    queries: list[dict] = json.loads(eval_path.read_text(encoding="utf-8"))
+    queries: list[dict] = (
+        json.loads(eval_path.read_text(encoding="utf-8")) if eval_path.exists() else []
+    )
+    queries = apply_filters(queries, args)
+    if not queries:
+        print("GREŠKA: filter dao 0 upita — provjeri --ids / --tag.", file=sys.stderr)
+        return 1
     if args.limit:
         queries = queries[:args.limit]
 
@@ -747,6 +763,7 @@ def main() -> int:
             if "_error" in resp:
                 print(f"GREŠKA ({elapsed_ms}ms): {resp['_error']}")
                 rows.append({
+                    "id": q.get("id", ""),
                     "query": query, "expected_cat_id": expected_cat,
                     "expected_tool": expected_tool,
                     "failure_reason": failure_reason,
@@ -815,6 +832,7 @@ def main() -> int:
                   f"porodica_ima={subtree_product_count} ({elapsed_ms}ms)")
 
             rows.append({
+                "id": q.get("id", ""),
                 "query": query,
                 "expected_cat_id": expected_cat,
                 "expected_tool": expected_tool,

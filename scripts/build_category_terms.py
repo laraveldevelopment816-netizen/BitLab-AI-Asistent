@@ -1,8 +1,8 @@
 """
-Generiše data/category_terms.json iz data/categories.csv.
+Generiše data/category_terms.json iz taxonomy entry-ja (preko app.categories
+SSOT modula).
 
-Source of truth: phpMyAdmin export tabele `categories` u CSV-u (255 redova,
-~238 vidljivih). Iz svakog reda izvlačimo BCS termine koje korisnici tipkuju
+Iz svakog aktivnog entry-ja izvlačimo BCS termine koje korisnici tipkuju
 kad traže tu kategoriju proizvoda — primarno iz polja `meta_keywords`
 (SEO-curirano) plus `name` kao fallback.
 
@@ -21,14 +21,12 @@ search_text sa kategorijskim terminima 3x.
 """
 from __future__ import annotations
 
-import csv
 import json
 import re
 import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CSV_PATH = PROJECT_ROOT / "data" / "categories.csv"
 BRAND_PATH = PROJECT_ROOT / "data" / "brend.json"
 PRODUCTS_META_PATH = PROJECT_ROOT / "data" / "products.meta.json"
 OUT_PATH = PROJECT_ROOT / "data" / "category_terms.json"
@@ -285,9 +283,9 @@ def _cat_id_product_counts() -> dict[str, int]:
 
 
 def main() -> None:
-    if not CSV_PATH.exists():
-        print(f"GREŠKA: {CSV_PATH} ne postoji.", file=sys.stderr)
-        sys.exit(1)
+    # Lazy import: app.categories load-uje taxonomy pri import-u, ne
+    # želimo da skripta puca prije nego što ispiše grešku.
+    from app.categories import iter_raw_entries
 
     brand_names = _load_brand_names()
     print(f"→ Učitano {len(brand_names)} brand imena za filter.")
@@ -299,19 +297,33 @@ def main() -> None:
     print(f"  Eligibilnih (>= {MIN_PRODUCTS_FOR_BOOST} proizvoda): {len(eligible_cats)}")
     print(f"  Ispod praga (drift kandidati): {skipped_low}")
 
-    with open(CSV_PATH, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        rows = list(reader)
-    print(f"→ Pročitano {len(rows)} redova iz {CSV_PATH.name}.")
+    # Konvertuj sirove SSOT entry-je u flat dict-ove sa stringified ID-ovima
+    # da ostatak skripte (pisana za CSV row format) bude nepromijenjen.
+    rows = [
+        {
+            "id": cid,
+            "parent_id": str(c.get("parent_id", "") or ""),
+            "name": c.get("name") or "",
+            "h1_title": c.get("h1_title") or "",
+            "meta_keywords": c.get("meta_keywords") or "",
+            "status": "1",
+        }
+        for cid, c in iter_raw_entries(active_only=True)
+    ]
+    if not rows:
+        print("GREŠKA: nema aktivnih taxonomy entry-ja.", file=sys.stderr)
+        sys.exit(1)
+    print(f"→ Pročitano {len(rows)} aktivnih redova preko app.categories SSOT.")
 
     out: dict[str, object] = {
         "_comment": (
-            "Auto-generisano iz data/categories.csv pomoću "
+            "Auto-generisano iz app.categories SSOT pomoću "
             "scripts/build_category_terms.py — NE editovati ručno; izmjene "
-            "prave u CSV-u (meta_keywords, name) i regenerisati. Mapiranje "
-            "cat_id → BCS termini za search-time category boost u rag.py i "
-            "embedding-time prefix u embed_products.py. Iskljuceni su cat-ovi "
-            f"sa < {MIN_PRODUCTS_FOR_BOOST} proizvoda (migration ghost-ovi)."
+            "se prave u taxonomy izvoru (meta_keywords, name) i regenerisati. "
+            "Mapiranje cat_id → BCS termini za search-time category boost u "
+            "rag.py i embedding-time prefix u embed_products.py. Iskljuceni "
+            f"su cat-ovi sa < {MIN_PRODUCTS_FOR_BOOST} proizvoda "
+            "(migration ghost-ovi)."
         ),
     }
 

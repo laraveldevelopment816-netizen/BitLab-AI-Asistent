@@ -6,9 +6,18 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from pathlib import Path
 from typing import Any
 
+from .brands import BRANDS_BLOCK as _BRANDS_BLOCK
+from .brands import BRANDS_SORTED as BRANDS
+from .brands import BRAND_IDS as _BRAND_IDS
+from .categories import (
+    CATEGORIES,
+    PARENT_CATEGORIES,
+    get_active_ids_with_products,
+    render_categories_block,
+    render_parents_block,
+)
 from .contacts import EMAIL, TEL
 
 
@@ -31,111 +40,18 @@ class ToolValidationError(Exception):
     fail (industrijski standard za production search/RAG sistemove)."""
 
 
-# ── Kategorije + brendovi — load jednom pri import-u ─────────
+# ── Kategorije + brendovi — SSOT iz app.categories / app.brands ─
 # AI vidi listu validnih cat_id-ova i brand_id-ova u tool description-u +
 # kao enum, tako da single-call zaokruži klasifikaciju + tool decision atomski.
-_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-_CATEGORIES_PATH = _DATA_DIR / "categories.json"
-_CATEGORIES_NEW_PATH = _DATA_DIR / "categories_new.json"
-_BRAND_PATH = _DATA_DIR / "brend.json"
+# Enum se gradi iz aktivnih kategorija sa ≥1 proizvodom — kategorije bez
+# proizvoda samo bi zbunile Claude-a i napuhle token cost. CATEGORIES,
+# PARENT_CATEGORIES, BRANDS dolaze iz `app/categories.py` i `app/brands.py`
+# (single-load, in-memory derivacije). Vidi SSOT-categories-refactor-plan.md.
 
-
-def _load_categories() -> dict[str, dict[str, Any]]:
-    if not _CATEGORIES_PATH.exists():
-        return {}
-    return json.loads(_CATEGORIES_PATH.read_text(encoding="utf-8"))
-
-
-def _load_parent_categories() -> dict[str, dict[str, Any]]:
-    """Iz `categories_new.json` izvuci parent kategorije (parent_id=0, status=1)
-    koje imaju ≥2 aktivne direktne djece. Vraća
-    {parent_id_str: {label, urlhash, children: [{cat_id, label, urlhash}, ...]}}.
-
-    Koristi `CATEGORY_OVERVIEW` tool: Claude vidi listu parent-a sa imenima
-    djece u tool description-u i poziva overview kad upit tačno match-uje
-    parent ime (npr. 'Mobiteli' → 151 → breakdown 175/176/394).
-
-    Filter `≥2 djece`: parent sa samo 1 djetetom nema smisla za breakdown
-    UX (jedan chip = isto kao plain search_products). Top-level kategorije
-    bez djece su leaf-evi koje već pokriva search_products."""
-    if not _CATEGORIES_NEW_PATH.exists():
-        return {}
-    raw = json.loads(_CATEGORIES_NEW_PATH.read_text(encoding="utf-8"))
-    children_of: dict[int, list[dict[str, Any]]] = {}
-    by_id: dict[int, dict[str, Any]] = {}
-    for c in raw:
-        if c.get("status") != 1:
-            continue
-        by_id[c["id"]] = c
-        p = c.get("parent_id")
-        if p:
-            children_of.setdefault(p, []).append(c)
-    out: dict[str, dict[str, Any]] = {}
-    for cid, c in by_id.items():
-        if c.get("parent_id") != 0:
-            continue
-        kids = children_of.get(cid, [])
-        if len(kids) < 2:
-            continue
-        # Sortiraj djecu po sort_id (taxonomy redoslijed), pa po imenu kao tie-break
-        kids_sorted = sorted(kids, key=lambda k: (k.get("sort_id") or 999, k.get("name") or ""))
-        out[str(cid)] = {
-            "label": c.get("name") or "",
-            "urlhash": c.get("urlhash") or "",
-            "children": [
-                {
-                    "cat_id": str(k["id"]),
-                    "label": k.get("name") or "",
-                    "urlhash": k.get("urlhash") or "",
-                }
-                for k in kids_sorted
-            ],
-        }
-    return out
-
-
-def _load_brands() -> list[dict[str, Any]]:
-    """phpMyAdmin export → lista {id, name, priority}. Sortirano po priority
-    (1–20), pa po imenu. Brendovi sa priority idu na vrh tool description-a
-    da AI brže nađe najtraženije."""
-    if not _BRAND_PATH.exists():
-        return []
-    raw = json.loads(_BRAND_PATH.read_text(encoding="utf-8"))
-    for entry in raw:
-        if entry.get("type") == "table" and entry.get("name") == "brend":
-            data = entry.get("data", [])
-            out: list[dict[str, Any]] = []
-            for row in data:
-                bid = (row.get("id") or "").strip()
-                name = (row.get("name") or "").strip()
-                if not bid or not name or name.lower() == "ostalo":
-                    continue
-                pri_raw = row.get("priority")
-                priority = int(pri_raw) if pri_raw and pri_raw != "NULL" else 999
-                out.append({"id": bid, "name": name, "priority": priority})
-            out.sort(key=lambda b: (b["priority"], b["name"]))
-            return out
-    return []
-
-
-CATEGORIES: dict[str, dict[str, Any]] = _load_categories()
-_CATEGORY_IDS: list[str] = list(CATEGORIES.keys())
-_CATEGORIES_BLOCK = "\n".join(
-    f"- {cid}: {info['label']}" for cid, info in CATEGORIES.items()
-)
-
-BRANDS: list[dict[str, Any]] = _load_brands()
-_BRAND_IDS: list[str] = [b["id"] for b in BRANDS]
-_BRANDS_BLOCK = "\n".join(
-    f"- {b['id']}: {b['name']}" for b in BRANDS
-)
-
-PARENT_CATEGORIES: dict[str, dict[str, Any]] = _load_parent_categories()
+_CATEGORY_IDS: list[str] = get_active_ids_with_products(min_products=1)
+_CATEGORIES_BLOCK: str = render_categories_block(_CATEGORY_IDS)
 _PARENT_CAT_IDS: list[str] = list(PARENT_CATEGORIES.keys())
-_PARENTS_BLOCK = "\n".join(
-    f"- {pid}: {p['label']} (djeca: {', '.join(c['label'] for c in p['children'])})"
-    for pid, p in PARENT_CATEGORIES.items()
-)
+_PARENTS_BLOCK: str = render_parents_block()
 
 
 SEARCH_PRODUCTS: dict[str, Any] = {
