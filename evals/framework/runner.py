@@ -22,7 +22,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import cache, client, errors, judge, loader, reporter, sampler
+from . import budget, cache, client, errors, judge, loader, reporter, sampler
 from .types import EvalEntry, EvalVerdict, ToolCall
 
 
@@ -64,6 +64,11 @@ def _write_checkpoint(path: Path, next_index: int, label: str, reason: str) -> N
     )
 
 
+def _default_budget_dir() -> Path:
+    """Per-user state (van repoa) — `~/.cache/bitlab-ralph/`."""
+    return Path.home() / ".cache" / "bitlab-ralph"
+
+
 def run_suite(
     suite_path: Path,
     base_url: str,
@@ -75,8 +80,10 @@ def run_suite(
     use_cache: bool,
     mode: str,
     resume_label: str | None = None,
+    budget_dir: Path | None = None,
+    max_calls: int = budget.DEFAULT_MAX_CALLS,
 ) -> int:
-    """Pokreni eval suite. Vraća exit kod (0 OK, 1 FAIL, 3 rate limit)."""
+    """Pokreni eval suite. Vraća exit kod (0 OK, 1 FAIL, 3 rate-limit ili budget exhausted)."""
     entries = loader.load_suite(suite_path)
 
     if mode == "sample":
@@ -87,6 +94,8 @@ def run_suite(
 
     suite_name = suite_path.stem
     checkpoint_file = _checkpoint_path(run_dir, suite_name, label)
+    if budget_dir is None:
+        budget_dir = _default_budget_dir()
 
     # Resume: čitaj checkpoint ako resume_label dat.
     start_index = 0
@@ -101,7 +110,7 @@ def run_suite(
 
     verdicts: list[EvalVerdict] = []
     cache_hits = 0
-    rate_limited = False
+    paused = False
 
     for i in range(start_index, len(entries)):
         entry = entries[i]
@@ -116,14 +125,24 @@ def run_suite(
                 print(f"[cache HIT] {entry['id']} → {v['overall']}")
 
         if v is None:
+            # Budget gate — prije skupog PWR poziva, provjeri 5h prozor.
+            if budget.should_pause(budget_dir, max_calls=max_calls):
+                count = budget.count_calls_last_5h(budget_dir)
+                reason = f"budget exhausted: {count} poziva u 5h ≥ {int(max_calls * budget.DEFAULT_THRESHOLD)} (max_calls={max_calls})"
+                _write_checkpoint(checkpoint_file, i, label, reason)
+                print(f"[budget] paused na index {i} → {checkpoint_file} ({reason})")
+                paused = True
+                break
+
             try:
                 v = _run_entry(entry, base_url)
             except errors.RateLimitDetected as e:
                 _write_checkpoint(checkpoint_file, i, label, f"rate_limit: {e}")
                 print(f"[rate-limit] checkpoint na index {i} → {checkpoint_file}")
-                rate_limited = True
+                paused = True
                 break
 
+            budget.record_call(budget_dir)
             if cache_enabled and v["error"] is None:
                 hash_key = cache.compute_hash(entry, system_prompt, tools_sig)
                 cache.cache_put(cache_dir, hash_key, v)
@@ -144,7 +163,7 @@ def run_suite(
     print(f"[eval] JSONL: {jsonl_path}")
     print(f"[eval] HTML:  {html_path}")
 
-    if rate_limited:
+    if paused:
         return 3
 
     # Clean completion — ukloni checkpoint ako postoji (od prethodnog rate-limit-a).
@@ -236,6 +255,12 @@ def main() -> int:
         default=None,
         help="Resume label — čita <suite>-<resume>.checkpoint.json i kreće od next_index.",
     )
+    parser.add_argument(
+        "--max-calls",
+        type=int,
+        default=budget.DEFAULT_MAX_CALLS,
+        help=f"MAX_CALLS u 5h sliding window (default {budget.DEFAULT_MAX_CALLS}, pause na {int(budget.DEFAULT_MAX_CALLS * budget.DEFAULT_THRESHOLD)}).",
+    )
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent.parent
@@ -267,6 +292,7 @@ def main() -> int:
         use_cache=not args.no_cache,
         mode=args.mode,
         resume_label=args.resume,
+        max_calls=args.max_calls,
     )
 
 
