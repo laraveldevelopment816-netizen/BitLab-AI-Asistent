@@ -297,3 +297,122 @@ def test_runner_cleans_checkpoint_on_clean_completion(
     assert not cp_file.exists(), (
         f"checkpoint NE SMIJE postojati posle clean completion, ali postoji: {cp_file}"
     )
+
+
+# --------------------------- mode mismatch (Sesija 2b fix) ---------------------------
+
+
+def test_checkpoint_includes_mode_field(tmp_path: Path) -> None:
+    """_write_checkpoint snima `mode` polje (full/sample) — neophodno za mismatch detection."""
+    cp_path = tmp_path / "test.checkpoint.json"
+    runner._write_checkpoint(
+        cp_path,
+        next_index=5,
+        label="lbl",
+        reason="rate_limit: x",
+        mode="full",
+    )
+    cp = json.loads(cp_path.read_text(encoding="utf-8"))
+    assert cp["next_index"] == 5
+    assert cp["label"] == "lbl"
+    assert cp["reason"] == "rate_limit: x"
+    assert cp["mode"] == "full"
+
+
+def test_runner_aborts_on_mode_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stable_signature: None, capsys
+) -> None:
+    """Checkpoint snimljen u full mode, resume sa sample → exit 4 + jasna error poruka.
+
+    Scenario iz iter9: originalni run je --mode full (250 entries), checkpoint na index 52.
+    Sljedeća iteracija sa default --mode sample bez fix-a ide u prazan range i briše state.
+    """
+    call_count = {"n": 0}
+
+    def counting_call(*a, **k):
+        call_count["n"] += 1
+        return _ok_response()
+
+    monkeypatch.setattr("evals.framework.client.call_chat", counting_call)
+
+    run_dir = tmp_path / "runs"
+    run_dir.mkdir(parents=True)
+    cp_file = run_dir / "test_suite-mm.checkpoint.json"
+    cp_file.write_text(
+        json.dumps(
+            {
+                "next_index": 5,
+                "label": "mm",
+                "reason": "rate_limit: x",
+                "mode": "full",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    suite = _suite_with_n_entries(tmp_path, 10)
+    exit_code = runner.run_suite(
+        suite_path=suite,
+        base_url="http://mock",
+        label="mm",
+        limit=None,
+        fail_fast=False,
+        run_dir=run_dir,
+        cache_dir=tmp_path / "cache",
+        use_cache=False,
+        mode="sample",  # mismatch sa checkpoint.mode="full"
+        resume_label="mm",
+    )
+    assert exit_code == 4, f"očekivao exit 4 za mode mismatch, dobio {exit_code}"
+    # Nije pozvao nijedan entry — abort prije petlje.
+    assert call_count["n"] == 0
+    # Checkpoint MORA ostati netaknut (defensive — error path ne briše state).
+    assert cp_file.exists(), "checkpoint NE SMIJE biti obrisan pri mode mismatch abort-u"
+    cp_after = json.loads(cp_file.read_text(encoding="utf-8"))
+    assert cp_after["mode"] == "full"
+    assert cp_after["next_index"] == 5
+    # Error poruka mora pomenuti oba mode-a (operativno upozorenje korisniku).
+    captured = capsys.readouterr()
+    assert "full" in captured.out
+    assert "sample" in captured.out
+
+
+def test_runner_preserves_checkpoint_when_empty_range(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stable_signature: None
+) -> None:
+    """Resume sa next_index > len(entries) → ne ulazi u petlju, ali NE briše checkpoint.
+
+    Defensive cleanup: brisanje checkpoint-a se događa SAMO ako je runner stvarno
+    obradio entries (start_index < len(entries)). Ako je sample mode skratio listu
+    ispod start_index-a (legacy bez mode polja), state se čuva za sljedeći ispravan run.
+    """
+    monkeypatch.setattr("evals.framework.client.call_chat", lambda *a, **k: _ok_response())
+
+    run_dir = tmp_path / "runs"
+    run_dir.mkdir(parents=True)
+    cp_file = run_dir / "test_suite-empty.checkpoint.json"
+    # Legacy checkpoint bez mode polja (backward compat — ne abort-uje na mismatch).
+    cp_file.write_text(
+        json.dumps({"next_index": 100, "label": "empty", "reason": "rate_limit: x"}),
+        encoding="utf-8",
+    )
+
+    suite = _suite_with_n_entries(tmp_path, 5)  # 5 entries, start_index=100 → range prazan
+    exit_code = runner.run_suite(
+        suite_path=suite,
+        base_url="http://mock",
+        label="empty",
+        limit=None,
+        fail_fast=False,
+        run_dir=run_dir,
+        cache_dir=tmp_path / "cache",
+        use_cache=False,
+        mode="full",
+        resume_label="empty",
+    )
+    # Petlja prazna → nema FAIL-ova, exit 0.
+    assert exit_code == 0
+    # Checkpoint MORA ostati — runner nije ništa obradio, state je real za ispravan resume.
+    assert cp_file.exists(), (
+        "checkpoint NE SMIJE biti obrisan kad start_index ≥ len(entries) (defensive)"
+    )

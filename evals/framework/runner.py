@@ -11,7 +11,8 @@ Exit kodovi:
     0 — sve PASS/WARN/NA.
     1 — bar jedan FAIL.
     2 — suite fajl ne postoji.
-    3 — rate limit, snimljen checkpoint, resume-uj kasnije.
+    3 — rate limit ili budget exhausted, snimljen checkpoint, resume-uj kasnije.
+    4 — mode mismatch između checkpoint-a i CLI --mode (resume sa drugim mode-om).
 """
 
 from __future__ import annotations
@@ -41,23 +42,36 @@ def _checkpoint_path(run_dir: Path, suite_name: str, label: str) -> Path:
     return run_dir / f"{suite_name}-{label}.checkpoint.json"
 
 
-def _read_checkpoint(path: Path) -> int:
-    """Vrati next_index iz checkpoint-a; 0 ako fajl ne postoji ili je malformed."""
+def _read_checkpoint(path: Path) -> dict:
+    """Vrati `{next_index, mode}` iz checkpoint-a; defaults ako fajl ne postoji/malformed.
+
+    `mode` je opcionalno (legacy checkpointi prije Sesije 2b nemaju ga) — vraća
+    None za backward compat, što znači "skip mismatch check" u resume grani.
+    """
+    default: dict = {"next_index": 0, "mode": None}
     if not path.exists():
-        return 0
+        return default
     try:
         cp = json.loads(path.read_text(encoding="utf-8"))
-        return int(cp.get("next_index", 0))
+        return {
+            "next_index": int(cp.get("next_index", 0)),
+            "mode": cp.get("mode"),
+        }
     except (json.JSONDecodeError, OSError, ValueError):
-        return 0
+        return default
 
 
-def _write_checkpoint(path: Path, next_index: int, label: str, reason: str) -> None:
-    """Snima checkpoint sa next_index — entry koji treba ponoviti pri resume-u."""
+def _write_checkpoint(path: Path, next_index: int, label: str, reason: str, mode: str) -> None:
+    """Snima checkpoint sa next_index + mode — entry koji treba ponoviti pri resume-u.
+
+    `mode` ("full"/"sample") omogućava da resume detektuje mismatch i abort-uje
+    umjesto da preskoči state u praznoj petlji (vidi iter9 bug — checkpoint sa
+    next_index iz full run-a, resume sa default sample → range prazan → state izgubljen).
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(
-            {"next_index": next_index, "label": label, "reason": reason},
+            {"next_index": next_index, "label": label, "reason": reason, "mode": mode},
             ensure_ascii=False,
         ),
         encoding="utf-8",
@@ -152,7 +166,18 @@ def run_suite(
     start_index = 0
     if resume_label is not None:
         resume_checkpoint = _checkpoint_path(run_dir, suite_name, resume_label)
-        start_index = _read_checkpoint(resume_checkpoint)
+        cp_data = _read_checkpoint(resume_checkpoint)
+        start_index = cp_data["next_index"]
+        checkpoint_mode = cp_data["mode"]
+        # Mode mismatch (Sesija 2b fix): ako checkpoint snimljen u "full" a CLI je "sample"
+        # (ili obrnuto), abort umjesto da prazni range obriše state.
+        # Legacy checkpointi bez mode polja (None) preskoču ovu provjeru (backward compat).
+        if checkpoint_mode is not None and checkpoint_mode != mode:
+            print(
+                f"FATAL: checkpoint je iz '{checkpoint_mode}' mode, a pokrenut si sa "
+                f"'{mode}'. Pokreni opet sa --mode {checkpoint_mode} ili novi --label."
+            )
+            return 4
         if start_index > 0:
             print(f"[resume] krećem od index {start_index} (checkpoint {resume_checkpoint})")
 
@@ -189,7 +214,7 @@ def run_suite(
                     f"budget exhausted: {count} poziva u 5h ≥ "
                     f"{int(max_calls * budget.DEFAULT_THRESHOLD)} (max_calls={max_calls})"
                 )
-                _write_checkpoint(checkpoint_file, i, label, reason)
+                _write_checkpoint(checkpoint_file, i, label, reason, mode=mode)
                 if pause_file is not None:
                     until = _estimate_reset_epoch(budget_dir)
                     _write_pause_marker(pause_file, until, reason)
@@ -205,7 +230,7 @@ def run_suite(
             try:
                 v = _run_entry(entry, base_url)
             except errors.RateLimitDetected as e:
-                _write_checkpoint(checkpoint_file, i, label, f"rate_limit: {e}")
+                _write_checkpoint(checkpoint_file, i, label, f"rate_limit: {e}", mode=mode)
                 if pause_file is not None:
                     until = _estimate_reset_epoch(budget_dir)
                     _write_pause_marker(pause_file, until, f"rate_limit: {e}")
@@ -246,7 +271,11 @@ def run_suite(
         return 3
 
     # Clean completion — ukloni checkpoint ako postoji (od prethodnog rate-limit-a).
-    if checkpoint_file.exists():
+    # Defensive guard (Sesija 2b fix): briši SAMO ako je runner stvarno obradio
+    # entries (start_index < len(entries)). Ako je start_index ≥ len(entries)
+    # (npr. resume sa next_index=52 ali sample mode generisao 30 entries → prazan
+    # range), state je iz legitimnog ranijeg run-a — ne briši ga.
+    if checkpoint_file.exists() and start_index < len(entries):
         checkpoint_file.unlink()
         print(f"[cleanup] obrisan stari checkpoint {checkpoint_file}")
 
