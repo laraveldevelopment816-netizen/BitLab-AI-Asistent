@@ -13,7 +13,7 @@ def call_chat(
     base_url: str,
     query: str,
     history: list[HistoryMessage],
-    timeout: float = 30.0,
+    timeout: float = 120.0,
 ) -> dict[str, Any]:
     """POST {base_url}/api/chat. Vraća parsed JSON body.
 

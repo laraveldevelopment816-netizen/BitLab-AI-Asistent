@@ -162,6 +162,105 @@ def test_category_overview_handler_returns_children() -> None:
         assert "name" in child
 
 
+def test_search_products_dispatched_through_pwr(test_client, mock_llm, force_backend_pwr) -> None:
+    """PWR put: model traži search_products za leaf kategoriju, runner dispatchuje.
+
+    Acceptance task #1 (search_products): prvi leaf entry (`cat-leaf-93` query
+    'Desktop Brand Name') → eval routing PASS očekuje
+    `tool_calls == [{name: 'search_products', args: {category_id: 93}}]`.
+    """
+    mock_llm.pwr.chat.completions.create.side_effect = [
+        _pwr_tool_call_response("search_products", '{"category_id": 93}'),
+        _pwr_final_response("Trenutno nemam proizvode u toj kategoriji."),
+    ]
+
+    resp = test_client.post(
+        "/api/chat",
+        json={"message": "Desktop Brand Name", "history": []},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["tool_calls"] == [{"name": "search_products", "args": {"category_id": 93}}]
+    assert body["iterations"] == 2
+    assert body["reply"] == "Trenutno nemam proizvode u toj kategoriji."
+
+    # PWR put aktiviran 2x (initial + after tool_result), Anthropic NIJE zvan.
+    assert mock_llm.pwr.chat.completions.create.call_count == 2
+    assert not mock_llm.anthropic.messages.create.called
+
+    # Tool definicije proslijeđene modelu u OpenAI shape — oba toola moraju biti tu.
+    first_call_kwargs = mock_llm.pwr.chat.completions.create.call_args_list[0].kwargs
+    assert "tools" in first_call_kwargs
+    tool_names = {t["function"]["name"] for t in first_call_kwargs["tools"]}
+    assert {"category_overview", "search_products"}.issubset(tool_names)
+
+
+def test_search_products_dispatched_through_anthropic(
+    test_client, mock_llm, force_backend_anthropic
+) -> None:
+    """Anthropic fallback put: ista semantika kao PWR za search_products."""
+    mock_llm.anthropic.messages.create.side_effect = [
+        _anthropic_tool_use_response("search_products", {"category_id": 93}),
+        _anthropic_final_response("Trenutno nemam proizvode u toj kategoriji."),
+    ]
+
+    resp = test_client.post(
+        "/api/chat",
+        json={"message": "Desktop Brand Name", "history": []},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["tool_calls"] == [{"name": "search_products", "args": {"category_id": 93}}]
+    assert body["iterations"] == 2
+    assert body["reply"] == "Trenutno nemam proizvode u toj kategoriji."
+    assert mock_llm.anthropic.messages.create.call_count == 2
+    assert not mock_llm.pwr.chat.completions.create.called
+
+    # Tool definicije u Anthropic shape — oba toola moraju biti tu.
+    first_call_kwargs = mock_llm.anthropic.messages.create.call_args_list[0].kwargs
+    assert "tools" in first_call_kwargs
+    tool_names = {t["name"] for t in first_call_kwargs["tools"]}
+    assert {"category_overview", "search_products"}.issubset(tool_names)
+
+
+def test_search_products_handler_returns_empty_list() -> None:
+    """Unit-level provjera: handler stub vraća `products: []` (RAG dolazi u Fazi 2).
+
+    Optional args (category_id, query, brand, filteri cijene) ako su prosljeđeni,
+    moraju biti odraženi u payload-u — ali sam handler ne pretražuje ništa još.
+    """
+    import json as _json
+
+    from app.tools import dispatch
+
+    # Bez argumenata — minimum payload.
+    payload_empty = _json.loads(dispatch("search_products", {}))
+    assert payload_empty == {"products": []}
+
+    # Sa category_id (najčešći leaf case iz auto-gen seta).
+    payload_cid = _json.loads(dispatch("search_products", {"category_id": 93}))
+    assert payload_cid["products"] == []
+    assert payload_cid["category_id"] == 93
+
+    # Sa svim argumentima — handler ih sve odrazi u payload-u.
+    args_full = {
+        "query": "Samsung tablet",
+        "category_id": 99,
+        "brand": "Samsung",
+        "min_price_km": 100.0,
+        "max_price_km": 500.0,
+    }
+    payload_full = _json.loads(dispatch("search_products", args_full))
+    assert payload_full["products"] == []
+    assert payload_full["category_id"] == 99
+    assert payload_full["query"] == "Samsung tablet"
+    assert payload_full["brand"] == "Samsung"
+    assert payload_full["min_price_km"] == 100.0
+    assert payload_full["max_price_km"] == 500.0
+
+
 def test_dispatch_unknown_tool_returns_error_payload() -> None:
     """Unknown tool → JSON error payload, runner ne crash-uje."""
     import json as _json
