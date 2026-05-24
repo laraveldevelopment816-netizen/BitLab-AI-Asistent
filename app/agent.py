@@ -50,7 +50,11 @@ SYSTEM_PROMPT_V1 = (
     "- Ako upit ne odgovara nijednoj kategoriji iz catalog mapping-a "
     "(npr. 'knjige', 'namještaj', 'kakvo je vrijeme', 'garancija', 'reklamacija') "
     "ILI je dvosmislen bez jasnog category mapping-a, NE zovi tool — odgovori "
-    "prirodno (kratko objasni da nije u katalogu ili traži pojašnjenje).\n\n"
+    "prirodno (kratko objasni da nije u katalogu ili traži pojašnjenje).\n"
+    "- Ako upit izgleda kao typo (riječ slična kategoriji iz mapping liste, ali "
+    "sa očiglednim greškama u slovima — npr. 'mobitejli', 'raunari', 'prnteri'), "
+    "NE pretpostavljaj korekciju automatski i NE zovi tool — pitaj korisnika da "
+    "pojasni koju kategoriju je tačno mislio.\n\n"
     "Output: ne objašnjavaj rutiranje — samo pozovi pravi tool ili odgovori "
     "tekstom kad je out-of-scope."
 )
