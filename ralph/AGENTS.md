@@ -4,7 +4,7 @@ Ti si Claude Code agent koji radi u Ralph petlji. Svaka iteracija dobija čist k
 
 ## Repo u 4 rečenice
 
-Python 3.11+ FastAPI app + voice/RAG agent za webshop.bitlab.rs. Trenutno na grani `claude/tdd-zero-base`: minimum `app/` (`main.py`, `agent.py` sa praznim system prompt-om i bez tools, `config.py`). Stara funkcionalna app u `bck/` — NIKAD ne reuse-uj wholesale; cherry-pick samo na zahtjev failing eval-a. Filozofija: failing eval → minimum dodaj → PASS → sljedeći eval.
+Python 3.11+ FastAPI app + voice/RAG agent za webshop.bitlab.rs. Trenutno na grani `claude/tdd-zero-base` (integraciona) ili feature grani off od nje: minimum `app/` (`main.py`, `agent.py` sa PWR/Anthropic dispatch i bez tools, `config.py`). Stari kod dostupan u git history (`git show <sha>:path`) — NIKAD ne reuse-uj wholesale; cherry-pick samo na zahtjev failing eval-a. Filozofija: failing eval → minimum dodaj → PASS → sljedeći eval.
 
 ## Komande
 
@@ -33,11 +33,22 @@ Ako ovo nije green, NE commit-uj. Fix prvo. Ako fix nije moguć u istom task-u, 
 - Integraciona grana: `claude/tdd-zero-base`. Nikad ne push-uj na `main` ili `staging`.
 - Feature grane: `feat/<scope>` (npr. `feat/ralph-categories-eval`). Branch off od `claude/tdd-zero-base`.
 - Conventional Commits, BS/SR/CG jezik za poruke: `feat(scope): kratki opis`.
-- PR: `gh pr create --base claude/tdd-zero-base --title "..." --body "..."`.
+- PR ka integracionoj grani: `gh pr create --base claude/tdd-zero-base --title "..." --body "..."` (ako `gh` CLI nije instaliran, push pa korisnik otvara PR ručno).
 
-## Anthropic API budget
+## LLM backend dispatch (IMPERATIV — memorija `llm_backend_pwr_imperative`)
 
-Pytest testovi MORAJU biti mock-ovani — `tests/conftest.py` ima `mock_anthropic` fixture. Real LLM samo u `evals/framework/runner.py` (eksplicitno pokretanje, ne u CI default-u). Nikad ne zovi `anthropic.Anthropic()` direktno iz test fajla.
+Svi LLM pozivi MORAJU kroz `app/agent.py:run_agent` dispatch, koji bira backend po `settings.llm_backend`:
+
+- **`LLM_BACKEND=pwr` + `PWR_API_KEY` set** (default po `.env`): `_run_pwr` koristi `openai` SDK ka lokalnom PlaywrightRouter (`http://127.0.0.1:8765/v1`). Troši kredite Claude pretplate, NE plaćeni Anthropic API.
+- **`LLM_BACKEND=anthropic` ili PWR ne setovan**: `_run_anthropic` direktan Anthropic API. Fallback, ne preporučeno za produkciju.
+
+**NIKAD `anthropic.Anthropic().messages.create(...)` direktno iz drugog koda.** Sve ide kroz `run_agent` ili `_get_anthropic_client()` / `_get_pwr_client()` helper-e.
+
+**Kad dodaješ tools (Faza 1+)**: mora u OBA runnera. Anthropic shape u `_run_anthropic`, OpenAI shape (derivacija) u `_run_pwr`. Pogledaj stari kod referencu: `git show 3d4bc87:app/agent.py` (`ALL_TOOLS` + `ALL_TOOLS_OPENAI_SHAPE`).
+
+## Anthropic API budget (memorija `anthropic_budget`)
+
+Pytest invariant: `tests/conftest.py` `mock_llm` fixture mock-uje OBA klijenta (anthropic + pwr). Nikad ne zovi ni pwr ni anthropic stvarno iz pytest-a — koristi `mock_llm` + `force_backend_pwr` ili `force_backend_anthropic` fixture-e. Real LLM samo u `evals/framework/runner.py` (manuelno pokretanje ili nightly cron, ne u default CI).
 
 ## Pravila u petlji
 

@@ -71,3 +71,5 @@ Exit. Petlja restartuje sa svježim kontekstom.
 - **999.6** Nemoj pisati novi kod ako acceptance prolazi sa postojećim. YAGNI.
 - **999.7** Jezik commit poruka i komentara: BS/SR/CG. Identifikatori: engleski.
 - **999.8** Ako ne znaš šta dalje — STOP, zapiši dilemu u `ralph/IMPLEMENTATION_PLAN.md` (Next) umjesto guess-a.
+- **999.9** LLM pozivi MORAJU kroz `app/agent.py:run_agent` dispatch (PWR-first, Anthropic fallback). Nikad `anthropic.Anthropic().messages.create()` direktno iz drugog koda. Vidi `ralph/AGENTS.md` § LLM backend dispatch + memoriju `llm_backend_pwr_imperative`.
+- **999.10** Tools (Faza 1+) idu u OBA runnera (`_run_anthropic` Anthropic shape + `_run_pwr` OpenAI shape, derivacija). Pytest sa `mock_llm` + `force_backend_pwr` ILI `force_backend_anthropic` fixture-om. Stari kod referenca: `git show 3d4bc87:app/agent.py`.

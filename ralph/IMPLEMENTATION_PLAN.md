@@ -4,15 +4,15 @@ Plan koji Ralph čita i ažurira. Bira top task iz Now, implementira, commit-uje
 
 ## Now
 
-### 1. Dodaj `category_overview` tool u `app/agent.py`
+### 1. Dodaj `category_overview` tool u OBA LLM runnera (`app/agent.py`)
 
-**Acceptance**: prvi parent entry u `categories.jsonl` → eval routing PASS (tool zvan sa očekivanim category_id). Handler stub vraća listu djece iz `data/categories_new.json`. Integration test sa mock_anthropic verifikuje tool dispatch.
+**Acceptance**: prvi parent entry u `categories.jsonl` → eval routing PASS (tool zvan sa očekivanim category_id). Tool definicija u `_run_anthropic` (Anthropic shape) **I** `_run_pwr` (OpenAI shape, derivacija — vidi `git show 3d4bc87:app/agent.py` za referencu `ALL_TOOLS_OPENAI_SHAPE`). Handler stub vraća listu djece iz `data/categories_new.json`. Integration test sa `mock_llm` + `force_backend_pwr` verifikuje tool dispatch kroz PWR put.
 
-**Spec**: `specs/categories.md` §3 (tool schema).
+**Spec**: `specs/categories.md` §3 (tool schema) + §3.1 (backend imperative).
 
-### 2. Dodaj `search_products` tool u `app/agent.py`
+### 2. Dodaj `search_products` tool u OBA runnera (`app/agent.py`)
 
-**Acceptance**: prvi leaf entry → eval routing PASS. Handler stub vraća prazan list (`{"products": []}`); pravi RAG dolazi u Fazi 2. Integration test verifikuje dispatch.
+**Acceptance**: prvi leaf entry → eval routing PASS. Tool u `_run_anthropic` I `_run_pwr` (oba shape-a). Handler stub vraća prazan list (`{"products": []}`); pravi RAG dolazi u Fazi 2. Integration test sa `mock_llm` + `force_backend_*` fixture verifikuje dispatch.
 
 **Spec**: `specs/categories.md` §3.
 
