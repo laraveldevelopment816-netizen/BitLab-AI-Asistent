@@ -38,10 +38,14 @@ def _ok_response(category_id: int = 17) -> dict:
 
 @pytest.fixture
 def stable_signature(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force-uje stable signature + disable real budget gate (test izolacija)."""
     monkeypatch.setattr(
         "evals.framework.runner._get_signature",
         lambda: ("test-prompt", "test-tools"),
     )
+    # Budget bi čitao pravi ~/.cache/bitlab-ralph log — disable za izolovan test.
+    monkeypatch.setattr("evals.framework.budget.should_pause", lambda *a, **k: False)
+    monkeypatch.setattr("evals.framework.budget.record_call", lambda *a, **k: None)
 
 
 def _suite_with_n_entries(tmp_path: Path, n: int) -> Path:

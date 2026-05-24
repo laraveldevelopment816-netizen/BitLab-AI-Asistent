@@ -39,11 +39,14 @@ def _fail_response() -> dict:
 
 @pytest.fixture
 def stable_signature(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Force-uje deterministički cache signature, nezavisno od stvarnog app/ modula."""
+    """Force-uje deterministički cache signature + disable budget gate."""
     monkeypatch.setattr(
         "evals.framework.runner._get_signature",
         lambda: ("test-prompt-v1", "test-tools-sig-v1"),
     )
+    # Budget bi čitao pravi ~/.cache log — disable za izolovan test.
+    monkeypatch.setattr("evals.framework.budget.should_pause", lambda *a, **k: False)
+    monkeypatch.setattr("evals.framework.budget.record_call", lambda *a, **k: None)
 
 
 # --------------------------- output fajlovi ---------------------------
@@ -266,6 +269,9 @@ def test_run_suite_cache_invalidates_on_signature_change(
         return _ok_response()
 
     monkeypatch.setattr("evals.framework.client.call_chat", counting_call)
+    # Disable budget gate (test izolacija, ne čita pravi ~/.cache log).
+    monkeypatch.setattr("evals.framework.budget.should_pause", lambda *a, **k: False)
+    monkeypatch.setattr("evals.framework.budget.record_call", lambda *a, **k: None)
 
     suite = _write_suite(
         tmp_path,

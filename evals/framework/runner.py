@@ -69,6 +69,43 @@ def _default_budget_dir() -> Path:
     return Path.home() / ".cache" / "bitlab-ralph"
 
 
+def _default_pause_file() -> Path:
+    """Default `<project_root>/ralph/PAUSE` — runner piše ovdje, ralph.sh čita."""
+    return Path(__file__).resolve().parent.parent.parent / "ralph" / "PAUSE"
+
+
+def _estimate_reset_epoch(budget_dir: Path) -> int:
+    """Procjena reset epoch — najstariji unos u pwr_calls.jsonl + 5h, fallback now+5h."""
+    log = budget_dir / "pwr_calls.jsonl"
+    now = time.time()
+    if not log.exists():
+        return int(now + budget.WINDOW_SECONDS)
+    oldest: float | None = None
+    with log.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                ts = float(json.loads(line).get("ts", 0))
+            except (json.JSONDecodeError, ValueError, TypeError):
+                continue
+            if oldest is None or ts < oldest:
+                oldest = ts
+    if oldest is None:
+        return int(now + budget.WINDOW_SECONDS)
+    return int(oldest + budget.WINDOW_SECONDS)
+
+
+def _write_pause_marker(pause_file: Path, until_epoch: int, reason: str) -> None:
+    """Snima PAUSE marker sa `until=<epoch>` u prvi red — ralph.sh ga detektuje."""
+    pause_file.parent.mkdir(parents=True, exist_ok=True)
+    pause_file.write_text(
+        f"until={until_epoch}\nreason={reason}\n",
+        encoding="utf-8",
+    )
+
+
 def run_suite(
     suite_path: Path,
     base_url: str,
@@ -82,6 +119,7 @@ def run_suite(
     resume_label: str | None = None,
     budget_dir: Path | None = None,
     max_calls: int = budget.DEFAULT_MAX_CALLS,
+    pause_file: Path | None = None,
 ) -> int:
     """Pokreni eval suite. Vraća exit kod (0 OK, 1 FAIL, 3 rate-limit ili budget exhausted)."""
     entries = loader.load_suite(suite_path)
@@ -96,6 +134,8 @@ def run_suite(
     checkpoint_file = _checkpoint_path(run_dir, suite_name, label)
     if budget_dir is None:
         budget_dir = _default_budget_dir()
+    # pause_file=None znači testovi ne care o PAUSE marker pisanju (skip).
+    # CLI main() prosljeđuje project_root/ralph/PAUSE eksplicitno.
 
     # Resume: čitaj checkpoint ako resume_label dat.
     start_index = 0
@@ -128,9 +168,20 @@ def run_suite(
             # Budget gate — prije skupog PWR poziva, provjeri 5h prozor.
             if budget.should_pause(budget_dir, max_calls=max_calls):
                 count = budget.count_calls_last_5h(budget_dir)
-                reason = f"budget exhausted: {count} poziva u 5h ≥ {int(max_calls * budget.DEFAULT_THRESHOLD)} (max_calls={max_calls})"
+                reason = (
+                    f"budget exhausted: {count} poziva u 5h ≥ "
+                    f"{int(max_calls * budget.DEFAULT_THRESHOLD)} (max_calls={max_calls})"
+                )
                 _write_checkpoint(checkpoint_file, i, label, reason)
-                print(f"[budget] paused na index {i} → {checkpoint_file} ({reason})")
+                if pause_file is not None:
+                    until = _estimate_reset_epoch(budget_dir)
+                    _write_pause_marker(pause_file, until, reason)
+                    print(
+                        f"[budget] paused na index {i} → checkpoint {checkpoint_file}, "
+                        f"PAUSE marker {pause_file} (until={until})"
+                    )
+                else:
+                    print(f"[budget] paused na index {i} → checkpoint {checkpoint_file}")
                 paused = True
                 break
 
@@ -138,7 +189,15 @@ def run_suite(
                 v = _run_entry(entry, base_url)
             except errors.RateLimitDetected as e:
                 _write_checkpoint(checkpoint_file, i, label, f"rate_limit: {e}")
-                print(f"[rate-limit] checkpoint na index {i} → {checkpoint_file}")
+                if pause_file is not None:
+                    until = _estimate_reset_epoch(budget_dir)
+                    _write_pause_marker(pause_file, until, f"rate_limit: {e}")
+                    print(
+                        f"[rate-limit] checkpoint {checkpoint_file}, "
+                        f"PAUSE marker {pause_file} (until={until})"
+                    )
+                else:
+                    print(f"[rate-limit] checkpoint {checkpoint_file}")
                 paused = True
                 break
 
@@ -281,6 +340,7 @@ def main() -> int:
         return 2
 
     run_dir = project_root / "evals" / "runs"
+    pause_file = project_root / "ralph" / "PAUSE"
     return run_suite(
         suite_path=suite_path,
         base_url=args.url,
@@ -293,6 +353,7 @@ def main() -> int:
         mode=args.mode,
         resume_label=args.resume,
         max_calls=args.max_calls,
+        pause_file=pause_file,
     )
 
 
