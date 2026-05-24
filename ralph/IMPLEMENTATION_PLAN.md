@@ -4,14 +4,14 @@ Plan koji Ralph čita i ažurira. Bira top task iz Now, implementira, commit-uje
 
 ## Now
 
-_(prazan — sljedeća iteracija bira top task iz Next)_
+- **Sistem prompt v1 u oba runnera** — Dodaj minimum instrukcija ("Webshop agent. Kad upit imenuje kategoriju ili proizvod iz kataloga, pozovi `category_overview` za parent kategorije ili `search_products` za leaf kategorije / konkretne upite. Out-of-scope upit = ne zovi tool, odgovori prirodno.") u `_run_anthropic` (`system=` parametar) i `_run_pwr` (`{"role": "system", "content": ...}` prva poruka). Sistem prompt mora biti single source — definisan u `app/agent.py` kao konstanta (npr. `SYSTEM_PROMPT_V1`), ne hardcoded inline u oba runnera. Acceptance: pytest unit test verifikuje da konstanta nije prazna i da je prosljeđena u oba backenda (mock_llm captures system arg / system message); eval cijela `categories.jsonl` (250 entry-ja) kroz PWR PASS rate ≥50%. Spec: `specs/categories.md` §1, §3, §3.1.
+- **Negativni entry set `categories_manual.jsonl`** — Kreiraj 10-20 ručno napisanih entry-ja sa `expect.tool=null` po §4 spec-a: `not_in_catalog` (knjige, namještaj), `ambiguous_name` (kabl, torba), `typo_likely` (mobitejli, raunari), `out_of_scope` (vrijeme, garancija). Tag-uj `["manual", "negative", "<subtype>"]`. Sistem prompt refinement da prepozna out-of-scope (dopuna v1 instrukcija). Acceptance: cat-manual suite kroz PWR negativni routing PASS ≥80%; cijela `categories.jsonl` PASS rate ne smije pasti ispod ≥50% sa novim sistem promptom. Spec: `specs/categories.md` §4.
+- **Analiza fail patterns nakon v1 baseline** — Pokreni `python -m evals.framework.runner --suite categories` (cijela suite, bez fail-fast, kroz PWR) sa najnovijim sistem promptom. Parse JSONL, izlistaj top 3-5 fail patterns kao konkretne nove task-ove u Next sekciji (npr. "leaf 47 Mobiteli — model bira category_overview umjesto search_products" ili "parent X — model halucinira djecu"). Acceptance: novi targeted fix task-ovi u Next sekciji (3-5 stavki), izveštaj u commit poruci. Spec: `specs/categories.md` §5 (gap analysis).
 
 ## Next
 
-- **Sistem prompt v1**: minimum instrukcija "ako upit liči na kategoriju, pozovi `category_overview`/`search_products`". Acceptance: routing PASS rate ≥50% na cijelom `categories.jsonl`.
-- **Negativni entry-ji**: `categories_manual.jsonl` (10-20 entry-ja: `not_in_catalog`, `ambiguous_name`, `typo_likely`, `out_of_scope`) + system prompt instrukcija za `tool=null` na out-of-scope. Acceptance: negativni routing PASS ≥80%.
-- **Eval acceptance Faze 1**: cijela suite PASS rate ≥95%.
-- **Spec products**: `specs/products.md` detaljan (RAG, schema, primjeri).
+- **Faza 1 acceptance ≥95% PASS** — Umbrella: cijela `categories.jsonl` (250) + `categories_manual.jsonl` (10-20). Razbija se iterativno na konkretne fix task-ove iz fail patterns analize.
+- **Spec `specs/products.md` detaljan** — RAG, schema, primjeri (priprema za Fazu 2). Trenutno placeholder. Spec: `specs/products.md` (revidiraj).
 
 ## Later
 
