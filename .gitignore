@@ -70,5 +70,8 @@ ralph/PAUSE
 ralph/STOP
 ralph/PAUSED_UNTIL_*
 
+# Eval resume checkpoint — per-run state, sljedeća iteracija obriše/regeneriše
+evals/runs/*.checkpoint.json
+
 # Pre-reset archive (TDD zero base). Sadržaj dostupan iz git log-a.
 bck/

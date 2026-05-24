@@ -46,13 +46,20 @@ def test_status_script_shows_required_sections() -> None:
 
 
 def test_status_script_detects_ralph_not_running() -> None:
-    """Kad nijedan ralph proces ne radi, skript jasno signalizira NE RADI."""
+    """Kad nijedan ralph proces ne radi, skript jasno signalizira NE RADI.
+
+    Skip ako je Ralph trenutno aktivan (npr. test pokrenut iz Ralph petlje
+    kao backpressure step) — tada status.sh legitimno javlja RADI, što ne
+    konflikt-uje sa ovom branom testa.
+    """
+    ralph_active = (
+        subprocess.run(["pgrep", "-f", "ralph/ralph.sh"], capture_output=True, text=True).returncode
+        == 0
+    )
+    if ralph_active:
+        pytest.skip("Ralph aktivan — NE RADI grana se ne može provjeriti")
     result = _run_status_script()
-    # Ako Ralph zaista ne radi u test okruženju, "NE RADI" mora biti tu.
-    # (Ako neki dev paralelno pokrene Ralph, test će fail-ovati — to je signal
-    # da ne pokrećeš Ralph dok pokrećeš test suite. Acceptable trade-off.)
-    if "RADI\n" not in result.stdout.replace("NE RADI", ""):
-        assert "NE RADI" in result.stdout
+    assert "NE RADI" in result.stdout
 
 
 def test_status_script_reads_plan_now_top_task() -> None:
