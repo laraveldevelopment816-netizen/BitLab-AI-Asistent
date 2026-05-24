@@ -4,13 +4,7 @@ Plan koji Ralph čita i ažurira. Bira top task iz Now, implementira, commit-uje
 
 ## Now
 
-### 1. Dodaj `search_products` tool u OBA runnera (`app/agent.py`)
-
-**Acceptance**: prvi leaf entry → eval routing PASS. Tool u `_run_anthropic` I `_run_pwr` (oba shape-a). Handler stub vraća prazan list (`{"products": []}`); pravi RAG dolazi u Fazi 2. Integration test sa `mock_llm` + `force_backend_*` fixture verifikuje dispatch.
-
-**Spec**: `specs/categories.md` §3.
-
-**Napomena**: tool dispatch loop + OpenAI shape derivacija postoje u `app/agent.py` i `app/tools.py` (od task #1 — `category_overview`). Dodavanje `search_products` je samo nova definicija u `ALL_TOOLS_ANTHROPIC` + handler u `dispatch()`.
+_(prazan — sljedeća iteracija bira top task iz Next)_
 
 ## Next
 
@@ -29,5 +23,6 @@ Plan koji Ralph čita i ažurira. Bira top task iz Now, implementira, commit-uje
 
 ## Done
 
+- 2026-05-24 5873704 `search_products` tool u OBA runnera (Anthropic shape + OpenAI derivacija) sa query/category_id/brand/min_price_km/max_price_km poljima. Handler stub vraća `{"products": []}` (RAG u Fazi 2). Mapping splittan u `_parent_block()` (36 parent ID) i `_leaf_block()` (220 leaf ID) — model za leaf upit više ne bira category_overview. Integration testovi za oba backenda + handler unit test. Eval client timeout 30s → 120s (PWR cold-start). Live eval (limit 2 fail-fast, kroz PWR): `cat-parent-17` PASS (category_overview/17) + `cat-leaf-93` PASS (search_products/93). Rate 100%.
 - 2026-05-24 087861a `category_overview` tool u OBA runnera (`_run_anthropic` Anthropic shape + `_run_pwr` OpenAI shape derivacija). Handler stub vraća djecu iz `data/categories_new.json`. Tool dispatch loop + `app/tools.py` modul. Integration test sa mock_llm × oba backenda. Live eval (limit 1, kroz PWR) — prvi parent entry `cat-parent-17` "Računari" → PASS 100%.
 - 2026-05-24 3d928f6 Generiši auto-gen kategorija eval set (250 entry-ja: 220 leaves + 30 parents; deterministička skripta, schema + determinizam unit testovi)
