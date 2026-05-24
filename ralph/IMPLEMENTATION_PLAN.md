@@ -4,17 +4,13 @@ Plan koji Ralph čita i ažurira. Bira top task iz Now, implementira, commit-uje
 
 ## Now
 
-### 1. Dodaj `category_overview` tool u OBA LLM runnera (`app/agent.py`)
-
-**Acceptance**: prvi parent entry u `categories.jsonl` → eval routing PASS (tool zvan sa očekivanim category_id). Tool definicija u `_run_anthropic` (Anthropic shape) **I** `_run_pwr` (OpenAI shape, derivacija — vidi `git show 3d4bc87:app/agent.py` za referencu `ALL_TOOLS_OPENAI_SHAPE`). Handler stub vraća listu djece iz `data/categories_new.json`. Integration test sa `mock_llm` + `force_backend_pwr` verifikuje tool dispatch kroz PWR put.
-
-**Spec**: `specs/categories.md` §3 (tool schema) + §3.1 (backend imperative).
-
-### 2. Dodaj `search_products` tool u OBA runnera (`app/agent.py`)
+### 1. Dodaj `search_products` tool u OBA runnera (`app/agent.py`)
 
 **Acceptance**: prvi leaf entry → eval routing PASS. Tool u `_run_anthropic` I `_run_pwr` (oba shape-a). Handler stub vraća prazan list (`{"products": []}`); pravi RAG dolazi u Fazi 2. Integration test sa `mock_llm` + `force_backend_*` fixture verifikuje dispatch.
 
 **Spec**: `specs/categories.md` §3.
+
+**Napomena**: tool dispatch loop + OpenAI shape derivacija postoje u `app/agent.py` i `app/tools.py` (od task #1 — `category_overview`). Dodavanje `search_products` je samo nova definicija u `ALL_TOOLS_ANTHROPIC` + handler u `dispatch()`.
 
 ## Next
 
@@ -33,4 +29,5 @@ Plan koji Ralph čita i ažurira. Bira top task iz Now, implementira, commit-uje
 
 ## Done
 
+- 2026-05-24 087861a `category_overview` tool u OBA runnera (`_run_anthropic` Anthropic shape + `_run_pwr` OpenAI shape derivacija). Handler stub vraća djecu iz `data/categories_new.json`. Tool dispatch loop + `app/tools.py` modul. Integration test sa mock_llm × oba backenda. Live eval (limit 1, kroz PWR) — prvi parent entry `cat-parent-17` "Računari" → PASS 100%.
 - 2026-05-24 3d928f6 Generiši auto-gen kategorija eval set (250 entry-ja: 220 leaves + 30 parents; deterministička skripta, schema + determinizam unit testovi)
