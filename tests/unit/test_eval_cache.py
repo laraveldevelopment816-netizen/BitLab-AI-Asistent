@@ -164,3 +164,69 @@ def test_sampler_balances_parent_leaf() -> None:
     leaf_count = sum(1 for e in result if e["id"].startswith("l"))
     # 50/50 split, allow ±1 toleranciju
     assert abs(parent_count - leaf_count) <= 1
+
+
+def test_sampler_empty_input_returns_empty() -> None:
+    """Edge case: prazna lista entry-ja → prazan sample."""
+    assert sampler.stratified_sample([], target_size=30) == []
+
+
+def test_sampler_target_size_zero_below_entries_count() -> None:
+    """target_size=0 sa neprazinim input-om — vraća sve manual + 0 auto (jer parent_quota=0)."""
+    manual = [_tagged_entry(f"m{i}", ["manual", "negative"]) for i in range(3)]
+    auto = [_tagged_entry(f"a{i}", ["auto-gen", "leaf"]) for i in range(20)]
+    # target_size=0 < len(entries)=23 pa ne short-circuit-uje na "vrati sve".
+    # Sve manual (3) ipak prolaze; auto kvota = max(0, 0-3) = 0.
+    result = sampler.stratified_sample(manual + auto, target_size=0)
+    assert len(result) == 3
+    assert all(e["id"].startswith("m") for e in result)
+
+
+def test_sampler_unknown_tags_fall_back_to_random_fill() -> None:
+    """Entry-ji bez parent/leaf/manual tagova — popunjavanje iz preostalih."""
+    odd = [_tagged_entry(f"x{i}", ["weird", "untagged"]) for i in range(50)]
+    result = sampler.stratified_sample(odd, target_size=10, seed=42)
+    assert len(result) == 10
+    # Svi su iz iste grupe (untagged), sample je deterministička.
+    again = sampler.stratified_sample(odd, target_size=10, seed=42)
+    assert [e["id"] for e in result] == [e["id"] for e in again]
+
+
+def test_cache_handles_missing_directory_gracefully(tmp_path: Path) -> None:
+    """cache_get ne dize exception ako cache_dir ne postoji još."""
+    nonexistent = tmp_path / "no_such_dir"
+    assert cache.cache_get(nonexistent, "any-hash") is None
+
+
+def test_cache_put_creates_directory_if_missing(tmp_path: Path) -> None:
+    """cache_put pravi cache_dir ako ne postoji (prvi put pisanja)."""
+    new_dir = tmp_path / "new_cache"
+    assert not new_dir.exists()
+    cache.cache_put(new_dir, "h1", _verdict(overall="PASS"))
+    assert new_dir.exists()
+    assert (new_dir / "h1.json").exists()
+
+
+def test_cache_get_handles_corrupted_json(tmp_path: Path) -> None:
+    """Corrupted cache fajl (ne validan JSON) → cache miss, ne exception."""
+    bad_file = tmp_path / "h_corrupt.json"
+    bad_file.write_text("{not valid json")
+    assert cache.cache_get(tmp_path, "h_corrupt") is None
+
+
+def test_cache_stats_ignores_corrupted_files(tmp_path: Path) -> None:
+    """Stats prelazi preko corrupted fajlova bez crash-a."""
+    cache.cache_put(tmp_path, "good", _verdict(overall="PASS"))
+    (tmp_path / "bad.json").write_text("xxxx")
+    stats = cache.cache_stats(tmp_path)
+    assert stats["total"] == 1
+    assert stats["pass"] == 1
+
+
+def test_hash_handles_unicode_in_query() -> None:
+    """Hash treba biti stabilan za unicode (bs/sr/cg slova) — ne raise."""
+    e1 = _entry(query="Mobiteli šđčćž")
+    h = cache.compute_hash(e1, "prompt", "tools")
+    assert len(h) == 64  # SHA-256 hex = 64 chars
+    # Ponovo isti input → isti hash (unicode stabilan).
+    assert cache.compute_hash(e1, "prompt", "tools") == h
