@@ -84,7 +84,8 @@ while [ "$iter" -lt "$MAX_ITERS" ]; do
     UNTIL=$("$PY" ralph/estimate_reset.py)
     echo "until=$UNTIL" > ralph/PAUSE
     echo "reason=claude exit 3 (no PAUSE marker, fallback estimate)" >> ralph/PAUSE
-    echo "[ralph] claude exit 3 → fallback PAUSE marker, until=$UNTIL" | tee -a "$log_file"
+    UNTIL_LOCAL=$(date -d "@$UNTIL" '+%d.%m.%Y %H:%M:%S')
+    echo "[ralph] claude exit 3 → fallback PAUSE marker, aktivan do $UNTIL_LOCAL" | tee -a "$log_file"
   fi
 
   sleep "$SLEEP_BETWEEN"

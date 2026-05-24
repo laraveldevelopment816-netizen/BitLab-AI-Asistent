@@ -106,6 +106,17 @@ def _write_pause_marker(pause_file: Path, until_epoch: int, reason: str) -> None
     )
 
 
+def _fmt_epoch_local(epoch: int | float) -> str:
+    """Konvertuje epoch u lokalni human-readable format (BS/SR/CG: dd.mm.yyyy HH:MM:SS).
+
+    Koristi se za sve stdout poruke ka korisniku — fajl sadržaj `until=<epoch>`
+    ostaje program-readable (parsing u `wait_pause.py`).
+    """
+    import datetime
+
+    return datetime.datetime.fromtimestamp(epoch).strftime("%d.%m.%Y %H:%M:%S")
+
+
 def run_suite(
     suite_path: Path,
     base_url: str,
@@ -184,7 +195,7 @@ def run_suite(
                     _write_pause_marker(pause_file, until, reason)
                     print(
                         f"[budget] paused na index {i} → checkpoint {checkpoint_file}, "
-                        f"PAUSE marker {pause_file} (until={until})"
+                        f"PAUSE marker {pause_file} (aktivan do {_fmt_epoch_local(until)})"
                     )
                 else:
                     print(f"[budget] paused na index {i} → checkpoint {checkpoint_file}")
@@ -200,7 +211,7 @@ def run_suite(
                     _write_pause_marker(pause_file, until, f"rate_limit: {e}")
                     print(
                         f"[rate-limit] checkpoint {checkpoint_file}, "
-                        f"PAUSE marker {pause_file} (until={until})"
+                        f"PAUSE marker {pause_file} (aktivan do {_fmt_epoch_local(until)})"
                     )
                 else:
                     print(f"[rate-limit] checkpoint {checkpoint_file}")
