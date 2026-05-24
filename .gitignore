@@ -60,5 +60,8 @@ repo-scan.md
 # Eval visualizer outputs (parent-expansion / parent-runtime HTML dumps)
 evals/runs/
 
+# Ralph session resume state (runtime fajl, ne commitovati)
+ralph/session-state.json
+
 # Pre-reset archive (TDD zero base). Sadržaj dostupan iz git log-a.
 bck/

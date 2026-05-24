@@ -15,10 +15,39 @@ Python 3.11+ FastAPI app + voice/RAG agent za webshop.bitlab.rs. Trenutno na gra
 | Samo unit | `pytest -m unit -q` |
 | Samo integration | `pytest -m integration -q` |
 | E2E (Playwright, sporo) | `pytest -m e2e -q` |
-| Real-LLM eval suite | `python -m evals.framework.runner --suite categories` |
+| Real-LLM eval (25 entry-ja, max po sesiji) | `python -m evals.framework.runner --suite categories --limit 25` |
+| Eval resume (nastavak nakon rate limit) | `python -m evals.framework.runner --suite categories --resume --limit 25` |
 | Eval dry (no entries, smoke) | `python -m evals.framework.runner --suite categories --limit 0` |
 | Lint + format | `ruff format . && ruff check .` |
 | Typecheck | `mypy app/ evals/framework/` |
+
+## PWR sesija management (IMPERATIV)
+
+Claude pretplata ima limit poruka po sesiji. 250 eval entry-ja = 250 poziva = više sesija.
+
+**Pravila:**
+
+1. **Max 25 eval poziva po iteraciji petlje** — uvijek koristi `--limit 25`. Za brzi
+   fail pattern check, `--limit 10` je dovoljno.
+
+2. **Provjeri state fajl prije pokretanja eval-a:**
+   ```bash
+   cat ralph/session-state.json 2>/dev/null || echo "nema state-a, počni od 0"
+   ```
+   Ako postoji sa `"reason": "rate_limit"` i isti suite — dodaj `--resume`.
+
+3. **Rate limit = auto-stop** — runner automatski:
+   - Bilježi gdje je stao u `ralph/session-state.json`
+   - Kreira `ralph/STOP` marker (petlja se zaustavi)
+   - Ispiše tačnu komandu za nastavak u konzoli
+
+4. **Nakon reseta sesije** (sesija se resetuje po UTC rasporedu, pitaj korisnika kad):
+   ```bash
+   rm ralph/STOP
+   python -m evals.framework.runner --suite categories --resume --limit 25 --label <isti-label>
+   ```
+
+5. **State fajl se briše automatski** kad run prođe bez rate limita — ne brišeš ručno.
 
 ## Backpressure (mora da prođe prije commit-a)
 
