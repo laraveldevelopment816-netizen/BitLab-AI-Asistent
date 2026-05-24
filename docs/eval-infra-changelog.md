@@ -109,6 +109,29 @@ Svih 5 commit-ova push-ovano na `feat/ralph-categories-eval`, finalni stanje 149
 - **Eval runner sam piše PAUSE marker**, ne ralph.sh. Ralph.sh ima fallback samo ako runner exit-uje 3 ali PAUSE nije napisan (defensive).
 - **Šta sam ja htio a korisnik je odbio**: AskUserQuestion sa 3 opcije za marker shape — moj predlog "Dva odvojena fajla" je bio prvi po default-u, ali je korisnik tražio jedan.
 
+### Sesija 2b — review fix-evi (after-action)
+
+Drugi Claude je u `docs/eval-infra-review.md` ostavio punch-list od 5 kritičnih+srednjih + 7 polish stavki. Adresirao sam 5 osnovnih u dva commit-a:
+
+**Commit `7c94a16` (#1 + #2)**:
+- Fix #1 — JSONL inkrementalni append koji sam u changelog-u OBEĆAO ali ne implementirao. `reporter.append_verdict` + `read_existing_verdicts` (stable path `<suite>-<label>.jsonl`); runner per-entry append + pri resume load postojećih u in-memory listu. Novi TDD test `test_run_suite_resume_extends_same_jsonl` (prvi run rate-limit nakon 2, resume sa istim label → stable JSONL ima 5 verdicata, jedan fajl). Migration copy iter8 TS JSONL → stable da Ralph resume task radi nakon mog commit-a.
+- Fix #2 — `budget_dir=tmp_path/budget` u 4 testa `test_runner_writes_pause_marker.py` da `_estimate_reset_epoch` ne čita pravi `~/.cache` log. Trivijalan ali kritičan jer sljedeća sesija bi imala flaky test.
+
+**Commit `637ebe5` (#3 + #4 + #9)**:
+- Fix #3 — argparse `--mode default="full"` → `default="sample"`. CLI sad uskladen sa AGENTS.md "DEFAULT za iter".
+- Fix #4 — sampler dedup po ID-u (`manual_ids` set pre auto pool filtera). Plus unit test `test_sampler_dedup_when_entry_has_overlapping_tags`.
+- Fix #9 — `.gitignore:62` `# evals/runs/*.html` imao vodeći # → uklonio, sad HTML zaista u ignore-u.
+
+**Polish 5-11 iz review-a NIJE adresirano** (svjesno, ne kritično):
+- #5 `pgrep` pattern u status.sh (prefiks-osjetljiv match)
+- #6 `test_status_script_detects_ralph_not_running` slabija assertion
+- #7 `MAX_TOOL_ITERATIONS=5` hardcoded u app/agent.py
+- #8 nema `--clear-cache` CLI flag
+- #10 `_escape` ne escapuje `"`
+- #11 `pwr_calls.jsonl` ne rotira
+
+Sve te idu u "polish bag" kad bude prilika ili budu zaboljele.
+
 ### Otvorena pitanja za kasnije
 
 - **Empirijski MAX_CALLS = 80 — kalibracija**: prvi `[budget] paused...` log će reći šta je stvarni ceiling. Ako Ralph pauzira mnogo prerano (par task-ova), povećaj na 100-120 preko `--max-calls 120` ili `DEFAULT_MAX_CALLS` u `budget.py`. Ako lupi pravi 429 prije budget pause-a, smanji na 60.

@@ -1,5 +1,7 @@
 # Review Sesije 2 — šta još treba popraviti
 
+> **Status 2026-05-24 (after-action)**: tačke #1, #2, #3, #4, #9 adresirane u commit-ovima `7c94a16` (kritični #1+#2) i `637ebe5` (srednji+polish #3+#4+#9). Polish 5-11 ostale neadresirane — vidi `docs/eval-infra-changelog.md` Sesija 2b za detalje.
+
 Pregled implementacije eval optimizacije + session-aware runner-a. Reference:
 `EVAL_OPTIMIZACIJA.md` (originalni plan) i `docs/eval-infra-changelog.md`
 (after-action izvještaj Sesije 1 i 2). Cilj ovog dokumenta: dati sljedećoj
