@@ -31,9 +31,9 @@ Ako ovo nije green, NE commit-uj. Fix prvo. Ako fix nije moguć u istom task-u, 
 ## Git workflow
 
 - Integraciona grana: `claude/tdd-zero-base`. Nikad ne push-uj na `main` ili `staging`.
-- Feature grane: `feat/<scope>` (npr. `feat/ralph-categories-eval`). Branch off od `claude/tdd-zero-base`.
-- Conventional Commits, BS/SR/CG jezik za poruke: `feat(scope): kratki opis`.
-- PR ka integracionoj grani: `gh pr create --base claude/tdd-zero-base --title "..." --body "..."` (ako `gh` CLI nije instaliran, push pa korisnik otvara PR ručno).
+- **Jedna feature grana za cijeli eksperiment**: ostani na trenutnoj grani (provjeri `git branch --show-current` — npr. `feat/ralph-categories-eval`). NE pravi nove grane za Faze 2 i 3 — sve task-ove svih faza commit-uješ na istu granu. Korisnik na kraju otvara JEDAN PR ka `claude/tdd-zero-base`.
+- Conventional Commits, BS/SR/CG jezik: `feat(scope): kratki opis`.
+- PR: `gh` CLI nije instaliran u WSL-u — korisnik otvara PR ručno preko GitHub URL-a kad eksperiment kompletira. Ne pokušavaj `gh pr create`.
 
 ## LLM backend dispatch (IMPERATIV — memorija `llm_backend_pwr_imperative`)
 

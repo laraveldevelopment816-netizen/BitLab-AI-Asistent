@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-MAX_ITERS="${MAX_ITERS:-20}"
+MAX_ITERS="${MAX_ITERS:-100}"
 SLEEP_BETWEEN="${SLEEP_BETWEEN:-3}"
 PROMPT_FILE="${PROMPT_FILE:-ralph/PROMPT_build.md}"
 

@@ -30,19 +30,17 @@ Ako fail — fix. Ako fix izlazi iz scope-a task-a, dodaj novi task u Next sekci
 
 Pokreni: `python -m evals.framework.runner --suite <suite> --limit 5 --fail-fast`. Ako acceptance nije zadovoljeno — fix prompt/tool/dispatch (NE eval entry).
 
-## Faza 5 — Commit + push
+## Faza 5 — Commit + push (na trenutnu feature granu)
 
-Branch (ako nisi već na feature grani):
-```bash
-git checkout -b feat/<scope>
-```
+**NE pravi novu granu.** Ostani na grani na kojoj si pokrenut (provjeri sa `git branch --show-current`). Sve task-ove iz svih faza (1, 2, 3) commit-uješ na istu feature granu — korisnik na kraju otvara JEDAN PR ka `claude/tdd-zero-base`.
 
-Commit + push:
 ```bash
 git add -p   # ili specifične fajlove; nikad git add -A
 git commit -m "feat(scope): kratki opis"
 git push -u origin HEAD
 ```
+
+Ako git push fail-uje sa "non-fast-forward" (drugi commit u međuvremenu): `git pull --rebase && git push`.
 
 ## Faza 6 — Update plan
 
@@ -50,16 +48,11 @@ U `ralph/IMPLEMENTATION_PLAN.md`:
 - Premjesti završeni task iz Now u Done sa datumom + commit SHA (`git rev-parse --short HEAD`).
 - Ako su otkriveni novi task-ovi (fix-up, refaktor, blocker), dodaj u Next.
 
-## Faza 7 — PR i exit
+## Faza 7 — Exit
 
-Ako feature grana ima ≥1 commit i fazni cilj je dostignut:
-```bash
-gh pr create --base claude/tdd-zero-base \
-  --title "feat(scope): ..." \
-  --body "$(head -30 ralph/IMPLEMENTATION_PLAN.md)"
-```
+Završi iteraciju. `ralph.sh` while petlja automatski pokreće sljedeću iteraciju sa svježim kontekstom, koja preuzima sljedeći Now task. NE pokušavaj `gh pr create` (nije instaliran u WSL-u i ionako fail-uje); korisnik otvara JEDAN PR ručno ka `claude/tdd-zero-base` kad sve faze završe.
 
-Exit. Petlja restartuje sa svježim kontekstom.
+Auto-completion: ako su sva Now task-ovi prazna, svi Next task-ovi prazni, i acceptance Faze 1+2+3 ispunjena → `touch ralph/STOP`, commit `chore(ralph): sve faze complete — eksperiment gotov`, push, exit.
 
 ## 999 — Guardrails (kritični)
 
