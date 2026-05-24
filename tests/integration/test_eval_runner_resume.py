@@ -200,6 +200,74 @@ def test_runner_resume_missing_checkpoint_starts_from_zero(
 # --------------------------- cleanup checkpoint ---------------------------
 
 
+def test_run_suite_resume_extends_same_jsonl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stable_signature: None
+) -> None:
+    """Resume sa istim label-om nadovezuje stable JSONL umjesto da pravi novi (Fix #1).
+
+    Plan Sesije 2 je tražio inkrementalni append: prvi run sa rate-limit nakon 2
+    entry-ja → stable <suite>-<label>.jsonl ima 2 verdicta. Resume sa istim
+    label-om → isti fajl ima 5 verdicata na kraju (3 nova append-ovana).
+    """
+    from evals.framework.errors import RateLimitDetected
+
+    call_count = {"n": 0}
+
+    def maybe_rate_limit(*a, **k):
+        call_count["n"] += 1
+        if call_count["n"] >= 3:
+            raise RateLimitDetected("PWR limit")
+        return _ok_response()
+
+    monkeypatch.setattr("evals.framework.client.call_chat", maybe_rate_limit)
+
+    suite = _suite_with_n_entries(tmp_path, 5)
+    run_dir = tmp_path / "runs"
+
+    # Prvi run: rate limit nakon 2 entry-ja (indexes 0, 1 pass; index 2 raise).
+    runner.run_suite(
+        suite_path=suite,
+        base_url="http://mock",
+        label="resume-extend",
+        limit=None,
+        fail_fast=False,
+        run_dir=run_dir,
+        cache_dir=tmp_path / "cache",
+        use_cache=False,
+        mode="full",
+        resume_label=None,
+    )
+    stable = run_dir / "test_suite-resume-extend.jsonl"
+    assert stable.exists(), f"stable JSONL mora postojati nakon prvog run-a u {run_dir}"
+    first_count = len(
+        [line for line in stable.read_text(encoding="utf-8").split("\n") if line.strip()]
+    )
+    assert first_count == 2, f"prvi run: očekivao 2 verdicta u stable JSONL, dobio {first_count}"
+
+    # Reset call_chat da uvijek vraća OK za resume.
+    monkeypatch.setattr("evals.framework.client.call_chat", lambda *a, **k: _ok_response())
+
+    # Resume sa istim label-om: dodaje 3 nova verdicta (indexes 2, 3, 4).
+    runner.run_suite(
+        suite_path=suite,
+        base_url="http://mock",
+        label="resume-extend",
+        limit=None,
+        fail_fast=False,
+        run_dir=run_dir,
+        cache_dir=tmp_path / "cache",
+        use_cache=False,
+        mode="full",
+        resume_label="resume-extend",
+    )
+    second_count = len(
+        [line for line in stable.read_text(encoding="utf-8").split("\n") if line.strip()]
+    )
+    assert second_count == 5, (
+        f"resume: očekivao 5 ukupno verdicata u istom stable JSONL, dobio {second_count}"
+    )
+
+
 def test_runner_cleans_checkpoint_on_clean_completion(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stable_signature: None
 ) -> None:

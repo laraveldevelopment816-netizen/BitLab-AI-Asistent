@@ -73,6 +73,7 @@ def test_runner_writes_pause_marker_on_budget_exhausted(
         mode="full",
         resume_label=None,
         pause_file=pause_file,
+        budget_dir=tmp_path / "budget",
     )
     assert exit_code == 3
     assert pause_file.exists(), "pause_file mora biti napisan pri pauzi"
@@ -113,6 +114,7 @@ def test_runner_writes_pause_marker_on_rate_limit(
         mode="full",
         resume_label=None,
         pause_file=pause_file,
+        budget_dir=tmp_path / "budget",
     )
     assert pause_file.exists()
     assert "until=" in pause_file.read_text(encoding="utf-8")
@@ -144,6 +146,7 @@ def test_runner_pause_marker_until_is_valid_epoch(
         mode="full",
         resume_label=None,
         pause_file=pause_file,
+        budget_dir=tmp_path / "budget",
     )
     content = pause_file.read_text(encoding="utf-8")
     # Izvuci until vrijednost — mora biti broj, mora biti u razumnoj budućnosti.
@@ -178,6 +181,7 @@ def test_runner_clean_completion_does_not_write_pause(
         mode="full",
         resume_label=None,
         pause_file=pause_file,
+        budget_dir=tmp_path / "budget",
     )
     assert not pause_file.exists(), "clean run NE SMIJE pisati pause marker"
 

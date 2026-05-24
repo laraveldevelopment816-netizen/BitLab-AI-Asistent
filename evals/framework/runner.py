@@ -148,7 +148,13 @@ def run_suite(
     system_prompt, tools_sig = _get_signature() if use_cache else ("", "")
     cache_enabled = use_cache and system_prompt != ""
 
+    # Fix #1: Resume učitava postojeće verdicte iz stable JSONL — Faza 1 acceptance
+    # metric čita JEDAN fajl sa svim verdicts kroz sve resume cikluse.
     verdicts: list[EvalVerdict] = []
+    if resume_label is not None and start_index > 0:
+        verdicts = reporter.read_existing_verdicts(run_dir, suite_name, resume_label)
+        if verdicts:
+            print(f"[resume] učitano {len(verdicts)} prethodnih verdicata iz stable JSONL")
     cache_hits = 0
     paused = False
 
@@ -207,11 +213,14 @@ def run_suite(
                 cache.cache_put(cache_dir, hash_key, v)
 
         verdicts.append(v)
+        # Fix #1: append per-entry u stable <suite>-<label>.jsonl
+        # (resume nastavlja u isti fajl umjesto da pravi novi TS-ovan).
+        reporter.append_verdict(run_dir, suite_name, label, v)
         if fail_fast and v["overall"] == "FAIL":
             print(f"[eval] --fail-fast: entry {entry['id']} FAIL, stop.")
             break
 
-    jsonl_path = reporter.write_jsonl(run_dir, suite_name, label, verdicts)
+    jsonl_path = reporter._stable_jsonl_path(run_dir, suite_name, label)
     html_path = reporter.write_html(run_dir, suite_name, label, verdicts)
     reporter.print_summary(verdicts)
     if cache_enabled:
