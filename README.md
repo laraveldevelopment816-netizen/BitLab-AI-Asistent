@@ -35,6 +35,7 @@ ruff format . && ruff check . && mypy app/ evals/framework/ && pytest -q
 
 # Quick dashboard (proces, log, posljednji commit + eval rate)
 bash ralph/status.sh
+tail -F $(ls -t ralph/logs/*.log | head -1)   # uživo praćenje najnovijeg loga
 
 # Ralph petlja — autonomic TDD na trenutnoj feature grani
 uvicorn app.main:app --port 7778 &
