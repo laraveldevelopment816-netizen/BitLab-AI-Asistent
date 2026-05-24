@@ -48,7 +48,17 @@ U `ralph/IMPLEMENTATION_PLAN.md`:
 - Premjesti završeni task iz Now u Done sa datumom + commit SHA (`git rev-parse --short HEAD`).
 - Ako su otkriveni novi task-ovi (fix-up, refaktor, blocker), dodaj u Next.
 
-## Faza 7 — Exit
+## Faza 7 — STATUS blok + Exit
+
+**Prije exit-a OBAVEZNO ispiši STATUS blok** (jedan red u stdout, korisnik gleda kroz `tail -F`):
+
+```
+STATUS | iter=$ITER | task="<naziv>" | commit=<sha7> | eval=<pass>/<total> (<rate>%) | next="<sljedeći Now>"
+```
+
+Primjer: `STATUS | iter=8 | task="Negativni entry set" | commit=59ce28c | eval=15/16 (93.8%) | next="Analiza fail patterns"`
+
+Ako task nije završen (rate-limit, error): `STATUS | iter=8 | task="..." | INCOMPLETE: <razlog>`.
 
 Završi iteraciju. `ralph.sh` while petlja automatski pokreće sljedeću iteraciju sa svježim kontekstom, koja preuzima sljedeći Now task. NE pokušavaj `gh pr create` (nije instaliran u WSL-u i ionako fail-uje); korisnik otvara JEDAN PR ručno ka `claude/tdd-zero-base` kad sve faze završe.
 

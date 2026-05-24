@@ -75,4 +75,8 @@ Ručno održavani u `evals/sets/categories_manual.jsonl`:
 
 ## §5 — Acceptance Faze 1
 
-`python -m evals.framework.runner --suite categories` → PASS rate ≥ 95% (toleriše par WARN scenarij entry-ja). Integration testovi sa mock_anthropic prolaze. CI green.
+**Iter loop**: `python -m evals.framework.runner --suite categories --mode sample` (manual 16 + stratificirano 30 = ~46 poziva, ~18% troška full). Sample PASS rate ≥ 95% prije nego što se pokrene full.
+
+**Acceptance verifikacija**: `python -m evals.framework.runner --suite categories --mode full` → PASS rate ≥ 95% (toleriše par WARN scenarij entry-ja). Integration testovi sa `mock_llm` prolaze. CI green.
+
+Verdict cache je default-on (`evals/cache/<hash>.json`); promjena `SYSTEM_PROMPT_V1` ili tool definicije automatski invalidira cache. Bypass: `--no-cache`. Statistika: `--cache-stats`.

@@ -15,8 +15,12 @@ Python 3.11+ FastAPI app + voice/RAG agent za webshop.bitlab.rs. Trenutno na gra
 | Samo unit | `pytest -m unit -q` |
 | Samo integration | `pytest -m integration -q` |
 | E2E (Playwright, sporo) | `pytest -m e2e -q` |
-| Real-LLM eval suite | `python -m evals.framework.runner --suite categories` |
+| Real-LLM eval (sample 30 + manual — DEFAULT za iter) | `python -m evals.framework.runner --suite categories --mode sample` |
+| Real-LLM eval full (svih 250) | `python -m evals.framework.runner --suite categories --mode full` |
 | Eval dry (no entries, smoke) | `python -m evals.framework.runner --suite categories --limit 0` |
+| Bypass verdict cache | `python -m evals.framework.runner --suite categories --no-cache` |
+| Cache statistika | `python -m evals.framework.runner --suite categories --cache-stats` |
+| Ralph status pregled | `bash ralph/status.sh` |
 | Lint + format | `ruff format . && ruff check .` |
 | Typecheck | `mypy app/ evals/framework/` |
 
@@ -57,6 +61,7 @@ Pytest invariant: `tests/conftest.py` `mock_llm` fixture mock-uje OBA klijenta (
 3. **Eval set je invariant** — promijeni prompt/tool/dispatch, NE entry. Ako entry treba promjenu, prvo zapiši kao zaseban task.
 4. **Minimum dodaj** — failing eval = jedini razlog za novi kod. Ako eval green, ne dodaj.
 5. **Update plan kao side-effect commit-a** — Done task ide u Done sekciju sa commit SHA.
+6. **Eval optimizacija** — za fail-pattern analizu UVIJEK koristi `--mode sample` (manual 16 + stratificirano 30 = 46 poziva, ~18% troška full). Full 250 SAMO za acceptance verifikaciju kad sample ≥95%. Verdict cache je default-on — drugi pokušaj istog entry-ja sa istim promptom/tools-ima ne troši PWR sesiju. Mijenjaš `SYSTEM_PROMPT_V1` ili tool definiciju → cache se automatski invalidira (hash promijeni).
 
 ## Završetak petlje
 
