@@ -36,9 +36,21 @@ def stratified_sample(
 
     rng = random.Random(seed)
 
+    # Fix #4: dedup po ID-u — entry sa istovremeno manual + auto-gen + parent
+    # tagovima ne smije se duplicirati u rezultatu. Manual ima prednost
+    # (uvijek prolazi), auto-gen pool filter-uje ID-eve već u manual-u.
     manual = [e for e in entries if _has_tag(e, "manual") or _has_tag(e, "negative")]
-    auto_parent = [e for e in entries if _has_tag(e, "auto-gen") and _has_tag(e, "parent")]
-    auto_leaf = [e for e in entries if _has_tag(e, "auto-gen") and _has_tag(e, "leaf")]
+    manual_ids = {e["id"] for e in manual}
+    auto_parent = [
+        e
+        for e in entries
+        if _has_tag(e, "auto-gen") and _has_tag(e, "parent") and e["id"] not in manual_ids
+    ]
+    auto_leaf = [
+        e
+        for e in entries
+        if _has_tag(e, "auto-gen") and _has_tag(e, "leaf") and e["id"] not in manual_ids
+    ]
 
     selected: list[EvalEntry] = list(manual)
 

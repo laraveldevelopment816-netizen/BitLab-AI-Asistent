@@ -298,8 +298,8 @@ def main() -> int:
     parser.add_argument(
         "--mode",
         choices=["sample", "full"],
-        default="full",
-        help="sample = stratificirano 30 entry-ja (brzi signal); full = sve.",
+        default="sample",
+        help="sample = stratificirano 30 entry-ja (default, brzi signal za iter); full = svih 250.",
     )
     parser.add_argument(
         "--limit",

@@ -59,7 +59,7 @@ repo-scan.md
 
 # Eval run outputs — JSONL je SSOT i commit-uje se (mali, ~10KB per run, korisno za PR audit).
 # HTML je generated iz JSONL-a (reporter.py:write_html) i nepotreban za reproducibilitet.
-# evals/runs/*.html
+evals/runs/*.html
 evals/runs/archives/
 
 # Verdict cache (sadržaj re-generabilan, zauzima prostor)

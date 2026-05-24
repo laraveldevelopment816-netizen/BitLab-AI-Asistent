@@ -182,6 +182,20 @@ def test_sampler_target_size_zero_below_entries_count() -> None:
     assert all(e["id"].startswith("m") for e in result)
 
 
+def test_sampler_dedup_when_entry_has_overlapping_tags() -> None:
+    """Fix #4: entry sa istovremeno manual + auto-gen + parent tagovima → samo jednom.
+
+    Manual ima prioritet; auto pool ga filtrira da se ne pojavi dvaput.
+    """
+    mixed = _tagged_entry("mix1", ["manual", "auto-gen", "parent"])
+    pure_parents = [_tagged_entry(f"p{i}", ["auto-gen", "parent"]) for i in range(40)]
+    result = sampler.stratified_sample([mixed, *pure_parents], target_size=30, seed=42)
+    ids = [e["id"] for e in result]
+    assert ids.count("mix1") == 1, (
+        f"mix1 mora biti samo jednom u rezultatu, dobio {ids.count('mix1')}"
+    )
+
+
 def test_sampler_unknown_tags_fall_back_to_random_fill() -> None:
     """Entry-ji bez parent/leaf/manual tagova — popunjavanje iz preostalih."""
     odd = [_tagged_entry(f"x{i}", ["weird", "untagged"]) for i in range(50)]
