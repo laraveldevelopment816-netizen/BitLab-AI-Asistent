@@ -30,6 +30,31 @@ from .tools import ALL_TOOLS_ANTHROPIC, ALL_TOOLS_OPENAI, dispatch
 # multi-tool sekvence trebaju više, premjesti u settings.
 MAX_TOOL_ITERATIONS = 5
 
+# Sistem prompt v1 — single source za OBA runnera (spec specs/categories.md §1, §3, §3.1).
+# Anthropic put: prosljeđuje se kao `system=` parametar u messages.create().
+# PWR put: prosljeđuje se kao prva poruka {"role": "system", "content": ...}.
+# Refinement v1 dodaje out-of-scope ponašanje za negativni set (spec §4):
+# kad upit ne odgovara nijednom katalogu (knjige, vrijeme, garancija) NE zovi tool.
+SYSTEM_PROMPT_V1 = (
+    "Ti si webshop agent za bitlab.rs. Kataloški domen: računarska oprema, "
+    "mobilni uređaji, tableti, mrežna oprema, periferija — sve kategorije "
+    "su izložene kroz `category_overview` i `search_products` tools.\n\n"
+    "Pravila rutiranja:\n"
+    "- Kad upit imenuje PARENT kategoriju iz mapping liste u "
+    "`category_overview` description-u (npr. 'Računari', 'Printeri i skeneri'), "
+    "pozovi `category_overview` sa odgovarajućim `category_id`.\n"
+    "- Kad upit imenuje LEAF kategoriju iz mapping liste u `search_products` "
+    "description-u (npr. 'Notebook', 'Tablet', 'Mobiteli') ILI traži konkretne "
+    "proizvode/brendove unutar leaf-a, pozovi `search_products` sa odgovarajućim "
+    "`category_id` (i opcionim `query`/`brand`/filter cijene ako su dati).\n"
+    "- Ako upit ne odgovara nijednoj kategoriji iz catalog mapping-a "
+    "(npr. 'knjige', 'namještaj', 'kakvo je vrijeme', 'garancija', 'reklamacija') "
+    "ILI je dvosmislen bez jasnog category mapping-a, NE zovi tool — odgovori "
+    "prirodno (kratko objasni da nije u katalogu ili traži pojašnjenje).\n\n"
+    "Output: ne objašnjavaj rutiranje — samo pozovi pravi tool ili odgovori "
+    "tekstom kad je out-of-scope."
+)
+
 _anthropic_client: anthropic.Anthropic | None = None
 _pwr_client: openai.OpenAI | None = None
 
@@ -88,7 +113,7 @@ def _run_anthropic(messages: list[dict[str, Any]]) -> dict[str, Any]:
         response = client.messages.create(
             model=settings.chat_model,
             max_tokens=settings.max_output_tokens,
-            system="",
+            system=SYSTEM_PROMPT_V1,
             tools=cast(Any, ALL_TOOLS_ANTHROPIC),
             messages=cast("list[MessageParam]", current),
         )
@@ -139,7 +164,7 @@ def _run_pwr(messages: list[dict[str, Any]]) -> dict[str, Any]:
     - Reasoning effort ide kroz extra_body (PWR-specific extension).
     """
     client = _get_pwr_client()
-    pwr_messages: list[dict[str, Any]] = [{"role": "system", "content": ""}]
+    pwr_messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT_V1}]
     pwr_messages.extend(messages)
 
     captured_tool_calls: list[dict[str, Any]] = []
