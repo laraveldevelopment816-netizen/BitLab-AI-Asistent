@@ -157,6 +157,74 @@ def test_runner_pause_marker_until_is_valid_epoch(
     assert until_value < now + 7 * 3600, "until ne smije biti više od 7h u budućnosti"
 
 
+def test_estimate_reset_uses_window_oldest_not_global_oldest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bug #1 fix: _estimate_reset_epoch ignoriše ts-e van 5h prozora.
+
+    Scenario: log akumulira ts-e iz starije sesije (>5h staro) + svježe. Stara
+    implementacija je vraćala `min(global) + 5h` = past epoch → PAUSE marker
+    odmah expired → infinite loop. Fix mora vratiti ts U PROZORU + 5h (budućnost).
+    """
+    from evals.framework import budget
+    from evals.framework.runner import _estimate_reset_epoch
+
+    budget_dir = tmp_path / "budget"
+    now = 100000.0
+
+    # 5 starih ts (12h staro = van prozora) + 52 svježih (oldest 1h staro).
+    for _ in range(5):
+        budget.record_call(budget_dir, timestamp=now - 12 * 3600)
+    for i in range(52):
+        budget.record_call(budget_dir, timestamp=now - 3600 + i)
+
+    result = _estimate_reset_epoch(budget_dir, max_calls=80, now=now)
+    # Threshold = 80 * 0.65 = 52. count = 52. target_idx = 0. → oldest in window + 5h.
+    expected = int((now - 3600) + budget.WINDOW_SECONDS)
+    assert result == expected
+    assert result > now, "rezultat MORA biti u budućnosti, ne past epoch (Bug #1)"
+
+
+def test_estimate_reset_returns_target_ts_for_slot_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Kad count > threshold, target je ts pri kojem (count - threshold + 1) najstarijih ispadne."""
+    from evals.framework import budget
+    from evals.framework.runner import _estimate_reset_epoch
+
+    budget_dir = tmp_path / "budget"
+    now = 100000.0
+
+    # 60 ts u prozoru, rastući po 60s intervalu, oldest 4h staro.
+    for i in range(60):
+        budget.record_call(budget_dir, timestamp=now - 4 * 3600 + i * 60)
+
+    # max_calls=80, threshold=52. count=60, target_idx = 60 - 52 = 8.
+    # Kad sorted[8] ispadne (= 9. najstariji), count pada na 51 (< 52). Target = sorted[8] + 5h.
+    result = _estimate_reset_epoch(budget_dir, max_calls=80, now=now)
+    expected_ts = now - 4 * 3600 + 8 * 60
+    expected = int(expected_ts + budget.WINDOW_SECONDS)
+    assert result == expected
+
+
+def test_estimate_reset_empty_window_falls_back_to_now_plus_5h(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sve ts van prozora (samo stara sesija) → now+5h fallback, ne past epoch."""
+    from evals.framework import budget
+    from evals.framework.runner import _estimate_reset_epoch
+
+    budget_dir = tmp_path / "budget"
+    now = 100000.0
+    for _ in range(10):
+        budget.record_call(budget_dir, timestamp=now - 10 * 3600)
+
+    result = _estimate_reset_epoch(budget_dir, max_calls=80, now=now)
+    expected = int(now + budget.WINDOW_SECONDS)
+    assert result == expected
+    assert result > now
+
+
 def test_runner_clean_completion_does_not_write_pause(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stable_signature: None
 ) -> None:

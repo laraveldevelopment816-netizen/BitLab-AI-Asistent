@@ -88,27 +88,37 @@ def _default_pause_file() -> Path:
     return Path(__file__).resolve().parent.parent.parent / "ralph" / "PAUSE"
 
 
-def _estimate_reset_epoch(budget_dir: Path) -> int:
-    """Procjena reset epoch — najstariji unos u pwr_calls.jsonl + 5h, fallback now+5h."""
-    log = budget_dir / "pwr_calls.jsonl"
-    now = time.time()
-    if not log.exists():
-        return int(now + budget.WINDOW_SECONDS)
-    oldest: float | None = None
-    with log.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                ts = float(json.loads(line).get("ts", 0))
-            except (json.JSONDecodeError, ValueError, TypeError):
-                continue
-            if oldest is None or ts < oldest:
-                oldest = ts
-    if oldest is None:
-        return int(now + budget.WINDOW_SECONDS)
-    return int(oldest + budget.WINDOW_SECONDS)
+def _estimate_reset_epoch(
+    budget_dir: Path,
+    max_calls: int = budget.DEFAULT_MAX_CALLS,
+    now: float | None = None,
+) -> int:
+    """Procjena epoch kad PWR ima slot za novi call.
+
+    Bug #1 fix (iter9 dijagnoza): umjesto `min(ts) + 5h` iz CIJELOG pwr_calls.jsonl
+    (koji uključuje stare ts-e iz prethodnih sesija >5h staro → past epoch), računaj
+    vrijeme kad dovoljno najstarijih ts-a ISPADNE iz 5h sliding prozora da `count`
+    padne ispod threshold-a (should_pause vrati False).
+
+    Logika: ako `count_in_window >= threshold`, treba (count - threshold + 1)
+    najstarijih da ispadne; posljednji od njih je `sorted_in_window[count - threshold]`.
+    Njegov istek = `ts + 5h` (kad ispadne iz prozora).
+
+    Fallback `now + 5h`:
+    - log ne postoji ili svi ts van prozora (svjeza sesija)
+    - count < threshold (budget nije iscrpljen, pauza nije ni potrebna)
+    """
+    now_ts = now if now is not None else time.time()
+    in_window = budget.list_calls_in_window(budget_dir, now=now_ts)
+    if not in_window:
+        return int(now_ts + budget.WINDOW_SECONDS)
+    threshold = int(max_calls * budget.DEFAULT_THRESHOLD)
+    count = len(in_window)
+    if count < threshold:
+        return int(now_ts + budget.WINDOW_SECONDS)
+    target_idx = count - threshold
+    target_ts = in_window[target_idx]
+    return int(target_ts + budget.WINDOW_SECONDS)
 
 
 def _write_pause_marker(pause_file: Path, until_epoch: int, reason: str) -> None:
@@ -216,7 +226,7 @@ def run_suite(
                 )
                 _write_checkpoint(checkpoint_file, i, label, reason, mode=mode)
                 if pause_file is not None:
-                    until = _estimate_reset_epoch(budget_dir)
+                    until = _estimate_reset_epoch(budget_dir, max_calls=max_calls)
                     _write_pause_marker(pause_file, until, reason)
                     print(
                         f"[budget] paused na index {i} → checkpoint {checkpoint_file}, "
@@ -232,7 +242,7 @@ def run_suite(
             except errors.RateLimitDetected as e:
                 _write_checkpoint(checkpoint_file, i, label, f"rate_limit: {e}", mode=mode)
                 if pause_file is not None:
-                    until = _estimate_reset_epoch(budget_dir)
+                    until = _estimate_reset_epoch(budget_dir, max_calls=max_calls)
                     _write_pause_marker(pause_file, until, f"rate_limit: {e}")
                     print(
                         f"[rate-limit] checkpoint {checkpoint_file}, "

@@ -136,6 +136,44 @@ def test_should_pause_defaults(tmp_path: Path) -> None:
     assert budget.DEFAULT_THRESHOLD == 0.65
 
 
+def test_list_calls_in_window_empty_log(tmp_path: Path) -> None:
+    """list_calls_in_window vraća [] ako log ne postoji."""
+    from evals.framework import budget
+
+    assert budget.list_calls_in_window(tmp_path / "no_log", now=1000.0) == []
+
+
+def test_list_calls_in_window_filters_out_of_window_and_sorts(tmp_path: Path) -> None:
+    """Vraća SAMO ts u 5h prozoru, sortirano rastuće (Bug #1 fix kontrakt)."""
+    from evals.framework import budget
+
+    now = 100000.0
+    # 3 stare (van prozora) + 4 svježe (u prozoru, ubačene neredom).
+    budget.record_call(tmp_path, timestamp=now - 6 * 3600)
+    budget.record_call(tmp_path, timestamp=now - 10 * 3600)
+    budget.record_call(tmp_path, timestamp=now - 7 * 3600)
+    budget.record_call(tmp_path, timestamp=now - 100)
+    budget.record_call(tmp_path, timestamp=now - 3000)
+    budget.record_call(tmp_path, timestamp=now - 500)
+    budget.record_call(tmp_path, timestamp=now - 1500)
+
+    result = budget.list_calls_in_window(tmp_path, now=now)
+    assert result == [now - 3000, now - 1500, now - 500, now - 100]
+
+
+def test_list_calls_in_window_skips_corrupted(tmp_path: Path) -> None:
+    """Corrupted JSON redovi se skipuju (defensive)."""
+    from evals.framework import budget
+
+    log = tmp_path / "pwr_calls.jsonl"
+    log.write_text(
+        '{"ts": 1000}\n{not valid json\n{"ts": 2000}\n',
+        encoding="utf-8",
+    )
+    result = budget.list_calls_in_window(tmp_path, now=3000.0)
+    assert result == [1000.0, 2000.0]
+
+
 def test_should_pause_respects_sliding_window(tmp_path: Path) -> None:
     """Stari pozivi (> 5h) ne broje se u should_pause."""
     from evals.framework import budget

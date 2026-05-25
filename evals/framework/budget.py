@@ -64,6 +64,36 @@ def count_calls_last_5h(cache_dir: Path, now: float | None = None) -> int:
     return count
 
 
+def list_calls_in_window(cache_dir: Path, now: float | None = None) -> list[float]:
+    """Vrati sortirane (rastuće) ts-e iz pwr_calls.jsonl koji su u posljednjih 5h od `now`.
+
+    Defensive: vraća [] ako log ne postoji, prazan, ili svi ts van prozora.
+    Corrupted JSON redovi se skipuju.
+
+    Koristi se u `_estimate_reset_epoch` (Bug #1 fix): umjesto global oldest iz log-a,
+    treba samo ts-e u trenutnom prozoru da izračuna kad slot postaje dostupan.
+    """
+    log = _log_path(cache_dir)
+    if not log.exists():
+        return []
+    now_ts = now if now is not None else time.time()
+    cutoff = now_ts - WINDOW_SECONDS
+    result: list[float] = []
+    with log.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                ts = float(json.loads(line).get("ts", 0))
+            except (json.JSONDecodeError, ValueError, TypeError):
+                continue
+            if ts >= cutoff:
+                result.append(ts)
+    result.sort()
+    return result
+
+
 def should_pause(
     cache_dir: Path,
     now: float | None = None,
