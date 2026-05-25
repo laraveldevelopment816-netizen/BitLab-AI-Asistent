@@ -47,6 +47,11 @@ echo "until=$(date -d '+1h' +%s)" > ralph/PAUSE  # auto-resume nakon 1h
 # Eval suite (manualno, ne u CI default-u — troši PWR sesiju)
 python -m evals.framework.runner --suite categories --mode sample
 python -m evals.framework.runner --suite categories --resume <label>  # nastavi sa checkpoint-a
+
+# Ručna ekstra Ralph iteracija (stop + manual run + restart, ~2-3 min prekid)
+touch ralph/STOP                                                          # Ralph završi tekuću iter, exit
+cat ralph/PROMPT_build.md | claude --print --dangerously-skip-permissions # jedan dodatni iter kroz Claude
+rm ralph/STOP && bash ralph/ralph.sh                                      # restart loop
 ```
 
 Detalji: [`docs/eval-infra-changelog.md`](./docs/eval-infra-changelog.md), [`ralph/AGENTS.md`](./ralph/AGENTS.md).
