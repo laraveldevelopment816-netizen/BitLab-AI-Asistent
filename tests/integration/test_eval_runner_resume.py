@@ -377,6 +377,76 @@ def test_runner_aborts_on_mode_mismatch(
     assert "sample" in captured.out
 
 
+def test_runner_resume_auto_detects_start_index_from_stable_jsonl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stable_signature: None, capsys
+) -> None:
+    """Resume bez checkpoint-a ali sa stable JSONL → auto-detect start_index = len(verdicts).
+
+    Scenario (iter10 recovery): checkpoint obrisan greškom mid-resume, stable JSONL
+    ima N verdicata. Bez auto-detect-a runner bi krenuo od 0 — ili dupliciranje
+    verdicata u stable JSONL (cache hit), ili ponovno trošenje PWR poziva (cache miss).
+    Fix: ako resume_label dat i checkpoint nedostaje, izvedi start_index iz reporter
+    helper-a `read_existing_verdicts`.
+    """
+    call_count = {"n": 0}
+
+    def counting_call(*a, **k):
+        call_count["n"] += 1
+        return _ok_response()
+
+    monkeypatch.setattr("evals.framework.client.call_chat", counting_call)
+
+    run_dir = tmp_path / "runs"
+    run_dir.mkdir(parents=True)
+
+    # Pre-seed stable JSONL sa 5 verdicata, BEZ checkpoint-a (iter10 stanje).
+    stable_jsonl = run_dir / "test_suite-autores.jsonl"
+    seed_verdicts = [
+        {
+            "entry_id": f"e{i}",
+            "routing": "PASS",
+            "result": "PASS",
+            "overall": "PASS",
+            "actual_tool_calls": [],
+            "reply": "ok",
+            "iterations": 1,
+            "error": None,
+            "elapsed_ms": 10,
+        }
+        for i in range(5)
+    ]
+    stable_jsonl.write_text(
+        "\n".join(json.dumps(v) for v in seed_verdicts) + "\n", encoding="utf-8"
+    )
+
+    suite = _suite_with_n_entries(tmp_path, 10)
+    runner.run_suite(
+        suite_path=suite,
+        base_url="http://mock",
+        label="autores",
+        limit=None,
+        fail_fast=False,
+        run_dir=run_dir,
+        cache_dir=tmp_path / "cache",
+        use_cache=False,
+        mode="full",
+        resume_label="autores",
+    )
+    # Auto-detect: 5 postojećih verdicata → start_index=5 → 5 novih poziva (indexes 5-9).
+    assert call_count["n"] == 5, (
+        f"očekivao 5 novih poziva (auto-detected start_index=5), dobio {call_count['n']}"
+    )
+    # Stable JSONL na kraju mora imati 10 ukupno verdicata (5 seed + 5 nova).
+    final_count = len(
+        [line for line in stable_jsonl.read_text(encoding="utf-8").split("\n") if line.strip()]
+    )
+    assert final_count == 10, f"očekivao 10 ukupno verdicata u stable JSONL, dobio {final_count}"
+    # Operativna poruka mora pomenuti auto-detect (telemetry za korisnika).
+    captured = capsys.readouterr()
+    assert "auto-detected" in captured.out
+    assert "5" in captured.out
+
+
 def test_runner_preserves_checkpoint_when_empty_range(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stable_signature: None
 ) -> None:

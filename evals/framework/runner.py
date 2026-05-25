@@ -174,6 +174,7 @@ def run_suite(
 
     # Resume: čitaj checkpoint ako resume_label dat.
     start_index = 0
+    auto_detected_from_jsonl = False
     if resume_label is not None:
         resume_checkpoint = _checkpoint_path(run_dir, suite_name, resume_label)
         cp_data = _read_checkpoint(resume_checkpoint)
@@ -188,7 +189,16 @@ def run_suite(
                 f"'{mode}'. Pokreni opet sa --mode {checkpoint_mode} ili novi --label."
             )
             return 4
-        if start_index > 0:
+        # Auto-detect (iter10 recovery): checkpoint nedostaje (start_index == 0) ali
+        # stable JSONL već ima verdicte → izvedi start_index iz broja verdicata.
+        # Sprječava duplikate u stable JSONL i ponovne PWR pozive za već obrađene entries.
+        if start_index == 0 and not resume_checkpoint.exists():
+            existing = reporter.read_existing_verdicts(run_dir, suite_name, resume_label)
+            if existing:
+                start_index = len(existing)
+                auto_detected_from_jsonl = True
+                print(f"[resume] checkpoint nedostaje, auto-detected {start_index} iz stable JSONL")
+        if start_index > 0 and not auto_detected_from_jsonl:
             print(f"[resume] krećem od index {start_index} (checkpoint {resume_checkpoint})")
 
     system_prompt, tools_sig = _get_signature() if use_cache else ("", "")
