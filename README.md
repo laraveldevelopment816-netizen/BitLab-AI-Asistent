@@ -39,10 +39,11 @@ tail -F $(ls -t ralph/logs/*.log | head -1)   # uživo praćenje najnovijeg loga
 
 # Ralph petlja — autonomic TDD na trenutnoj feature grani
 uvicorn app.main:app --port 7778 &
-bash ralph/ralph.sh                              # default MAX_ITERS=100, pause auto na 65%
-touch ralph/STOP                                 # hard exit
-touch ralph/PAUSE                                # cooperative pauza (rm za nastavak)
-echo "until=$(date -d '+1h' +%s)" > ralph/PAUSE  # auto-resume nakon 1h
+bash ralph/ralph.sh                                  # foreground, default MAX_ITERS=100, pause auto na 65%
+nohup bash ralph/ralph.sh >/dev/null 2>&1 & disown   # background — preživi terminal/Claude Code restart (gasi se samo sa touch STOP)
+touch ralph/STOP                                     # cooperative exit (čeka kraj tekuće iter ili wait_pause poll)
+touch ralph/PAUSE                                    # cooperative pauza (rm za nastavak)
+echo "until=$(date -d '+1h' +%s)" > ralph/PAUSE      # auto-resume nakon 1h
 
 # Eval suite (manualno, ne u CI default-u — troši PWR sesiju)
 python -m evals.framework.runner --suite categories --mode sample
