@@ -75,4 +75,4 @@ ralph/PAUSED_UNTIL_*
 evals/runs/*.checkpoint.json
 
 # Pre-reset archive (TDD zero base). Sadržaj dostupan iz git log-a.
-bck/
+# bck/

@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<title>BitLab — Category hierarchy (parent_id)</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #161c24;
+    --border: #232b36;
+    --text: #d7dbe0;
+    --muted: #8a94a3;
+    --accent: #4cc2ff;
+    --hot: #ff9d4a;
+    --leaf: #6ee7a0;
+    --ghost: #ff6b8a;
+    --branch: #c084fc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 12px 24px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  main {
+    padding: 16px 24px 80px;
+    max-width: 1200px;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px;
+    margin: 12px 0 22px;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .stat .v {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .stat .l {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 22px;
+    margin: 6px 0 18px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .dot.leaf { background: var(--leaf); }
+  .dot.branch { background: var(--branch); }
+  .dot.hot { background: var(--hot); }
+  .dot.ghost { background: var(--ghost); }
+  ul.tree {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+  }
+  ul.tree ul {
+    list-style: none;
+    padding-left: 18px;
+    margin: 0;
+    border-left: 1px dashed var(--border);
+  }
+  li.node {
+    margin: 2px 0;
+    padding: 2px 0;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 5px;
+  }
+  .row:hover { background: rgba(76,194,255,0.06); }
+  .toggle {
+    display: inline-block;
+    width: 14px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    text-align: center;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  .toggle.leaf { color: transparent; cursor: default; }
+  .id {
+    color: var(--muted);
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 12px;
+    min-width: 44px;
+    text-align: right;
+  }
+  .name {
+    font-weight: 500;
+  }
+  .name.branch { color: var(--branch); }
+  .name.leaf { color: var(--text); }
+  .badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin-left: 6px;
+    background: rgba(255,255,255,0.05);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .badge.hot { background: rgba(255,157,74,0.12); color: var(--hot); border-color: rgba(255,157,74,0.3); }
+  .badge.sub { background: rgba(192,132,252,0.08); color: var(--branch); border-color: rgba(192,132,252,0.25); }
+  .ghosts {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 18px 0;
+  }
+  .ghosts h3 { margin: 0 0 6px; font-size: 14px; color: var(--ghost); }
+  .ghosts ul { margin: 6px 0 0; padding-left: 20px; color: var(--muted); }
+  .ghosts code { color: var(--text); }
+  section h2 {
+    font-size: 14px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 24px 0 8px;
+    font-weight: 600;
+  }
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0 12px;
+  }
+  button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 5px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  .filter {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 13px;
+    flex: 1;
+    max-width: 280px;
+  }
+  .filter:focus { outline: 1px solid var(--accent); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>BitLab category hierarchy</h1>
+  <span class="sub">parent_id tree iz <code>data/categories.csv</code></span>
+</header>
+<main>
+
+<div class="stats" id="stats"></div>
+
+<div class="legend">
+  <span><span class="dot branch"></span> Parent kategorija (ima djecu)</span>
+  <span><span class="dot leaf"></span> Leaf kategorija</span>
+  <span><span class="dot hot"></span> U top-50 (AI-koristi)</span>
+  <span><span class="dot ghost"></span> Migration ghost (top-50 bez CSV reda)</span>
+</div>
+
+<div class="controls">
+  <button id="expandAll">Razvij sve</button>
+  <button id="collapseAll">Sklopi sve</button>
+  <button id="onlyTop50">Samo top-50 grane</button>
+  <input class="filter" id="filter" placeholder="Filter po imenu ili ID-u..." />
+</div>
+
+<div class="ghosts" id="ghosts"></div>
+
+<section>
+  <h2>Stablo (sortirano po sumi proizvoda u podstablu)</h2>
+  <ul class="tree" id="tree"></ul>
+</section>
+
+</main>
+
+<script>
+const DATA = {"stats": {"total_csv_rows": 255, "active_categories": 238, "inactive_categories": 11, "root_categories": 41, "max_depth": 2, "top50_total": 50, "top50_in_tree": 47, "top50_ghosts": 3, "top50_leaves": 45, "top50_branches": 2}, "tree": [{"id": "151", "name": "Mobiteli", "h1": "Mobiteli – Pametni telefoni i dodaci", "products_in_top50": 0, "in_top50": false, "sort_id": 2, "children": [{"id": "394", "name": "Maske za mobitele i dodaci", "h1": "Maske za mobitele i dodaci – Zaštita za sve modele", "products_in_top50": 1274, "in_top50": true, "sort_id": 0, "children": [], "subtree_top50": 1, "subtree_products": 1274}, {"id": "175", "name": "Mobilni telefoni", "h1": "Mobilni telefoni – Najnoviji modeli", "products_in_top50": 165, "in_top50": true, "sort_id": 107, "children": [], "subtree_top50": 1, "subtree_products": 165}, {"id": "176", "name": "Dodaci za mobitele", "h1": "Dodaci za mobitele – Maske, punjači, zaštitna stakla", "products_in_top50": 129, "in_top50": true, "sort_id": 108, "children": [], "subtree_top50": 1, "subtree_products": 129}], "subtree_top50": 3, "subtree_products": 1568}, {"id": "219", "name": "PC periferija", "h1": "PC Periferija – Tastature, miševi, zvučnici i više", "products_in_top50": 0, "in_top50": false, "sort_id": 13, "children": [{"id": "291", "name": "Eksterna optika", "h1": "Eksterna optika – Eksterni DVD i Blu-ray uređaji", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "303", "name": "Ostala PC periferija", "h1": "Ostala PC periferija – Čitači kartica, ladice i dodaci", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "306", "name": "Prezenteri", "h1": "Prezenteri – Bežični laserski prezenteri", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "307", "name": "Podloge za miševe", "h1": "Podloge za miševe – Gaming i uredske podloge", "products_in_top50": 62, "in_top50": true, "sort_id": 0, "children": [], "subtree_top50": 1, "subtree_products": 62}, {"id": "319", "name": "Mikrofoni", "h1": "Mikrofoni – USB, kondenzatorski i gaming mikrofoni", "products_in_top50": 27, "in_top50": true, "sort_id": 0, "children": [], "subtree_top50": 1, "subtree_products": 27}, {"id": "327", "name": "Eksterni HDD", "h1": "Eksterni HDD – Prijenosni hard diskovi", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "328", "name": "Dodaci za eksterni HDD", "h1": "Dodaci za eksterni HDD – Kablovi i kućišta", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "329", "name": "Kućišta za HDD", "h1": "Kućišta za HDD – 2.5\" i 3.5\" HDD enclosure", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "331", "name": "Eksterni FDD", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "332", "name": "Eksterni FDD tuneri", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "334", "name": "Card reader-i", "h1": "Card reader-i – Čitači memorijskih kartica", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "335", "name": "Barcode skeneri", "h1": "Barkod skeneri – 1D i 2D čitači barkoda", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "336", "name": "Ladice za novac", "h1": "adice za novac – Blagajničke ladice", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "256", "name": "Web kamere", "h1": "Web kamere – HD i Full HD web kamere", "products_in_top50": 0, "in_top50": false, "sort_id": 7, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "279", "name": "Zvučnici ", "h1": "Zvučnici za računar – 2.0 i 2.1 sistemi", "products_in_top50": 82, "in_top50": true, "sort_id": 32, "children": [], "subtree_top50": 1, "subtree_products": 82}, {"id": "220", "name": "Tastature", "h1": "Tastature – Mehaničke, membranske i gaming", "products_in_top50": 99, "in_top50": true, "sort_id": 141, "children": [], "subtree_top50": 1, "subtree_products": 99}, {"id": "221", "name": "Slušalice", "h1": "Slušalice – Gaming, Stereo i Bežične", "products_in_top50": 284, "in_top50": true, "sort_id": 142, "children": [], "subtree_top50": 1, "subtree_products": 284}, {"id": "222", "name": "Miševi i grafički tableti", "h1": "Miševi i grafički tableti", "products_in_top50": 0, "in_top50": false, "sort_id": 143, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "230", "name": "Oprema za igrice", "h1": "Oprema za gaming – Gejming dodatak za konzole i PC", "products_in_top50": 37, "in_top50": true, "sort_id": 149, "children": [], "subtree_top50": 1, "subtree_products": 37}], "subtree_top50": 6, "subtree_products": 591}, {"id": "341", "name": "Potrošni materijal", "h1": "Potrošni materijal za štampače – Toneri, tinta i riboni", "products_in_top50": 0, "in_top50": false, "sort_id": 990, "children": [{"id": "305", "name": "Papir", "h1": "Papir za štampu – A4, foto papir i specijalni mediji", "products_in_top50": 33, "in_top50": true, "sort_id": 0, "children": [], "subtree_top50": 1, "subtree_products": 33}, {"id": "342", "name": "Riboni", "h1": "Riboni za matricne štampače", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "343", "name": "Filmovi", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "226", "name": "Toneri", "h1": "", "products_in_top50": 154, "in_top50": true, "sort_id": 146, "children": [], "subtree_top50": 1, "subtree_products": 154}, {"id": "229", "name": "Tinta", "h1": "", "products_in_top50": 113, "in_top50": true, "sort_id": 148, "children": [], "subtree_top50": 1, "subtree_products": 113}], "subtree_top50": 3, "subtree_products": 300}, {"id": "356", "name": "Kablovi i adapteri", "h1": "Kablovi i adapteri – HDMI, USB, audio i mrežni", "products_in_top50": 0, "in_top50": false, "sort_id": 900, "children": [{"id": "287", "name": "Audio kablovi", "h1": "Audio kablovi – 3.5mm, RCA, XLR i optički", "products_in_top50": 20, "in_top50": true, "sort_id": 0, "children": [], "subtree_top50": 1, "subtree_products": 20}, {"id": "299", "name": "Napojni kablovi", "h1": "apojni kablovi – Strujni kablovi za računare i uređaje", "products_in_top50": 18, "in_top50": true, "sort_id": 0, "children": [], "subtree_top50": 1, "subtree_products": 18}, {"id": "301", "name": "Opticki kablovi", "h1": "Optički kablovi – Toslink i SPDIF optički audio", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "311", "name": "Telefonski kablovi", "h1": "Telefonski kablovi – RJ11 i telefonski vodovi", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "312", "name": "USB adapter", "h1": "SB adapteri – USB na HDMI, Ethernet i više", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "315", "name": "Video adapter", "h1": "Video adapteri – HDMI, DisplayPort, VGA pretvarači", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "316", "name": "Video kablovi", "h1": "Video kablovi – HDMI, DisplayPort i VGA kablovi", "products_in_top50": 83, "in_top50": true, "sort_id": 0, "children": [], "subtree_top50": 1, "subtree_products": 83}, {"id": "137", "name": "USB kablovi", "h1": "", "products_in_top50": 123, "in_top50": true, "sort_id": 69, "children": [], "subtree_top50": 1, "subtree_products": 123}, {"id": "142", "name": "Audio adapteri", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 74, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "147", "name": "Ostali kablovi i adapteri", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 79, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "235", "name": "Produžni kablovi i razvodnici", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 153, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 4, "subtree_products": 244}, {"id": "352", "name": "Mrežna oprema", "h1": "Mrežna oprema – Ruteri, switchevi, AP i kabeli", "products_in_top50": 0, "in_top50": false, "sort_id": 10, "children": [{"id": "302", "name": "Ostala mrežna oprema", "h1": "Ostala mrežna oprema – Medijski konverteri i dodaci", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "317", "name": "Wireles", "h1": "Wireless – WiFi adapteri i bežični prijemnici", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "353", "name": "3G oprema", "h1": "3G/4G oprema – SIM ruteri i mobilni internet", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "354", "name": "Mrežni kablovi", "h1": "Mrežni kablovi – UTP, STP i FTP kablovi", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "355", "name": "Kanalice", "h1": "Kanalice za kablove – PVC i aluminijske kanalice", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "270", "name": "Switch-evi", "h1": "Switch-evi – Mrežni preklopnici", "products_in_top50": 43, "in_top50": true, "sort_id": 10, "children": [], "subtree_top50": 1, "subtree_products": 43}, {"id": "309", "name": "Router-i", "h1": "Router-i – WiFi, 5G i gaming ruteri", "products_in_top50": 46, "in_top50": true, "sort_id": 20, "children": [], "subtree_top50": 1, "subtree_products": 46}, {"id": "269", "name": "Mrežne karitice", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 22, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "318", "name": "Ormari RACK", "h1": "Rack ormari – Serverski i mrežni rack ormari", "products_in_top50": 0, "in_top50": false, "sort_id": 30, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "295", "name": "Konektori i utičnice", "h1": "Konektori i utičnice – Mrežni i koaksijalni", "products_in_top50": 24, "in_top50": true, "sort_id": 50, "children": [], "subtree_top50": 1, "subtree_products": 24}, {"id": "298", "name": "Mrežni alat", "h1": "Mrežni alat – Krimperke, testeri i alati za mrežu", "products_in_top50": 88, "in_top50": true, "sort_id": 500, "children": [], "subtree_top50": 1, "subtree_products": 88}], "subtree_top50": 4, "subtree_products": 201}, {"id": "107", "name": "PC komponente", "h1": "PC Komponente – Procesori, RAM, grafičke i više", "products_in_top50": 0, "in_top50": false, "sort_id": 14, "children": [{"id": "285", "name": "Dodaci za kućišta", "h1": "Dodaci za PC kućišta – Fan kontroleri, HDD nosači i više", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "320", "name": "Dodatne kartice", "h1": "Dodatne kartice – PCIe kartice za proširenje", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "218", "name": "Procesori", "h1": "Procesori – Intel i AMD CP", "products_in_top50": 19, "in_top50": true, "sort_id": 40, "children": [], "subtree_top50": 1, "subtree_products": 19}, {"id": "108", "name": "Matične ploče", "h1": "Matične ploče – Intel i AMD platforme", "products_in_top50": 16, "in_top50": true, "sort_id": 42, "children": [], "subtree_top50": 1, "subtree_products": 16}, {"id": "117", "name": "Graficke kartice", "h1": "Grafičke kartice – NVIDIA i AMD GP", "products_in_top50": 0, "in_top50": false, "sort_id": 43, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "111", "name": "CPU cooler-i i paste", "h1": "CPU Cooleri i termalne paste", "products_in_top50": 33, "in_top50": true, "sort_id": 44, "children": [], "subtree_top50": 1, "subtree_products": 33}, {"id": "112", "name": "Ventilatori", "h1": "Ventilatori za PC kućišta", "products_in_top50": 0, "in_top50": false, "sort_id": 45, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "113", "name": "RAM memorija", "h1": "RAM memorija – DDR4 i DDR5", "products_in_top50": 18, "in_top50": true, "sort_id": 46, "children": [], "subtree_top50": 1, "subtree_products": 18}, {"id": "114", "name": "HDD storage", "h1": "HDD – Tvrdi diskovi za desktop i laptop", "products_in_top50": 0, "in_top50": false, "sort_id": 47, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "115", "name": "SSD storage", "h1": "SSD diskovi – Brzo pohranite podatke", "products_in_top50": 30, "in_top50": true, "sort_id": 48, "children": [], "subtree_top50": 1, "subtree_products": 30}, {"id": "116", "name": "Optika interna", "h1": "Optički uređaji – DVD i Blu-ray interni", "products_in_top50": 0, "in_top50": false, "sort_id": 49, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "118", "name": "Kućišta", "h1": "Kućišta za PC – Midi Tower, Full Tower i Mini ITX", "products_in_top50": 58, "in_top50": true, "sort_id": 50, "children": [], "subtree_top50": 1, "subtree_products": 58}, {"id": "120", "name": "Napojne jedinice", "h1": "apojne jedinice – PSU za desktop računare", "products_in_top50": 0, "in_top50": false, "sort_id": 52, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "121", "name": "Zvucne kartice", "h1": "Zvučne kartice – Interni i eksterni audio", "products_in_top50": 0, "in_top50": false, "sort_id": 53, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "123", "name": "Kablovi", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 55, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "225", "name": "Eksterni HDD", "h1": "Eksterni HDD – Prijenosni hard diskovi", "products_in_top50": 19, "in_top50": true, "sort_id": 145, "children": [], "subtree_top50": 1, "subtree_products": 19}], "subtree_top50": 7, "subtree_products": 193}, {"id": "17", "name": "Računari", "h1": "Računari – Desktop, Laptop i All-in-One", "products_in_top50": 18, "in_top50": true, "sort_id": 0, "children": [{"id": "322", "name": "REFURBISHED DESKTOP", "h1": "Refurbished Desktop računari – Obnovljeni desktop PC", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "323", "name": "Server", "h1": "Serveri – Tower i Rack serveri za poslovanje", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "325", "name": "Rezervni dijelovi informatika", "h1": "Rezervni dijelovi – Informatička oprema", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "93", "name": "Desktop Brand Name", "h1": "Desktop Brand Name računari", "products_in_top50": 0, "in_top50": false, "sort_id": 1, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "233", "name": "Desktop PC", "h1": "Desktop PC – Kućni i poslovni desktop računari", "products_in_top50": 0, "in_top50": false, "sort_id": 2, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "99", "name": "Tablet", "h1": "Tableti – Android, iPad i Windows tableti", "products_in_top50": 57, "in_top50": true, "sort_id": 11, "children": [], "subtree_top50": 1, "subtree_products": 57}, {"id": "234", "name": "Računari All-In-One", "h1": "Računari All-In-One – Monitor i računar u jednom", "products_in_top50": 0, "in_top50": false, "sort_id": 15, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "324", "name": "Dodaci za notebook", "h1": "Dodaci za notebook – Hladnjaci, dokstajšeni i više", "products_in_top50": 43, "in_top50": true, "sort_id": 30, "children": [], "subtree_top50": 1, "subtree_products": 43}, {"id": "289", "name": "Dodaci za tablet", "h1": "Dodaci za tablete – Maske, tastature i zaštitna stakla", "products_in_top50": 50, "in_top50": true, "sort_id": 35, "children": [], "subtree_top50": 1, "subtree_products": 50}, {"id": "101", "name": "Produženje garancije", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 39, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "310", "name": "Sredstva za održavanje", "h1": "Sredstva za održavanje računara i opreme", "products_in_top50": 18, "in_top50": true, "sort_id": 40, "children": [], "subtree_top50": 1, "subtree_products": 18}], "subtree_top50": 5, "subtree_products": 186}, {"id": "148", "name": "Televizori i prateća oprema", "h1": "Televizori i prateća oprema – Smart TV i dodaci", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [{"id": "358", "name": "Rezervni dijelovi web", "h1": "Rezervni dijelovi za TV i elektroniku", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "163", "name": "Televizori", "h1": "Televizori – Smart TV, 4K UHD i OLED", "products_in_top50": 67, "in_top50": true, "sort_id": 95, "children": [], "subtree_top50": 1, "subtree_products": 67}, {"id": "164", "name": "Kucna kina, player-i", "h1": "Kućna kina i media playeri", "products_in_top50": 0, "in_top50": false, "sort_id": 96, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "165", "name": "Nosaci i stalci za TV", "h1": "osači i stalci za televizore", "products_in_top50": 76, "in_top50": true, "sort_id": 97, "children": [], "subtree_top50": 1, "subtree_products": 76}, {"id": "166", "name": "Ostala oprema za TV", "h1": "", "products_in_top50": 24, "in_top50": true, "sort_id": 98, "children": [], "subtree_top50": 1, "subtree_products": 24}, {"id": "167", "name": "Rezervni dijelovi elektronika", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 99, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 3, "subtree_products": 167}, {"id": "393", "name": "Digitalni kodovi", "h1": "Digitalni kodovi – Gift card i game kodovi", "products_in_top50": 128, "in_top50": true, "sort_id": 0, "children": [], "subtree_top50": 1, "subtree_products": 128}, {"id": "347", "name": "USB uređaji", "h1": "SB uređaji – Hub-ovi, punjači i adapteri", "products_in_top50": 0, "in_top50": false, "sort_id": 80, "children": [{"id": "313", "name": "USB hub-ovi", "h1": "SB hub-ovi – USB 3.0 i USB-C hub razvodnici", "products_in_top50": 28, "in_top50": true, "sort_id": 0, "children": [], "subtree_top50": 1, "subtree_products": 28}, {"id": "314", "name": "USB punjači", "h1": "SB punjači – Brzi punjači za mobitele i tablete", "products_in_top50": 95, "in_top50": true, "sort_id": 0, "children": [], "subtree_top50": 1, "subtree_products": 95}, {"id": "348", "name": "USB ventilatori", "h1": "SB ventilatori – Mini ventilatori za stol i laptop", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "349", "name": "USB usisivač", "h1": "SB usisivači – Mini usisivači za tastaturu i auto", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "350", "name": "USB lampe", "h1": "SB lampe – Fleksibilne LED lampe za laptop i čitanje", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "351", "name": "USB uređaji", "h1": "Ostali USB uređaji – Gadgeti i dodaci na USB", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 2, "subtree_products": 123}, {"id": "214", "name": "Kancelarijski materijal", "h1": "Kancelarijski materijal – Papir, registratori i pribor", "products_in_top50": 0, "in_top50": false, "sort_id": 137, "children": [{"id": "377", "name": "Registratori", "h1": "Registratori – Fascikle i registratori za dokumenta", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "294", "name": "Kalkulatori", "h1": "Kalkulatori – Džepni i stolni kalkulatori", "products_in_top50": 0, "in_top50": false, "sort_id": 50, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "304", "name": "Ostali kancelarijski materijal", "h1": "Ostali kancelarijski materijal", "products_in_top50": 118, "in_top50": true, "sort_id": 99, "children": [], "subtree_top50": 1, "subtree_products": 118}], "subtree_top50": 1, "subtree_products": 118}, {"id": "152", "name": "Satovi", "h1": "Satovi – Pametni satovi i smartwatch", "products_in_top50": 0, "in_top50": false, "sort_id": 50, "children": [{"id": "177", "name": "Pametni satovi", "h1": "Pametni satovi – Smartwatch i fitness narukvice", "products_in_top50": 99, "in_top50": true, "sort_id": 109, "children": [], "subtree_top50": 1, "subtree_products": 99}], "subtree_top50": 1, "subtree_products": 99}, {"id": "160", "name": "Baterije i punjači", "h1": "Baterije i punjači – AA, AAA i punjive", "products_in_top50": 0, "in_top50": false, "sort_id": 120, "children": [{"id": "201", "name": "Baterije", "h1": "", "products_in_top50": 37, "in_top50": true, "sort_id": 125, "children": [], "subtree_top50": 1, "subtree_products": 37}, {"id": "202", "name": "Punjive baterije", "h1": "", "products_in_top50": 51, "in_top50": true, "sort_id": 126, "children": [], "subtree_top50": 1, "subtree_products": 51}, {"id": "203", "name": "Punjaci za baterije", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 127, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 2, "subtree_products": 88}, {"id": "98", "name": "Notebook", "h1": "otebook – Laptopi i prijenosni računari", "products_in_top50": 50, "in_top50": true, "sort_id": 8, "children": [], "subtree_top50": 1, "subtree_products": 50}, {"id": "104", "name": "Poslovne torbe / rančevi", "h1": "Poslovne torbe i rančevi za laptop", "products_in_top50": 43, "in_top50": true, "sort_id": 25, "children": [], "subtree_top50": 1, "subtree_products": 43}, {"id": "346", "name": "USB stickovi i memorijske kartice", "h1": "SB stickovi i memorijske kartice", "products_in_top50": 0, "in_top50": false, "sort_id": 70, "children": [{"id": "231", "name": "Prenosne memorije", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 20, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "232", "name": "Memorijske kartice", "h1": "Memorijske kartice – SD, microSD i CF kartice", "products_in_top50": 0, "in_top50": false, "sort_id": 150, "children": [{"id": "257", "name": "USB stickovi", "h1": "SB stickovi – Flash memorije", "products_in_top50": 43, "in_top50": true, "sort_id": 8, "children": [], "subtree_top50": 1, "subtree_products": 43}], "subtree_top50": 1, "subtree_products": 43}], "subtree_top50": 1, "subtree_products": 43}, {"id": "150", "name": "Fotoaparati i camcorderi", "h1": "Fotoaparati i kamere – DSLR, Mirrorless i akcijske", "products_in_top50": 0, "in_top50": false, "sort_id": 11, "children": [{"id": "172", "name": "Fotoaparati", "h1": "Fotoaparati – Digitalni i DSLR", "products_in_top50": 0, "in_top50": false, "sort_id": 11, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "173", "name": "Sportske kamere i dodaci", "h1": "Sportske kamere i dodaci – GoPro i akcijske kamere", "products_in_top50": 18, "in_top50": true, "sort_id": 105, "children": [], "subtree_top50": 1, "subtree_products": 18}, {"id": "174", "name": "Dodaci za fotoaparate", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 106, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 1, "subtree_products": 18}, {"id": "296", "name": "Kućanski aparati i bijela tehnika", "h1": "Kućanski aparati i bijela tehnika", "products_in_top50": 18, "in_top50": true, "sort_id": 60, "children": [{"id": "360", "name": "Kućanski aparati", "h1": "Mali kućanski aparati – Blenderi, tostere i više", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "361", "name": "Aparati za njegu", "h1": "Aparati za njegu – Fenovi, brijaći i epilatori", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "362", "name": "Bijela tehnika", "h1": "Bijela tehnika – Frižideri, mašine za pranje i više", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "363", "name": "Ostali kućanski aparati i dodaci", "h1": "Ostali kućanski aparati i dodaci", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "249", "name": "Kuhinjski aparati", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 167, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 1, "subtree_products": 18}, {"id": "282", "name": "Hosting paketi", "h1": "Hosting paketi – Web hosting za vaš sajt", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "283", "name": "Domeni", "h1": "Domeni – Registracija nacionalnih i međunarodnih domena", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "284", "name": "SSL", "h1": "SSL sertifikati – Sigurnost za vaš web sajt", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "369", "name": "Kase i printeri", "h1": "Fiskalne kase i POS printeri", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [{"id": "370", "name": "Fiksalne kase i printeri", "h1": "Fiksalne kase – Elektronske fiskalne kase", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "371", "name": "Potro[ni materijal fiskalni", "h1": "Potrošni materijal fiskalni – Termalni papir i riboni", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "372", "name": "Namještaj", "h1": "amještaj – Kancelarijski stolovi, stolice i ladičari", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [{"id": "215", "name": "Stolovi", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 138, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "216", "name": "Stolice", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 139, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "217", "name": "Ladicari", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 140, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "380", "name": "Skuteri", "h1": "Električni skuteri – E-skuteri za grad i kampus", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "385", "name": "Ruksaci za djecu", "h1": "Ruksaci za djecu – Školski rančevi i torbe", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [{"id": "386", "name": "Anatomski rančevi za prvake", "h1": "Anatomski rančevi za prvake", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "387", "name": "Rančevi za školu - torbe za školu", "h1": "Školski rančevi i torbe za školu", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "389", "name": "Rančevi 2 u 1", "h1": "Rančevi 2 u 1 – Ranac i kolica u jednom", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "392", "name": "Ranac na točkiće", "h1": "Ranac na točkiće – Školski ruksak s točkićima", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "154", "name": "Fiksna telefonija", "h1": "Fiksna telefonija – Stoni i bežični telefoni", "products_in_top50": 0, "in_top50": false, "sort_id": 5, "children": [{"id": "183", "name": "Stoni telefoni", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 110, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "184", "name": "Bezični telefoni", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 111, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "185", "name": "Telefax uredaji", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 112, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "186", "name": "Dodaci za telefone", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 113, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "258", "name": "POS Monitori", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 9, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "259", "name": "Barkod čitači", "h1": "Barkod čitači – 1D i 2D skener", "products_in_top50": 0, "in_top50": false, "sort_id": 10, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "272", "name": "Software", "h1": "Software – Antivirusi, Office i Windows licence", "products_in_top50": 0, "in_top50": false, "sort_id": 11, "children": [{"id": "297", "name": "Microsoft", "h1": "Microsoft software – Windows i Office licence", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "344", "name": "Antivirus", "h1": "Antivirus software – ESET, Kaspersky i drugi", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "345", "name": "Aplikativni software", "h1": "Aplikativni software – Poslovne i kreativne aplikacije", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "273", "name": "Softver Sigurnost", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 26, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "274", "name": "Softver Aplikacije", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 27, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "276", "name": "Softver - Serveri", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 29, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "97", "name": "Printeri i skeneri", "h1": "Printeri i skeneri – Laserski, Inkjet, Multifunkcijski", "products_in_top50": 0, "in_top50": false, "sort_id": 12, "children": [{"id": "124", "name": "Laserski printeri", "h1": "aserski printeri – Crno-bijeli i kolor", "products_in_top50": 0, "in_top50": false, "sort_id": 56, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "126", "name": "Inkjet printeri", "h1": "Inkjet printeri – Kvalitetno štampanje u boji", "products_in_top50": 0, "in_top50": false, "sort_id": 58, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "127", "name": "Multifunkcijski printeri", "h1": "Multifunkcijski printeri – Štampa, kopija, sken", "products_in_top50": 0, "in_top50": false, "sort_id": 59, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "128", "name": "Kopir aparati", "h1": "Kopir aparati – Digitalni kopirni uređaji", "products_in_top50": 0, "in_top50": false, "sort_id": 60, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "129", "name": "Foto printeri", "h1": "Foto printeri – Profesionalni tisak fotografija", "products_in_top50": 0, "in_top50": false, "sort_id": 61, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "130", "name": "Matricni printeri", "h1": "Matricni printeri – Dot matrix printeri", "products_in_top50": 0, "in_top50": false, "sort_id": 62, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "131", "name": "Skeneri", "h1": "Skeneri – Flatbed i dokumentni skeneri", "products_in_top50": 0, "in_top50": false, "sort_id": 63, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "149", "name": "Projektori", "h1": "Projektori – Poslovni i kućni projektori", "products_in_top50": 0, "in_top50": false, "sort_id": 12, "children": [{"id": "168", "name": "Projektori - uređaji", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 100, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "169", "name": "Platna za projektor", "h1": "Platna za projektore", "products_in_top50": 0, "in_top50": false, "sort_id": 101, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "170", "name": "Nosaci za projektore", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 102, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "171", "name": "Torbe za projektore", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 103, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "260", "name": "POS dodaci", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 12, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "94", "name": "UPS, stabilizatori, ...", "h1": "PS, Stabilizatori i Zaštita napajanja", "products_in_top50": 0, "in_top50": false, "sort_id": 40, "children": [{"id": "132", "name": "UPS", "h1": "PS – Besprekidna napajanja", "products_in_top50": 0, "in_top50": false, "sort_id": 64, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "133", "name": "Stabilizatori, regulatori", "h1": "Stabilizatori i regulatori napona", "products_in_top50": 0, "in_top50": false, "sort_id": 65, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "134", "name": "Uticnice i sigurnosne uticnice", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 66, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "135", "name": "Baterije za UPS", "h1": "Baterije za UPS uređaje", "products_in_top50": 0, "in_top50": false, "sort_id": 67, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "136", "name": "Inverteri", "h1": "Inverteri – DC/AC pretvarači napona", "products_in_top50": 0, "in_top50": false, "sort_id": 68, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "155", "name": "Audio video", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 80, "children": [{"id": "187", "name": "Diktafoni", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 114, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "188", "name": "Digitalni okviri za sliku", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 115, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "189", "name": "Audio player-i, transmiteri", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 116, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "190", "name": "Radio, CD za auto", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 117, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "227", "name": "Mediji", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 99, "children": [{"id": "338", "name": "BR mediji", "h1": "Blu-ray mediji – BD-R i BD-RE diskovi", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "339", "name": "Futrole i omoti", "h1": "Futrole i omoti za medije", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "228", "name": "CD Mediji ", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 147, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "254", "name": "DVD mediji ", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 172, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "158", "name": "Klima uređaji", "h1": "Klima uređaji – Inverter i standardni", "products_in_top50": 0, "in_top50": false, "sort_id": 110, "children": [{"id": "197", "name": "Klime standardne", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 121, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "198", "name": "Klima inverter", "h1": "Inverter klima uređaji – Energetski efikasni", "products_in_top50": 0, "in_top50": false, "sort_id": 122, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "199", "name": "Dodaci za klime", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 123, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "200", "name": "LED sijalice", "h1": "ED sijalice – Energetski efikasna rasvjeta", "products_in_top50": 0, "in_top50": false, "sort_id": 110, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "161", "name": "Konzole za igranje", "h1": "Konzole za igranje – PlayStation, Xbox, Nintendo", "products_in_top50": 0, "in_top50": false, "sort_id": 130, "children": [{"id": "368", "name": "Konzole", "h1": "Gaming konzole – PlayStation, Xbox i Nintendo", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "204", "name": "Sony", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 128, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "205", "name": "Nintendo", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 129, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "206", "name": "Arctic", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 130, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "207", "name": "Igrice", "h1": "Igrice – PS5, Xbox i Nintendo igre", "products_in_top50": 0, "in_top50": false, "sort_id": 131, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "208", "name": "Šah", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 132, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "209", "name": "Dodaci za konzole", "h1": "Dodaci za konzole – Kontroleri i gaming oprema", "products_in_top50": 0, "in_top50": false, "sort_id": 133, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}, {"id": "212", "name": "POS printeri", "h1": "POS printeri – Termal i matrični POS printeri", "products_in_top50": 0, "in_top50": false, "sort_id": 135, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "210", "name": "Dronovi", "h1": "Dronovi – FPV, Foto dronovi i dodaci", "products_in_top50": 0, "in_top50": false, "sort_id": 140, "children": [], "subtree_top50": 0, "subtree_products": 0}, {"id": "383", "name": "Putni program", "h1": "", "products_in_top50": 0, "in_top50": false, "sort_id": 500, "children": [{"id": "391", "name": "Koferi", "h1": "Koferi – Putni koferi i torbe za putovanje", "products_in_top50": 0, "in_top50": false, "sort_id": 0, "children": [], "subtree_top50": 0, "subtree_products": 0}], "subtree_top50": 0, "subtree_products": 0}], "ghosts": [{"id": "277", "label": "Miševi i razni PC dodaci (USB hub, kablovi, docking)", "count": 535, "csv_status": "0", "csv_name": "Ostalo"}, {"id": "224", "label": "Monitori – IPS, VA i Gaming monitori", "count": 46, "csv_status": "0", "csv_name": "Monitori"}, {"id": "125", "label": "Printeri (raznovrsni — Epson, HP, Canon)", "count": 19, "csv_status": "MISSING", "csv_name": "(not in CSV)"}]};
+
+const statsEl = document.getElementById("stats");
+const items = [
+  ["total_csv_rows", "CSV redova"],
+  ["active_categories", "Aktivnih kategorija"],
+  ["root_categories", "Root (parent_id=0)"],
+  ["max_depth", "Maks. dubina"],
+  ["top50_total", "Top-50 (AI koristi)"],
+  ["top50_leaves", "Top-50 leaves"],
+  ["top50_branches", "Top-50 parents"],
+  ["top50_ghosts", "Top-50 ghosts"],
+];
+statsEl.innerHTML = items.map(([k, l]) =>
+  `<div class="stat"><div class="v">${DATA.stats[k]}</div><div class="l">${l}</div></div>`
+).join("");
+
+const ghostsEl = document.getElementById("ghosts");
+if (DATA.ghosts.length) {
+  ghostsEl.innerHTML = `
+    <h3>Migration ghosts — top-50 IDs koje nemaju aktivan CSV red</h3>
+    <ul>${DATA.ghosts.map(g => `<li>
+      <code>${g.id}</code> &mdash; <strong>${g.label}</strong>
+      (${g.count} proizvoda; CSV status: <code>${g.csv_status}</code>, name: <em>${g.csv_name}</em>)
+    </li>`).join("")}</ul>
+  `;
+} else {
+  ghostsEl.style.display = "none";
+}
+
+const treeEl = document.getElementById("tree");
+
+function renderNode(n, depth = 0) {
+  const isBranch = n.children.length > 0;
+  const li = document.createElement("li");
+  li.className = "node";
+  li.dataset.id = n.id;
+  li.dataset.name = n.name.toLowerCase();
+  li.dataset.top50 = n.in_top50 ? "1" : "0";
+  li.dataset.subtreeTop50 = String(n.subtree_top50);
+
+  const row = document.createElement("div");
+  row.className = "row";
+
+  const toggle = document.createElement("span");
+  toggle.className = "toggle" + (isBranch ? "" : " leaf");
+  toggle.textContent = isBranch ? "▼" : "·";
+  row.appendChild(toggle);
+
+  const dot = document.createElement("span");
+  dot.className = "dot " + (n.in_top50 ? "hot" : (isBranch ? "branch" : "leaf"));
+  row.appendChild(dot);
+
+  const id = document.createElement("span");
+  id.className = "id";
+  id.textContent = n.id;
+  row.appendChild(id);
+
+  const name = document.createElement("span");
+  name.className = "name " + (isBranch ? "branch" : "leaf");
+  name.textContent = n.name;
+  row.appendChild(name);
+
+  if (n.in_top50) {
+    const b = document.createElement("span");
+    b.className = "badge hot";
+    b.textContent = `${n.products_in_top50} proizv.`;
+    row.appendChild(b);
+  }
+  if (isBranch) {
+    const b = document.createElement("span");
+    b.className = "badge";
+    b.textContent = `${n.children.length} djece`;
+    row.appendChild(b);
+    if (n.subtree_top50 > 0) {
+      const b2 = document.createElement("span");
+      b2.className = "badge sub";
+      b2.textContent = `+${n.subtree_top50} top-50 u podstablu`;
+      row.appendChild(b2);
+    }
+    if (n.subtree_products > 0) {
+      const b3 = document.createElement("span");
+      b3.className = "badge";
+      b3.textContent = `Σ ${n.subtree_products} proizv.`;
+      row.appendChild(b3);
+    }
+  }
+
+  li.appendChild(row);
+
+  if (isBranch) {
+    const ul = document.createElement("ul");
+    n.children.forEach(c => ul.appendChild(renderNode(c, depth + 1)));
+    li.appendChild(ul);
+
+    toggle.addEventListener("click", () => {
+      const collapsed = ul.classList.toggle("hidden");
+      toggle.textContent = collapsed ? "▶" : "▼";
+    });
+  }
+
+  return li;
+}
+
+DATA.tree.forEach(root => treeEl.appendChild(renderNode(root)));
+
+document.getElementById("expandAll").onclick = () => {
+  document.querySelectorAll("ul.tree ul").forEach(u => u.classList.remove("hidden"));
+  document.querySelectorAll(".toggle").forEach(t => {
+    if (!t.classList.contains("leaf")) t.textContent = "▼";
+  });
+};
+document.getElementById("collapseAll").onclick = () => {
+  document.querySelectorAll("ul.tree ul").forEach(u => u.classList.add("hidden"));
+  document.querySelectorAll(".toggle").forEach(t => {
+    if (!t.classList.contains("leaf")) t.textContent = "▶";
+  });
+};
+document.getElementById("onlyTop50").onclick = () => {
+  document.querySelectorAll("li.node").forEach(li => {
+    const inTop = li.dataset.top50 === "1" || parseInt(li.dataset.subtreeTop50, 10) > 0;
+    li.classList.toggle("hidden", !inTop);
+  });
+};
+
+document.getElementById("filter").addEventListener("input", e => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll("li.node").forEach(li => {
+    if (!q) { li.classList.remove("hidden"); return; }
+    const match = li.dataset.name.includes(q) || li.dataset.id.startsWith(q);
+    li.classList.toggle("hidden", !match);
+  });
+});
+</script>
+</body>
+</html>
