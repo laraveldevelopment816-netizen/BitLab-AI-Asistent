@@ -31,10 +31,13 @@ poziva), ne dalje štelovanje proze.
 
 Started: 2026-05-29
 
-**Princip — ništa ne smije da padne.** Svaka izmjena se gejtuje PUNIM eval-om
-(`--mode full`) i poredi sa iter8 baseline-om (84.4%). Regresija → STOP: revert izmjene,
-ILI (ako je test loš) zasebna "fix test set" taska prije nastavka. Pun eval, ne sample —
-sample je lagao 93-100% dok je pun bio 79%.
+**Princip — ništa ne smije da padne; razvoj na hard uzorku, pun eval na kraju.**
+Iteriraj na dev-uzorku poznatih teških slučajeva (`categories_dev`: 29 iter17 fail-ova + negativci),
+ne na punom — pun je ~15h i skup. Pun eval (`--suite categories --mode full`, 250) ide JEDNOM, kao
+acceptance vs iter8 baseline-om (84.4%). NE koristi random `--mode sample` (30 po tagu) za gejt: dao
+je lažni zeleni 93-100% dok je pun bio 79% (`EVAL_REGRESIJA_iter17.md`) — promaši baš teške leaf
+slučajeve. Regresija na dev-uzorku → STOP: revert, ILI (ako je test loš) zasebna "fix test set"
+taska prije nastavka. Jedan fix u trenutku.
 
 **Scope:**
 - Revive `bck/app/system_prompts.py` kao bazu prompta (čista leaf/parent logika 1/1a/1b).
@@ -46,7 +49,7 @@ sample je lagao 93-100% dok je pun bio 79%.
 - Faza 2 (products RAG) i Faza 3 (cross-reference) — Next.
 - Multi-channel prompt (voice/email format) iz bck — nije u categories eval scope-u.
 
-**Veza sa STATUS:** kartice `rvpr`, `frtl`, `tght`, `acpt` u `STATUS.md` Todo.
+**Veza sa STATUS:** kartice `dsmp`, `rvpr`, `frtl`, `tght`, `acpt` u `STATUS.md` Todo.
 Otvoreno: je li Ralph autonomni loop uopšte potreban uz forsiran tool + schemu, ili je
 dovoljan jedan čist rebuild + pun eval.
 
