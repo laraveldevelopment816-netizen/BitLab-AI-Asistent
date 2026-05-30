@@ -126,7 +126,31 @@ SEARCH_PRODUCTS_TOOL: dict[str, Any] = {
     },
 }
 
-ALL_TOOLS_ANTHROPIC: list[dict[str, Any]] = [CATEGORY_OVERVIEW_TOOL, SEARCH_PRODUCTS_TOOL]
+RESPOND_TO_USER_TOOL: dict[str, Any] = {
+    "name": "respond_to_user",
+    "description": (
+        "Odgovori korisniku slobodnim tekstom. Koristi kad upit NIJE iz kataloga "
+        "(knjige, vrijeme, garancija…), kad je dvosmislen ili izgleda kao typo, ili "
+        "za FINALNI odgovor korisniku nakon što su kataloški alati vratili rezultat. "
+        "Tvoj tekst ide u `message`. Ne navodi kataloške podatke bez tool rezultata."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "message": {
+                "type": "string",
+                "description": "Tekst koji se prikazuje korisniku.",
+            },
+        },
+        "required": ["message"],
+    },
+}
+
+ALL_TOOLS_ANTHROPIC: list[dict[str, Any]] = [
+    CATEGORY_OVERVIEW_TOOL,
+    SEARCH_PRODUCTS_TOOL,
+    RESPOND_TO_USER_TOOL,
+]
 
 
 def _to_openai_shape(tool: dict[str, Any]) -> dict[str, Any]:

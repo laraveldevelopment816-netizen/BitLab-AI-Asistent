@@ -1,4 +1,4 @@
-"""Minimalni agent — LLM dispatch (PWR ili Anthropic) + tool use loop.
+"""Minimalni agent — LLM dispatch (PWR ili Anthropic) + forsiran tool use loop.
 
 TDD zero base + memorija llm_backend_pwr_imperative:
 - Default dispatch: PWR backend (LLM_BACKEND=pwr + PWR_API_KEY set u .env) —
@@ -6,10 +6,13 @@ TDD zero base + memorija llm_backend_pwr_imperative:
   (http://127.0.0.1:8765/v1). NE plaćeni Anthropic API.
 - Fallback: Anthropic direktan API — samo ako PWR nije konfigurisan.
 
-Tool use loop: oba runnera prosljeđuju `ALL_TOOLS_*` modelu, dispatch-uju
-tool pozive kroz `app.tools.dispatch`, i kapsuliraju sve pozive u
-`tool_calls` output liste (`[{"name", "args"}]`) koju eval framework
-poredi sa očekivanjima iz `evals/sets/*.jsonl`.
+Forsiran tool use (`tool_choice` any/required): model na svaki upit zove tačno
+jedan alat — kataloški (`category_overview`/`search_products`, dispatch kroz
+`app.tools.dispatch`) ILI `respond_to_user` (finalni tekst). Time nema tihe
+apstinencije ni halucinacije (uzrok iter17 regresije). `respond_to_user` se NE
+kapsulira u `tool_calls` output (eval ga tretira kao "bez tool poziva"), pa
+negativni upiti ostaju PASS. `tool_calls` (`[{"name","args"}]`) poredi se sa
+očekivanjima iz `evals/sets/*.jsonl`.
 """
 
 from __future__ import annotations
@@ -30,69 +33,34 @@ from .tools import ALL_TOOLS_ANTHROPIC, ALL_TOOLS_OPENAI, dispatch
 # multi-tool sekvence trebaju više, premjesti u settings.
 MAX_TOOL_ITERATIONS = 5
 
-# Sistem prompt v1 — single source za OBA runnera (spec specs/categories.md §1, §3, §3.1).
-# Anthropic put: prosljeđuje se kao `system=` parametar u messages.create().
-# PWR put: prosljeđuje se kao prva poruka {"role": "system", "content": ...}.
-# Refinement v1 dodaje out-of-scope ponašanje za negativni set (spec §4):
-# kad upit ne odgovara nijednom katalogu (knjige, vrijeme, garancija) NE zovi tool.
+# Sistem prompt — single source za OBA runnera. Lean leaf/parent logika uz
+# forsiran tool use: model bira kataloški alat ILI respond_to_user, nikad
+# slobodan tekst. (Zamijenio naduveni iter17 prompt koji je izazvao apstinenciju.)
 SYSTEM_PROMPT_V1 = (
-    "Ti si webshop agent za bitlab.rs. Kataloški domen: računarska oprema, "
-    "mobilni uređaji, tableti, mrežna oprema, periferija — sve kategorije "
-    "su izložene kroz `category_overview` i `search_products` tools.\n\n"
-    "Pravila rutiranja:\n"
-    "- Kad upit imenuje PARENT kategoriju iz mapping liste u "
-    "`category_overview` description-u (npr. 'Računari', 'Printeri i skeneri'), "
-    "pozovi `category_overview` sa odgovarajućim `category_id`.\n"
-    "- Kad upit imenuje LEAF kategoriju iz mapping liste u `search_products` "
-    "description-u (npr. 'Notebook', 'Tablet', 'Mobiteli') ILI traži konkretne "
-    "proizvode/brendove unutar leaf-a, pozovi `search_products` sa odgovarajućim "
-    "`category_id` (i opcionim `query`/`brand`/filter cijene ako su dati).\n"
-    "- LEAF PRIORITET (kritično): ako se ime u upitu pojavljuje (egzaktno ili "
-    "kao podstring) u LEAF mapping listi `search_products`, OBAVEZNO biraj "
-    "`search_products(category_id=leaf_id)` čak i ako PARENT kategorija u "
-    "`category_overview` listi ima identično ili slično ime. Primjeri: 'Kablovi' "
-    "→ LEAF 'Kablovi' (NE parent 'Kablovi i adapteri'); 'UPS' → LEAF 'UPS' (NE "
-    "parent 'UPS, stabilizatori, ...'); 'Televizori' → LEAF 'Televizori' (NE "
-    "parent 'Televizori i prateća oprema'); 'USB uređaji' → LEAF 'USB uređaji' "
-    "(NE parent 'USB uređaji' istog naziva); 'Konzole' → LEAF 'Konzole' (NE "
-    "parent 'Konzole za igranje'); 'Kućanski aparati' → LEAF 'Kućanski aparati' "
-    "(NE parent 'Kućanski aparati i bijela tehnika'); 'Fotoaparati' → LEAF "
-    "'Fotoaparati' (NE parent 'Fotoaparati i camcorderi').\n"
-    "- TAČAN ID MATCH: odaberi `category_id` koji odgovara TAČNO IMENU iz "
-    "mapping liste — ne mapiraj na semantički blizak ali drugačiji leaf. "
-    "Primjeri: 'Softver' → leaf čije IME počinje sa 'Softver' (NE leaf "
-    "'Aplikativni software'); 'Eksterni HDD' → leaf čije IME je 'Eksterni HDD' "
-    "(provjeri u listi); 'Kućišta za HDD' → leaf čije IME je 'Kućišta za HDD'. "
-    "Ako postoje dva leafa sa istim ili veoma sličnim imenom, biraj onaj čiji "
-    "naziv u mapping listi je egzaktno isti kao u upitu.\n"
-    "- ZABRANA HALUCINACIJE (kritično): STROGO ZABRANJENO nabrajati konkretan "
-    "brend, model proizvoda, cijenu (npr. 'Seasonic 450 KM', 'Target BB serija "
-    "82-115 KM'), ili URL u svom reply-ju bez prethodnog uspješnog tool poziva "
-    "(`search_products` ili `category_overview`) u istoj konverzaciji. Ako tool "
-    'vrati prazan rezultat (`{"products": []}` ili sličan empty payload), '
-    "odgovori 'trenutno nemam podatke za tu kategoriju' BEZ izmišljanja "
-    "proizvoda, brendova niti cijena. Bez tool rezultata nemaš nijedan izvor "
-    "podataka o katalogu.\n"
-    "- OBAVEZNO PROBAJ TOOL: ako se ime kategorije iz upita pojavljuje u "
-    "catalog mapping listi (parent u `category_overview` listi ili leaf u "
-    "`search_products` listi), OBAVEZNO pozovi odgovarajući tool prije bilo "
-    "kakvog reply-ja — `search_products` za leaf, `category_overview` za "
-    "parent. ZABRANJENO je odgovoriti 'tehnička greška', 'nemam pristup "
-    "katalogu', 'sistem trenutno ne radi' ili slično preventivno bez ijednog "
-    "tool poziva. Te poruke su opravdane SAMO kad je prethodni tool poziv u "
-    "istoj konverzaciji stvarno vratio exception ili error payload — tada "
-    "smiješ konstatovati grešku. Bez tool poziva, on-catalog upit MORA dobiti "
-    "tool dispatch.\n"
-    "- Ako upit ne odgovara nijednoj kategoriji iz catalog mapping-a "
-    "(npr. 'knjige', 'namještaj', 'kakvo je vrijeme', 'garancija', 'reklamacija') "
-    "ILI je dvosmislen bez jasnog category mapping-a, NE zovi tool — odgovori "
-    "prirodno (kratko objasni da nije u katalogu ili traži pojašnjenje).\n"
-    "- Ako upit izgleda kao typo (riječ slična kategoriji iz mapping liste, ali "
-    "sa očiglednim greškama u slovima — npr. 'mobitejli', 'raunari', 'prnteri'), "
-    "NE pretpostavljaj korekciju automatski i NE zovi tool — pitaj korisnika da "
-    "pojasni koju kategoriju je tačno mislio.\n\n"
-    "Output: ne objašnjavaj rutiranje — samo pozovi pravi tool ili odgovori "
-    "tekstom kad je out-of-scope."
+    "Ti si BitLab webshop asistent za bitlab.rs. Pomažeš korisnicima da nađu "
+    "proizvode iz kataloga računarske i tehničke opreme.\n\n"
+    "Na SVAKI upit moraš pozvati tačno jedan alat — nikad ne odgovaraj slobodnim "
+    "tekstom direktno. Alati:\n"
+    "- `category_overview(category_id)` — pregled potkategorija PARENT kategorije.\n"
+    "- `search_products(category_id, query?, brand?, cijena?)` — pretraga u LEAF "
+    "kategoriji ili po konkretnom proizvodu/brendu.\n"
+    "- `respond_to_user(message)` — tekstualni odgovor korisniku: za upite van "
+    "kataloga, dvosmislene/typo, i za finalni odgovor nakon tool rezultata.\n\n"
+    "Pravila:\n"
+    "1. NIKAD ne izmišljaj proizvode, cijene, dostupnost ni specifikacije. Podatke "
+    "o katalogu dobijaš ISKLJUČIVO iz rezultata alata. Ako alat vrati prazno, kroz "
+    "`respond_to_user` reci da trenutno nemaš podatke za tu kategoriju.\n"
+    "2. Parent vs leaf:\n"
+    "   - Gola PARENT kategorija bez kvalifikatora (npr. 'Mobiteli', 'Računari', "
+    "'Printeri') → `category_overview` sa tim parent `category_id`.\n"
+    "   - Kvalifikator (brend, model, cijena, namjena) ILI leaf kategorija ili "
+    "konkretan proizvod → `search_products` sa odgovarajućim leaf `category_id`.\n"
+    "3. Upit van kataloga (knjige, namještaj, vrijeme, garancija, reklamacija), "
+    "dvosmislen bez jasne kategorije, ili očigledan typo → `respond_to_user` sa "
+    "kratkim tekstom (objasni ili traži pojašnjenje); NE zovi kataloške alate.\n"
+    "4. Kad kataloški alat vrati rezultat, finalni odgovor korisniku uvijek šalji "
+    "kroz `respond_to_user`.\n"
+    "Jezik: BCS, latinica. Ton: kratko, direktno, bez fillera."
 )
 
 _anthropic_client: anthropic.Anthropic | None = None
@@ -136,11 +104,11 @@ def run_agent(messages: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _run_anthropic(messages: list[dict[str, Any]]) -> dict[str, Any]:
-    """Anthropic SDK put — direktan API + tool use loop.
+    """Anthropic put — forsiran tool use (`tool_choice={"type":"any"}`) + respond_to_user.
 
-    Loop: dok je stop_reason='tool_use', dispatch-uj svaki tool blok i pošalji
-    rezultate nazad u sljedećoj iteraciji. Pređemo li MAX_TOOL_ITERATIONS,
-    vraćamo posljednji tekstualni odgovor (ili prazan string).
+    Svaka iteracija forsira tool: model zove kataloški alat (dispatch, capture,
+    nazad u petlju) ili `respond_to_user` (finalni tekst, van `captured_tool_calls`,
+    break). `{"type":"any"}` je TVRDA garancija — nema tihe apstinencije.
     """
     client = _get_anthropic_client()
     current: list[dict[str, Any]] = list(messages)
@@ -155,53 +123,57 @@ def _run_anthropic(messages: list[dict[str, Any]]) -> dict[str, Any]:
             max_tokens=settings.max_output_tokens,
             system=SYSTEM_PROMPT_V1,
             tools=cast(Any, ALL_TOOLS_ANTHROPIC),
+            tool_choice=cast(Any, {"type": "any"}),
             messages=cast("list[MessageParam]", current),
         )
-
-        for block in response.content:
-            if hasattr(block, "text") and getattr(block, "text", None):
-                reply = block.text
-
-        if response.stop_reason != "tool_use":
-            break
-
-        # Echo assistant response (uključuje tool_use blokove) nazad u messages.
         current.append({"role": "assistant", "content": response.content})
 
-        tool_results: list[dict[str, Any]] = []
-        for raw_block in response.content:
-            # Runtime tag check umjesto isinstance — radi i sa MagicMock-om u
-            # testovima; cast je samo za mypy narrowing.
-            if getattr(raw_block, "type", None) != "tool_use":
-                continue
-            block = cast(ToolUseBlock, raw_block)
-            args = dict(block.input) if isinstance(block.input, dict) else {}
-            captured_tool_calls.append({"name": block.name, "args": args})
-            result = dispatch(block.name, args)
-            tool_results.append(
-                {
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": result,
-                }
-            )
+        # Runtime tag check umjesto isinstance — radi i sa MagicMock-om u testovima.
+        tool_uses = [b for b in response.content if getattr(b, "type", None) == "tool_use"]
+        catalog = [b for b in tool_uses if getattr(b, "name", None) != "respond_to_user"]
+        respond = next(
+            (b for b in tool_uses if getattr(b, "name", None) == "respond_to_user"), None
+        )
 
-        current.append({"role": "user", "content": tool_results})
+        if catalog:
+            # Dispatch kataloških alata; svaki tool_use (uklj. respond) mora dobiti tool_result.
+            tool_results: list[dict[str, Any]] = []
+            for raw_block in tool_uses:
+                block = cast(ToolUseBlock, raw_block)
+                if block.name == "respond_to_user":
+                    tool_results.append(
+                        {"type": "tool_result", "tool_use_id": block.id, "content": "OK"}
+                    )
+                    continue
+                args = dict(block.input) if isinstance(block.input, dict) else {}
+                captured_tool_calls.append({"name": block.name, "args": args})
+                result = dispatch(block.name, args)
+                tool_results.append(
+                    {"type": "tool_result", "tool_use_id": block.id, "content": result}
+                )
+            current.append({"role": "user", "content": tool_results})
+            continue
+
+        if respond is not None:
+            block = cast(ToolUseBlock, respond)
+            reply = block.input.get("message", "") if isinstance(block.input, dict) else ""
+            break
+
+        # Nema tool_use (ne očekivano uz tool_choice=any) — fallback na tekst.
+        for raw_block in response.content:
+            if getattr(raw_block, "text", None):
+                reply = raw_block.text
+        break
 
     return {"reply": reply, "tool_calls": captured_tool_calls, "iterations": iteration}
 
 
 def _run_pwr(messages: list[dict[str, Any]]) -> dict[str, Any]:
-    """PWR backend — OpenAI-kompatibilan endpoint + tool calls loop.
+    """PWR backend — forsiran tool use (`tool_choice="required"`) + respond_to_user.
 
-    Razlike u shape-u u odnosu na Anthropic:
-    - Sistem prompt ide kao prva poruka {"role": "system", "content": "..."}.
-    - Tool definicije u OpenAI shape (`type:"function"` wrapper).
-    - Tool pozivi u `choice.message.tool_calls`, `function.arguments` je JSON
-      string koji parsiramo nazad u dict.
-    - finish_reason='tool_calls' (umjesto Anthropic 'tool_use').
-    - Tool rezultati idu kao `{"role": "tool", "tool_call_id": ..., "content": ...}`.
-    - Reasoning effort ide kroz extra_body (PWR-specific extension).
+    Isto kao Anthropic put, u OpenAI shape-u. PWR `required` je soft-enforcement
+    (vidi STATUS "Poznata ograničenja"); ako model ne vrati tool, uzimamo
+    `msg.content` kao reply.
     """
     client = _get_pwr_client()
     pwr_messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT_V1}]
@@ -218,60 +190,69 @@ def _run_pwr(messages: list[dict[str, Any]]) -> dict[str, Any]:
             messages=cast(Any, pwr_messages),
             max_tokens=settings.max_output_tokens,
             tools=cast(Any, ALL_TOOLS_OPENAI),
+            tool_choice=cast(Any, "required"),
             extra_body={"reasoning_effort": settings.pwr_chat_model_effort},
         )
-
         if not response.choices:
             break
-        choice = response.choices[0]
-        msg = choice.message
-        if msg.content:
-            reply = msg.content
+        msg = response.choices[0].message
 
-        if choice.finish_reason != "tool_calls":
-            break
-
-        # Echo assistant message (sa tool_calls) nazad — OpenAI protokol zahtijeva.
-        # Filtriraj na function tool_calls (custom tools nisu podržani u Fazi 1).
-        # Runtime check `tc.type == "function"` umjesto isinstance — radi sa
-        # MagicMock testovima; cast samo za mypy narrowing.
         function_calls: list[ChatCompletionMessageFunctionToolCall] = [
             cast(ChatCompletionMessageFunctionToolCall, tc)
             for tc in (msg.tool_calls or [])
             if getattr(tc, "type", "function") == "function"
         ]
-        tool_calls_echo = [
-            {
-                "id": tc.id,
-                "type": "function",
-                "function": {
-                    "name": tc.function.name,
-                    "arguments": tc.function.arguments,
-                },
-            }
-            for tc in function_calls
-        ]
+
+        if not function_calls:
+            # PWR soft-required nije ispoštovan — uzmi tekstualni odgovor.
+            if msg.content:
+                reply = msg.content
+            break
+
+        # Echo assistant message (sa tool_calls) — OpenAI protokol zahtijeva.
         pwr_messages.append(
             {
                 "role": "assistant",
                 "content": msg.content,
-                "tool_calls": tool_calls_echo,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in function_calls
+                ],
             }
         )
 
-        for tc in function_calls:
+        catalog = [tc for tc in function_calls if tc.function.name != "respond_to_user"]
+        respond = next(
+            (tc for tc in function_calls if tc.function.name == "respond_to_user"), None
+        )
+
+        if catalog:
+            for tc in function_calls:
+                if tc.function.name == "respond_to_user":
+                    pwr_messages.append({"role": "tool", "tool_call_id": tc.id, "content": "OK"})
+                    continue
+                try:
+                    args = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                except json.JSONDecodeError:
+                    args = {}
+                captured_tool_calls.append({"name": tc.function.name, "args": args})
+                result = dispatch(tc.function.name, args)
+                pwr_messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
+            continue
+
+        if respond is not None:
             try:
-                args = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                args = json.loads(respond.function.arguments) if respond.function.arguments else {}
             except json.JSONDecodeError:
                 args = {}
-            captured_tool_calls.append({"name": tc.function.name, "args": args})
-            result = dispatch(tc.function.name, args)
-            pwr_messages.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": result,
-                }
-            )
+            reply = args.get("message", "") or ""
+            break
 
     return {"reply": reply, "tool_calls": captured_tool_calls, "iterations": iteration}
