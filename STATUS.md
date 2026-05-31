@@ -37,11 +37,11 @@ parent/leaf tagu, ne po težini, pa promaši baš slučajeve koji pucaju. `scrip
 
 - [ ] Štelovanje prompta — leaf-priority kategorije + anti-halucinacija <!-- id:lfpr -->
   Anti-halucinacija nijansa (`995ea65`): prazan rezultat (`products: []`) → "nema" i za poznate
-  kategorije. Leaf-priority lista (`db49e27` + necommit-ovano): 9 leaf naziva (Mobilni telefoni,
+  kategorije. Leaf-priority lista (`db49e27` + `d16b8ab`): 9 leaf naziva (Mobilni telefoni,
   Kablovi, UPS, Televizori, Fotoaparati, Navigacije, USB uređaji, Kućanski aparati, Konzole) →
   `search_products`, NE parent `category_overview`. Validacija: tune set `categories_leaf_tune`
-  (21 case) — **8/8 leaf-kolizija popravljeno**. Otvoreno: dev-uzorak regresija check + commit +
-  pun re-confirm (vidi `acpt`). `app/agent.py` necommit-ovan.
+  (21 case) — **8/8 leaf-kolizija popravljeno**. Otvoreno: dev-uzorak regresija check +
+  pun re-confirm (vidi `acpt`).
 - [ ] Acceptance — pun 250 = 94%, sa leaf-priority projektovano ~97% <!-- id:acpt -->
   Pun eval (250) pušten chunked (proxy-off batch, ne ~15h): lean + forsiranje + leaf-priority +
   anti-halucinacija = **235/250 = 94.0%** routing, čisto (nula rate-locka). Skok sa iter17 79.2% /
