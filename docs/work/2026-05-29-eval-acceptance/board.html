@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Popravka pretrage kataloga — board</title>
+<title>Asistent: pretraga kataloga → acceptance — board</title>
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --line:#262b36; --ink:#e6e9ef; --mut:#9aa4b2;
@@ -37,7 +37,6 @@
   .dec .n{font-weight:700;color:var(--ok);font-variant-numeric:tabular-nums;flex:none}
   .dec.info .n{color:var(--accent)} .dec.open .n{color:var(--warn)} .dec.warn .n{color:var(--no)}
   .dec p{margin:0;font-size:13.5px}
-  .empty{color:var(--mut);font-style:italic}
   footer{color:var(--mut);font-size:12px;margin-top:20px;text-align:center}
 </style>
 </head>
@@ -46,38 +45,38 @@
 
   <div class="top">
     <div>
-      <h1>Asistent — popravka pretrage kataloga</h1>
-      <div class="meta">2026-05-31 · bitlab-ai-asistent @ <code>feat/ralph-categories-eval</code></div>
+      <h1>Asistent: pretraga kataloga → acceptance (≥95%)</h1>
+      <div class="meta">Now inicijativa <code>evfx</code> · od 2026-05-29 · bitlab-ai-asistent @ <code>feat/ralph-categories-eval</code></div>
     </div>
     <div class="links">
       <div class="lh">Linkovi</div>
       <a class="key" href="../../../EVAL_REGRESIJA_iter17.md">⭐ Zašto je palo — dijagnoza</a>
       <a href="../../../STATUS.md">Gdje smo — STATUS</a>
-      <a href="../../../docs/plans/akcioni-plan.md">Plan</a>
+      <a href="../../../docs/plans/akcioni-plan.md">Plan (Now)</a>
       <a href="../../../evals/runs/categories-acpt-full.jsonl">Rezultat punog testa (94%)</a>
     </div>
   </div>
 
   <div class="next-card">
     <h2>★ Sljedeći korak</h2>
-    <p class="quote">Provjeriti da posljednja izmjena nije pokvarila ranije popravljene slučajeve, pa pustiti pun test još jednom da potvrdimo ~97%.</p>
+    <p class="quote">Pustiti brzi test na teškim slučajevima da potvrdimo da nova lista kategorija nije ništa pokvarila, pa pun test još jednom za ~97%.</p>
   </div>
 
   <h2>Odluke &amp; orijentacija</h2>
 
-  <div class="dec"><span class="n">1</span><p>Umjesto dugačkih uputstava, dajemo asistentu kratko uputstvo i tjeramo ga da uvijek pozove pretragu — da ne izmišlja katalog.</p></div>
+  <div class="dec"><span class="n">1</span><p><strong>Ovo je odblokiralo projekat.</strong> Umjesto dugačkih uputstava dajemo asistentu kratko uputstvo i tjeramo ga da uvijek pozove pretragu (force tool calling) — da ne izmišlja katalog.</p></div>
 
-  <div class="dec"><span class="n">2</span><p>Podešavamo na malom skupu teških primjera; pun test pokrećemo samo jednom na kraju, jer je spor i skup.</p></div>
+  <div class="dec"><span class="n">2</span><p>Podešavamo na malom skupu teških slučajeva; pun test od 250 puštamo samo jednom na kraju jer je spor i skup.</p></div>
 
-  <div class="dec info"><span class="n">3</span><p>Ranije je padao jer bi prestao da gleda u katalog i počeo izmišljati proizvode — to je suština koju popravljamo.</p></div>
+  <div class="dec info"><span class="n">3</span><p>Pao je na 79% jer bi asistent prestao gledati u katalog i počeo izmišljati proizvode — to je problem koji rješavamo.</p></div>
 
-  <div class="dec info"><span class="n">4</span><p>Sad je tačan u 94% slučajeva; sa par dodatih kategorija ide na oko 97%.</p></div>
+  <div class="dec info"><span class="n">4</span><p>Pun test od 250 daje 94%; sa dodatom listom kategorija ide na oko 97%.</p></div>
 
-  <div class="dec warn"><span class="n">⚠</span><p>Za par „poznatih" kategorija (npr. monitori) još izmišlja proizvode, jer prava baza proizvoda još nije uključena — rješava je kasnija faza.</p></div>
+  <div class="dec warn"><span class="n">⚠</span><p>Za par „poznatih" kategorija (monitori) još izmišlja proizvode jer prava baza proizvoda nije uključena — to je kasnija faza.</p></div>
 
-  <div class="dec open"><span class="n">?</span><p>Je li 94–97% dovoljno da pustimo u rad, ili guramo na čistih 95%+?</p></div>
+  <div class="dec open"><span class="n">?</span><p>Prag je ≥95% — otvoreno: pustiti na 94% sa fallback-om „nisam siguran, evo opcija", ili gurati na čistih 95%+?</p></div>
 
-  <footer>turn ~30 · 2026-05-31</footer>
+  <footer>turn ~35 · Now: eval → acceptance · živi kroz sve sesije ove inicijative</footer>
 
 </div>
 </body>
