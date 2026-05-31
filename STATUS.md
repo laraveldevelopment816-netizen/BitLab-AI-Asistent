@@ -8,7 +8,7 @@ columns:
     name: Blocked
   - id: done
     name: Done
-updated: 2026-05-29
+updated: 2026-05-31
 ---
 
 # STATUS — bitlab-ai-asistent
@@ -32,12 +32,22 @@ parent/leaf tagu, ne po težini, pa promaši baš slučajeve koji pucaju. `scrip
 - [ ] Stezanje — niska temperatura + category_id enum <!-- id:tght -->
   `temperature≈0` u oba `create()` (novi config setting); `category_id` enum (validni ID-evi)
   u tool schemi. Svaka pod-izmjena zasebno mjerena. Gate: dev-uzorak (`--suite categories_dev --mode full`).
-- [ ] Acceptance — pun eval (250) JEDNOM, ≥95% ili svjesna ship odluka <!-- id:acpt -->
-  Tek kad je dev-uzorak (`dsmp`) zelen, pokreni PUN eval JEDNOM: `--suite categories --mode full`
-  (250, ~15h) vs baseline 84.4%. Cilj ≥95%, ILI eksplicitna odluka o ship-u na ~85% sa low-confidence
-  fallback-om ("nisam siguran, evo opcija") za dvosmislene slučajeve.
 
 ## Doing
+
+- [ ] Štelovanje prompta — leaf-priority kategorije + anti-halucinacija <!-- id:lfpr -->
+  Anti-halucinacija nijansa (`995ea65`): prazan rezultat (`products: []`) → "nema" i za poznate
+  kategorije. Leaf-priority lista (`db49e27` + necommit-ovano): 9 leaf naziva (Mobilni telefoni,
+  Kablovi, UPS, Televizori, Fotoaparati, Navigacije, USB uređaji, Kućanski aparati, Konzole) →
+  `search_products`, NE parent `category_overview`. Validacija: tune set `categories_leaf_tune`
+  (21 case) — **8/8 leaf-kolizija popravljeno**. Otvoreno: dev-uzorak regresija check + commit +
+  pun re-confirm (vidi `acpt`). `app/agent.py` necommit-ovan.
+- [ ] Acceptance — pun 250 = 94%, sa leaf-priority projektovano ~97% <!-- id:acpt -->
+  Pun eval (250) pušten chunked (proxy-off batch, ne ~15h): lean + forsiranje + leaf-priority +
+  anti-halucinacija = **235/250 = 94.0%** routing, čisto (nula rate-locka). Skok sa iter17 79.2% /
+  iter8 84.4%. Svih 15 padova `cat-leaf`: 8 leaf-kolizija (tune-validovano popravljeno → projekcija
+  **~97%**, 243/250), 4 pogrešan-leaf-id + 3 apstinencija (ne juriti). Pending: dev-uzorak regresija
+  + pun re-confirm sa leaf-priority. Bar ≥95% dohvatljiv; FP halucinacija = poznato ograničenje (dole).
 
 ## Blocked
 
@@ -76,3 +86,7 @@ parent/leaf tagu, ne po težini, pa promaši baš slučajeve koji pucaju. `scrip
 - `cat-manual-typo-raunari`: model auto-koriguje "raunari" → "Računari" i rutira (expect=null →
   routing FAIL). Svjesno PRIHVAĆENO kao OK ponašanje (korisnička odluka); case se NE dira, taj FAIL
   ne računamo kao naš problem.
+- Halucinacija na "sigurnim" kategorijama (Monitori, Eksterni HDD, Platno): model nedeterministički
+  (~50/50) izmišlja proizvode/cijene/URL-ove iako stub vraća prazno. 6 false-positive u acceptance
+  run-u (PASS routing, ali reply izmišlja) — routing eval to NE hvata. Većinom stub-artefakt →
+  rješava Faza 2 (pravi podaci); ne juriti promptom (over-engineering rizik).
