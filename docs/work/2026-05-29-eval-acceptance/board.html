@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asistent: pretraga kataloga → acceptance — board</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --line:#262b36; --ink:#e6e9ef; --mut:#9aa4b2;
+    --ok:#36c08a; --warn:#e0a32e; --no:#e5564e; --accent:#5b9dff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px}
+  .wrap{max-width:1000px;margin:0 auto}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+  h1{font-size:20px;margin:0 0 4px}
+  .meta{color:var(--mut);font-size:12.5px}
+  .links{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;min-width:280px}
+  .links .lh{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);padding:2px 9px 5px}
+  .links a{display:block;padding:6px 9px;border-radius:7px;text-decoration:none;color:var(--ink);font-size:12.5px}
+  .links a:hover{background:#1f2430}
+  .links a.key{background:rgba(91,157,255,.12);border:1px solid rgba(91,157,255,.35)}
+  .links a.key:hover{background:rgba(91,157,255,.2)}
+  .next-card{background:linear-gradient(180deg,rgba(91,157,255,.10),rgba(91,157,255,.03));
+    border:1px solid var(--accent);border-radius:11px;padding:14px 16px;margin-bottom:20px}
+  .next-card h2{color:var(--accent)}
+  .quote{margin:0;font-size:14.5px;line-height:1.6}
+  h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:0 0 12px}
+  code{background:#0c0e12;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12.5px}
+  .dec{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);
+    border-left:4px solid var(--ok);border-radius:9px;padding:11px 13px;margin-bottom:9px}
+  .dec.info{border-left-color:var(--accent)}
+  .dec.open{border-left-color:var(--warn)}
+  .dec.warn{border-left-color:var(--no)}
+  .dec .n{font-weight:700;color:var(--ok);font-variant-numeric:tabular-nums;flex:none}
+  .dec.info .n{color:var(--accent)} .dec.open .n{color:var(--warn)} .dec.warn .n{color:var(--no)}
+  .dec p{margin:0;font-size:13.5px}
+  footer{color:var(--mut);font-size:12px;margin-top:20px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <h1>Asistent: pretraga kataloga → acceptance (≥95%)</h1>
+      <div class="meta">Now inicijativa <code>evfx</code> · od 2026-05-29 · bitlab-ai-asistent @ <code>feat/ralph-categories-eval</code></div>
+    </div>
+    <div class="links">
+      <div class="lh">Linkovi</div>
+      <a class="key" href="../../../EVAL_REGRESIJA_iter17.md">⭐ Zašto je palo — dijagnoza</a>
+      <a href="../../../STATUS.md">Gdje smo — STATUS</a>
+      <a href="../../../docs/plans/akcioni-plan.md">Plan (Now)</a>
+      <a href="../../../evals/runs/categories-acpt-full.jsonl">Rezultat punog testa (94%)</a>
+    </div>
+  </div>
+
+  <div class="next-card">
+    <h2>★ Sljedeći korak</h2>
+    <p class="quote">Pustiti brzi test na teškim slučajevima da potvrdimo da nova lista kategorija nije ništa pokvarila, pa pun test još jednom za ~97%.</p>
+  </div>
+
+  <h2>Odluke &amp; orijentacija</h2>
+
+  <div class="dec"><span class="n">1</span><p><strong>Ovo je odblokiralo projekat.</strong> Umjesto dugačkih uputstava dajemo asistentu kratko uputstvo i tjeramo ga da uvijek pozove pretragu (force tool calling) — da ne izmišlja katalog.</p></div>
+
+  <div class="dec"><span class="n">2</span><p>Podešavamo na malom skupu teških slučajeva; pun test od 250 puštamo samo jednom na kraju jer je spor i skup.</p></div>
+
+  <div class="dec info"><span class="n">3</span><p>Pao je na 79% jer bi asistent prestao gledati u katalog i počeo izmišljati proizvode — to je problem koji rješavamo.</p></div>
+
+  <div class="dec info"><span class="n">4</span><p>Pun test od 250 daje 94%; sa dodatom listom kategorija ide na oko 97%.</p></div>
+
+  <div class="dec warn"><span class="n">⚠</span><p>Za par „poznatih" kategorija (monitori) još izmišlja proizvode jer prava baza proizvoda nije uključena — to je kasnija faza.</p></div>
+
+  <div class="dec open"><span class="n">?</span><p>Prag je ≥95% — otvoreno: pustiti na 94% sa fallback-om „nisam siguran, evo opcija", ili gurati na čistih 95%+?</p></div>
+
+  <footer>turn ~35 · Now: eval → acceptance · živi kroz sve sesije ove inicijative</footer>
+
+</div>
+</body>
+</html>

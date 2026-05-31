@@ -1,0 +1,215 @@
+{
+  "name": "BitLab Email Auto-Reply",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false
+        },
+        "options": {
+          "simple": false
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-oauth-creds",
+          "name": "BitLab Gmail OAuth"
+        }
+      },
+      "notes": "Polja: $json.Subject, $json.From, $json.Text"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "upit" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "ponuda" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "cijen" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "dostava" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "garancija" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "kako" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "imate li" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "trebam" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "kupiti" },
+            { "value1": "={{ $json.Subject.toLowerCase() }}", "operation": "contains", "value2": "narudžba" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "upit" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "ponuda" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "cijen" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "dostava" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "garancija" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "kako" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "imate li" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "trebam" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "kupiti" },
+            { "value1": "={{ $json.snippet.toLowerCase() }}", "operation": "contains", "value2": "narudžba" }
+          ]
+        },
+        "combineOperation": "any"
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "IF: Relevantna tema",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "notes": "Propušta ako subject ili snippet sadrži bilo koji od ključnih pojmova."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/email",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "sender", "value": "={{ $json.From }}" },
+            { "name": "subject", "value": "={{ $json.Subject }}" },
+            { "name": "body", "value": "={{ $json.snippet }}" }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "HTTP: Pitaj AI Asistenta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 200],
+      "notes": "Šalje sender, subject, body (snippet) kao JSON. Vraća { reply, escalated, tools_used }."
+    },
+    {
+      "parameters": {
+        "jsCode": "const reply = $input.item.json.reply || '';\n\nconst html = reply\n  .split('\\n\\n')\n  .map(para => {\n    const escaped = para\n      .replace(/&/g, '&amp;')\n      .replace(/</g, '&lt;')\n      .replace(/>/g, '&gt;');\n    return '<p>' + escaped.replace(/\\n/g, '<br>') + '</p>';\n  })\n  .join('\\n');\n\nreturn [{ json: { ...$input.item.json, replyHtml: html } }];"
+      },
+      "id": "a1b2c3d4-0006-0006-0006-000000000006",
+      "name": "Format: Text u HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200],
+      "notes": "Konvertuje \\n\\n → <p>, \\n → <br>. Escapuje HTML znakove."
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Gmail Trigger').item.json.From }}",
+        "subject": "=Re: {{ $('Gmail Trigger').item.json.Subject }}",
+        "emailType": "html",
+        "message": "={{ $json.replyHtml }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Gmail: Pošalji AI Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1120, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-oauth-creds",
+          "name": "BitLab Gmail OAuth"
+        }
+      },
+      "notes": "emailType: html → šalje HTML email. message = replyHtml iz prethodnog Code noda."
+    },
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Preskoči (nerelevantno)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 400]
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "IF: Relevantna tema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Relevantna tema": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Pitaj AI Asistenta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preskoči (nerelevantno)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Pitaj AI Asistenta": {
+      "main": [
+        [
+          {
+            "node": "Format: Text u HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Text u HTML": {
+      "main": [
+        [
+          {
+            "node": "Gmail: Pošalji AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-04-30T00:00:00.000Z",
+  "versionId": "4",
+  "meta": {
+    "instanceId": "bitlab-ai-demo"
+  },
+  "_setup_instructions": {
+    "koraci": [
+      "1. Pokreni n8n lokalno: docker run -d --name n8n --restart always -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n",
+      "   ALI: Desktop n8n (n8n.io/download) → URL u HTTP Request nodu postavi na http://localhost:8000/api/email",
+      "2. Otvori http://localhost:5678 → New Workflow → Import from JSON → ovaj fajl",
+      "3. Credentials > New > Gmail OAuth2 → klikni 'Sign in with Google'",
+      "4. Pokrenuti FastAPI server: uvicorn app.main:app --reload",
+      "5. Activate workflow (toggle gornji desni ugao)",
+      "6. Test: pošalji email sa subject koji sadrži 'upit', 'ponuda', 'cijen' itd. — za ~60s stiže AI reply"
+    ],
+    "napomena_url": "Docker n8n koristi host.docker.internal za pristup hostu. Desktop n8n koristi localhost. Ne mijenjaj osim ako n8n radi u drugačijem network modu.",
+    "polja_gmail_triggera": {
+      "subject": "$json.Subject",
+      "posiljalac": "$json.From",
+      "snippet": "$json.snippet"
+    }
+  }
+}

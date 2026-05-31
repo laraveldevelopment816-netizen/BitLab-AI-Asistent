@@ -10,7 +10,11 @@ from .types import EvalVerdict
 
 
 def write_jsonl(run_dir: Path, suite: str, label: str, verdicts: list[EvalVerdict]) -> Path:
-    """Write JSONL run file. Vraća putanju."""
+    """Write JSONL run file (one-shot, timestamped). Backwards compat — testovi ga zovu.
+
+    Runner u praksi koristi `append_verdict` per-entry (stable path bez TS).
+    Ova funkcija ostaje za eksternu upotrebu (npr. snapshot na zahtjev).
+    """
     ts = time.strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
     out = run_dir / f"{suite}-{label}-{ts}.jsonl"
@@ -18,6 +22,47 @@ def write_jsonl(run_dir: Path, suite: str, label: str, verdicts: list[EvalVerdic
         for v in verdicts:
             f.write(json.dumps(v, ensure_ascii=False) + "\n")
     return out
+
+
+def _stable_jsonl_path(run_dir: Path, suite: str, label: str) -> Path:
+    """Stable path bez timestamp-a — append per-entry, resume nadovezuje (Fix #1)."""
+    return run_dir / f"{suite}-{label}.jsonl"
+
+
+def append_verdict(run_dir: Path, suite: str, label: str, verdict: EvalVerdict) -> Path:
+    """Append jedan verdict u stable <suite>-<label>.jsonl.
+
+    Kreira fajl ako ne postoji, append-uje u postojeći ako da. Resume sa istim
+    label-om nastavlja u isti fajl — Faza 1 acceptance metric čita jedan JSONL
+    sa svim verdicts (rate-limit, budget pause, ili clean — sve u istom fajlu).
+    """
+    out = _stable_jsonl_path(run_dir, suite, label)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(verdict, ensure_ascii=False) + "\n")
+    return out
+
+
+def read_existing_verdicts(run_dir: Path, suite: str, label: str) -> list[EvalVerdict]:
+    """Učitaj postojeće verdicte iz stable JSONL (za resume scenario).
+
+    Vraća [] ako fajl ne postoji. Skipuje malformed JSON redove (defensive —
+    fajl je append-only pa retko bude corrupted, ali svejedno).
+    """
+    path = _stable_jsonl_path(run_dir, suite, label)
+    if not path.exists():
+        return []
+    result: list[EvalVerdict] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                result.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return result
 
 
 def write_html(run_dir: Path, suite: str, label: str, verdicts: list[EvalVerdict]) -> Path:

@@ -1,0 +1,20 @@
+// Ručno održavano — NE auto-generisati. Spec: specs/categories.md §4.
+// Svi entry-ji imaju expect.tool=null — model NE SMIJE pozvati nijedan tool.
+// 4 subtype-a × 4 entry-ja: not_in_catalog, ambiguous_name, typo_likely, out_of_scope.
+// Acceptance: cat-manual suite kroz PWR → routing PASS ≥80% (≥13/16).
+{"expect":{"tool":null},"history":[],"id":"cat-manual-not-knjige","query":"Imate li knjige o programiranju?","tags":["manual","negative","not_in_catalog"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-not-cipele","query":"Tražim cipele za trčanje","tags":["manual","negative","not_in_catalog"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-not-hrana","query":"Prodajete li hranu za pse?","tags":["manual","negative","not_in_catalog"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-not-bicikl","query":"Imate li biciklističke kacige?","tags":["manual","negative","not_in_catalog"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-amb-kabl","query":"Trebam jedan kabl","tags":["manual","negative","ambiguous_name"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-amb-adapter","query":"Imate li adapter?","tags":["manual","negative","ambiguous_name"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-amb-torba","query":"Tražim torbu","tags":["manual","negative","ambiguous_name"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-amb-baterija","query":"Hoću bateriju","tags":["manual","negative","ambiguous_name"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-typo-mobitejli","query":"mobitejli","tags":["manual","negative","typo_likely"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-typo-raunari","query":"raunari","tags":["manual","negative","typo_likely"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-typo-prnteri","query":"prnteri","tags":["manual","negative","typo_likely"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-typo-tabletti","query":"tabletti","tags":["manual","negative","typo_likely"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-oos-vrijeme","query":"Kakvo je vrijeme danas?","tags":["manual","negative","out_of_scope"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-oos-radno","query":"Koje je vaše radno vrijeme?","tags":["manual","negative","out_of_scope"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-oos-reklamacija","query":"Mogu li napraviti reklamaciju?","tags":["manual","negative","out_of_scope"]}
+{"expect":{"tool":null},"history":[],"id":"cat-manual-oos-lokacija","query":"Gdje se nalazi vaša prodavnica?","tags":["manual","negative","out_of_scope"]}

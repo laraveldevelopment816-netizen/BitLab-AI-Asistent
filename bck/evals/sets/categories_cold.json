@@ -1,0 +1,3442 @@
+[
+  {
+    "id": "0001",
+    "query": "Računari",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "17"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0002",
+    "query": "Desktop Brand Name",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "93"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0003",
+    "query": "UPS, stabilizatori, ...",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "94"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0004",
+    "query": "Printeri i skeneri",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "97"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0005",
+    "query": "Notebook",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "98"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0006",
+    "query": "Tablet",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "99"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0007",
+    "query": "Produženje garancije",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "101"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0008",
+    "query": "Poslovne torbe / rančevi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "104"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0009",
+    "query": "PC komponente",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "107"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0010",
+    "query": "Matične ploče",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "108"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0011",
+    "query": "CPU cooler-i i paste",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "111"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0012",
+    "query": "Ventilatori",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "112"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0013",
+    "query": "RAM memorija",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "113"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0014",
+    "query": "HDD storage",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "114"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0015",
+    "query": "SSD storage",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "115"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0016",
+    "query": "Optika interna",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "116"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0017",
+    "query": "Graficke kartice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "117"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0018",
+    "query": "Kućišta",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "118"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0019",
+    "query": "Napojne jedinice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "120"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0020",
+    "query": "Zvucne kartice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "121"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0021",
+    "query": "Kablovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "123"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0022",
+    "query": "Laserski printeri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "124"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0023",
+    "query": "Inkjet printeri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "126"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0024",
+    "query": "Multifunkcijski printeri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "127"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0025",
+    "query": "Kopir aparati",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "128"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0026",
+    "query": "Foto printeri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "129"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0027",
+    "query": "Matricni printeri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "130"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0028",
+    "query": "Skeneri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "131"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0029",
+    "query": "UPS",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "132"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0030",
+    "query": "Stabilizatori, regulatori",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "133"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0031",
+    "query": "Uticnice i sigurnosne uticnice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "134"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0032",
+    "query": "Baterije za UPS",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "135"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0033",
+    "query": "Inverteri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "136"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0034",
+    "query": "USB kablovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "137"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0035",
+    "query": "Audio adapteri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "142"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0036",
+    "query": "Ostali kablovi i adapteri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "147"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0037",
+    "query": "Televizori i prateća oprema",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "148"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0038",
+    "query": "Projektori",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "149"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0039",
+    "query": "Fotoaparati i camcorderi",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "150"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0040",
+    "query": "Mobiteli",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "151"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0041",
+    "query": "Fiksna telefonija",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "154"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0042",
+    "query": "Audio video",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "155"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0043",
+    "query": "Klima uređaji",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "158"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0044",
+    "query": "Baterije i punjači",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "160"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0045",
+    "query": "Konzole za igranje",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "161"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0046",
+    "query": "Televizori",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "163"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0047",
+    "query": "Kucna kina, player-i",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "164"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0048",
+    "query": "Nosaci i stalci za TV",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "165"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0049",
+    "query": "Ostala oprema za TV",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "166"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0050",
+    "query": "Rezervni dijelovi elektronika",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "167"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0051",
+    "query": "Projektori - uređaji",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "168"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0052",
+    "query": "Platna za projektor",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "169"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0053",
+    "query": "Nosaci za projektore",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "170"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0054",
+    "query": "Torbe za projektore",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "171"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0055",
+    "query": "Fotoaparati",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "172"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0056",
+    "query": "Sportske kamere i dodaci",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "173"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0057",
+    "query": "Dodaci za fotoaparate",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "174"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0058",
+    "query": "Mobilni telefoni",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "175"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0059",
+    "query": "Dodaci za mobitele",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "176"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0060",
+    "query": "Pametni satovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "177"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0061",
+    "query": "Stoni telefoni",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "183"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0062",
+    "query": "Bezični telefoni",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "184"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0063",
+    "query": "Telefax uredaji",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "185"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0064",
+    "query": "Dodaci za telefone",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "186"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0065",
+    "query": "Diktafoni",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "187"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0066",
+    "query": "Digitalni okviri za sliku",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "188"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0067",
+    "query": "Audio player-i, transmiteri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "189"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0068",
+    "query": "Radio, CD za auto",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "190"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0069",
+    "query": "Navigacije",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "194"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0070",
+    "query": "Tracker-i",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "195"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0071",
+    "query": "Dodaci za navigacije",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "196"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0072",
+    "query": "Klime standardne",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "197"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0073",
+    "query": "Klima inverter",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "198"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0074",
+    "query": "Dodaci za klime",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "199"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0075",
+    "query": "LED sijalice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "200"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0076",
+    "query": "Baterije",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "201"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0077",
+    "query": "Punjive baterije",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "202"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0078",
+    "query": "Punjaci za baterije",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "203"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0079",
+    "query": "Sony",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "204"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0080",
+    "query": "Nintendo",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "205"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0081",
+    "query": "Arctic",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "206"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0082",
+    "query": "Igrice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "207"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0083",
+    "query": "Šah",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "208"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0084",
+    "query": "Dodaci za konzole",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "209"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0085",
+    "query": "Dronovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "210"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0086",
+    "query": "POS printeri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "212"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0087",
+    "query": "Kancelarijski materijal",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "214"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0088",
+    "query": "Stolovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "215"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0089",
+    "query": "Stolice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "216"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0090",
+    "query": "Ladicari",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "217"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0091",
+    "query": "Procesori",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "218"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0092",
+    "query": "PC periferija",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "219"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0093",
+    "query": "Tastature",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "220"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0094",
+    "query": "Slušalice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "221"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0095",
+    "query": "Miševi i grafički tableti",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "222"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0096",
+    "query": "Eksterni HDD",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "225"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0097",
+    "query": "Toneri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "226"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0098",
+    "query": "Mediji",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "227"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0099",
+    "query": "CD Mediji",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "228"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0100",
+    "query": "Tinta",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "229"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0101",
+    "query": "Oprema za igrice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "230"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0102",
+    "query": "Prenosne memorije",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "231"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0103",
+    "query": "Desktop PC",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "233"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0104",
+    "query": "Računari All-In-One",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "234"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0105",
+    "query": "Produžni kablovi i razvodnici",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "235"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0106",
+    "query": "Mikseri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "236"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0107",
+    "query": "Frižideri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "237"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0108",
+    "query": "Usisivači",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "238"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0109",
+    "query": "Zamrzivači",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "239"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0110",
+    "query": "Rerne",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "240"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0111",
+    "query": "Mikrovalne pećnice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "241"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0112",
+    "query": "Pegle",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "242"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0113",
+    "query": "Aparati za kafu",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "243"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0114",
+    "query": "Grijalice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "244"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0115",
+    "query": "Ventilatori",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "245"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0116",
+    "query": "Kuhala",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "246"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0117",
+    "query": "Tosteri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "247"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0118",
+    "query": "Električni grilovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "248"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0119",
+    "query": "Kuhinjski aparati",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "249"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0120",
+    "query": "Lične vage",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "250"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0121",
+    "query": "Fenovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "251"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0122",
+    "query": "Pekači za hljeb",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "252"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0123",
+    "query": "Dodaci",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "253"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0124",
+    "query": "DVD mediji",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "254"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0125",
+    "query": "Web kamere",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "256"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0126",
+    "query": "USB stickovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "257"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0127",
+    "query": "POS Monitori",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "258"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0128",
+    "query": "Barkod čitači",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "259"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0129",
+    "query": "POS dodaci",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "260"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0130",
+    "query": "Razvodnici napajanja",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "262"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0131",
+    "query": "Ormari",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "263"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0132",
+    "query": "Dodaci za ormare",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "264"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0133",
+    "query": "Prenaponska zaštita",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "265"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0134",
+    "query": "Patch kablovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "266"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0135",
+    "query": "Pasiva ostalo",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "267"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0136",
+    "query": "Mrežne karitice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "269"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0137",
+    "query": "Switch-evi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "270"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0138",
+    "query": "Bežični AP",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "271"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0139",
+    "query": "Software",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "272"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0140",
+    "query": "Softver Sigurnost",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "273"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0141",
+    "query": "Softver Aplikacije",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "274"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0142",
+    "query": "Monitori - dodaci",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "275"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0143",
+    "query": "Softver - Serveri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "276"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0144",
+    "query": "Platno",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "278"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0145",
+    "query": "Zvučnici",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "279"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0146",
+    "query": "Server dodaci",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "280"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0147",
+    "query": "Kucišta za HDD",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "281"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0148",
+    "query": "Hosting paketi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "282"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0149",
+    "query": "Domeni",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "283"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0150",
+    "query": "SSL",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "284"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0151",
+    "query": "Dodaci za kućišta",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "285"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0152",
+    "query": "Audio kablovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "287"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0153",
+    "query": "Dodaci za tablet",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "289"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0154",
+    "query": "Eksterna optika",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "291"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0155",
+    "query": "Kalkulatori",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "294"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0156",
+    "query": "Konektori i utičnice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "295"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0157",
+    "query": "Kućanski aparati i bijela tehnika",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "296"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0158",
+    "query": "Microsoft",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "297"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0159",
+    "query": "Mrežni alat",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "298"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0160",
+    "query": "Napojni kablovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "299"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0161",
+    "query": "Opticki kablovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "301"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0162",
+    "query": "Ostala mrežna oprema",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "302"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0163",
+    "query": "Ostala PC periferija",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "303"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0164",
+    "query": "Ostali kancelarijski materijal",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "304"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0165",
+    "query": "Papir",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "305"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0166",
+    "query": "Prezenteri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "306"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0167",
+    "query": "Podloge za miševe",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "307"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0168",
+    "query": "Router-i",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "309"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0169",
+    "query": "Sredstva za održavanje",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "310"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0170",
+    "query": "Telefonski kablovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "311"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0171",
+    "query": "USB adapter",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "312"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0172",
+    "query": "USB hub-ovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "313"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0173",
+    "query": "USB punjači",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "314"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0174",
+    "query": "Video adapter",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "315"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0175",
+    "query": "Video kablovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "316"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0176",
+    "query": "Wireles",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "317"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0177",
+    "query": "Ormari RACK",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "318"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0178",
+    "query": "Mikrofoni",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "319"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0179",
+    "query": "Dodatne kartice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "320"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0180",
+    "query": "REFURBISHED DESKTOP",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "322"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0181",
+    "query": "Server",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "323"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0182",
+    "query": "Dodaci za notebook",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "324"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0183",
+    "query": "Rezervni dijelovi informatika",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "325"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0184",
+    "query": "Eksterni HDD",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "327"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0185",
+    "query": "Dodaci za eksterni HDD",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "328"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0186",
+    "query": "Kućišta za HDD",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "329"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0187",
+    "query": "Eksterni FDD",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "331"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0188",
+    "query": "Eksterni FDD tuneri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "332"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0189",
+    "query": "Card reader-i",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "334"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0190",
+    "query": "Barcode skeneri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "335"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0191",
+    "query": "Ladice za novac",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "336"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0192",
+    "query": "BR mediji",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "338"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0193",
+    "query": "Futrole i omoti",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "339"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0194",
+    "query": "Potrošni materijal",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "341"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0195",
+    "query": "Riboni",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "342"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0196",
+    "query": "Filmovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "343"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0197",
+    "query": "Antivirus",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "344"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0198",
+    "query": "Aplikativni software",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "345"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0199",
+    "query": "USB stickovi i memorijske kartice",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "346"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0200",
+    "query": "USB uređaji",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "347"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0201",
+    "query": "USB ventilatori",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "348"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0202",
+    "query": "USB usisivač",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "349"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0203",
+    "query": "USB lampe",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "350"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0204",
+    "query": "USB uređaji",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "351"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0205",
+    "query": "Mrežna oprema",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "352"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0206",
+    "query": "3G oprema",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "353"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0207",
+    "query": "Mrežni kablovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "354"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0208",
+    "query": "Kanalice",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "355"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0209",
+    "query": "Kablovi i adapteri",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "356"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0210",
+    "query": "Rezervni dijelovi web",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "358"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0211",
+    "query": "Pročišćivači zraka i filteri, uređaji",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "359"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0212",
+    "query": "Kućanski aparati",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "360"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0213",
+    "query": "Aparati za njegu",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "361"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0214",
+    "query": "Bijela tehnika",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "362"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0215",
+    "query": "Ostali kućanski aparati i dodaci",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "363"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0216",
+    "query": "IP kamere",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "364"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0217",
+    "query": "Router-i za video nadzor",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "365"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0218",
+    "query": "Serveri, recorderi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "366"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0219",
+    "query": "Konzole",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "368"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0220",
+    "query": "Kase i printeri",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "369"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0221",
+    "query": "Fiksalne kase i printeri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "370"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0222",
+    "query": "Potro[ni materijal fiskalni",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "371"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0223",
+    "query": "Namještaj",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "372"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0224",
+    "query": "Registratori",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "377"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0225",
+    "query": "Ostale kategorije",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "378"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0226",
+    "query": "Hoverboard",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "379"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0227",
+    "query": "Skuteri",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "380"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0228",
+    "query": "Ruksaci za djecu",
+    "history": [],
+    "expect": {
+      "tool": "category_overview",
+      "category_id": "385"
+    },
+    "tags": [
+      "auto-gen",
+      "parent",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0229",
+    "query": "Anatomski rančevi za prvake",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "386"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0230",
+    "query": "Rančevi za školu - torbe za školu",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "387"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0231",
+    "query": "Rančevi 2 u 1",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "389"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0232",
+    "query": "Koferi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "391"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0233",
+    "query": "Ranac na točkiće",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "392"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0234",
+    "query": "Digitalni kodovi",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "393"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0235",
+    "query": "Maske za mobitele i dodaci",
+    "history": [],
+    "expect": {
+      "tool": "search_products",
+      "category_id": "394"
+    },
+    "tags": [
+      "auto-gen",
+      "leaf",
+      "expect-positive"
+    ]
+  },
+  {
+    "id": "0236",
+    "query": "automobili",
+    "history": [],
+    "expect": {
+      "failure_reason": "not_in_catalog",
+      "tool": null
+    },
+    "tags": [
+      "manual",
+      "negative",
+      "not_in_catalog",
+      "expect-negative"
+    ]
+  },
+  {
+    "id": "0237",
+    "query": "namještaj",
+    "history": [],
+    "expect": {
+      "failure_reason": "not_in_catalog",
+      "tool": null
+    },
+    "tags": [
+      "manual",
+      "negative",
+      "not_in_catalog",
+      "expect-negative"
+    ]
+  },
+  {
+    "id": "0238",
+    "query": "knjige",
+    "history": [],
+    "expect": {
+      "failure_reason": "not_in_catalog",
+      "tool": null
+    },
+    "tags": [
+      "manual",
+      "negative",
+      "not_in_catalog",
+      "expect-negative"
+    ]
+  },
+  {
+    "id": "0239",
+    "query": "kabl",
+    "history": [],
+    "expect": {
+      "failure_reason": "ambiguous_name",
+      "tool": null
+    },
+    "tags": [
+      "manual",
+      "negative",
+      "ambiguous_name",
+      "expect-negative"
+    ]
+  },
+  {
+    "id": "0240",
+    "query": "torba",
+    "history": [],
+    "expect": {
+      "failure_reason": "ambiguous_name",
+      "tool": null
+    },
+    "tags": [
+      "manual",
+      "negative",
+      "ambiguous_name",
+      "expect-negative"
+    ]
+  },
+  {
+    "id": "0241",
+    "query": "mobitejli",
+    "history": [],
+    "expect": {
+      "failure_reason": "typo_likely",
+      "tool": null
+    },
+    "tags": [
+      "manual",
+      "negative",
+      "typo_likely",
+      "expect-negative"
+    ]
+  },
+  {
+    "id": "0242",
+    "query": "raunari",
+    "history": [],
+    "expect": {
+      "failure_reason": "typo_likely",
+      "tool": null
+    },
+    "tags": [
+      "manual",
+      "negative",
+      "typo_likely",
+      "expect-negative"
+    ]
+  },
+  {
+    "id": "0243",
+    "query": "povraćaj robe",
+    "history": [],
+    "expect": {
+      "failure_reason": "out_of_scope",
+      "tool": null
+    },
+    "tags": [
+      "manual",
+      "negative",
+      "out_of_scope",
+      "expect-negative"
+    ]
+  },
+  {
+    "id": "0244",
+    "query": "garancija",
+    "history": [],
+    "expect": {
+      "failure_reason": "out_of_scope",
+      "tool": null
+    },
+    "tags": [
+      "manual",
+      "negative",
+      "out_of_scope",
+      "expect-negative"
+    ]
+  },
+  {
+    "id": "0245",
+    "query": "dostava",
+    "history": [],
+    "expect": {
+      "failure_reason": "out_of_scope",
+      "tool": null
+    },
+    "tags": [
+      "manual",
+      "negative",
+      "out_of_scope",
+      "expect-negative"
+    ]
+  }
+]

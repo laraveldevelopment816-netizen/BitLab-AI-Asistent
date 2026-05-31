@@ -10,7 +10,10 @@ def test_python_arithmetic_basic() -> None:
 
 
 def test_app_module_importable() -> None:
-    """Sanity check: app paket se može importovati bez side effects."""
+    """Sanity check: app paket importable bez side effects.
+
+    Verifikuje da agent ima OBA backend runnera + dispatch helper-i
+    (memorija llm_backend_pwr_imperative)."""
     import app
     import app.agent
     import app.config
@@ -18,5 +21,10 @@ def test_app_module_importable() -> None:
 
     assert app is not None
     assert hasattr(app.agent, "run_agent")
+    assert hasattr(app.agent, "_run_anthropic")
+    assert hasattr(app.agent, "_run_pwr")
+    assert hasattr(app.agent, "_use_pwr")
     assert hasattr(app.config, "settings")
+    assert hasattr(app.config.settings, "llm_backend")
+    assert hasattr(app.config.settings, "pwr_api_key")
     assert hasattr(app.main, "app")

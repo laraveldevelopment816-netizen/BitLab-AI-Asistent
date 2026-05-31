@@ -4,7 +4,7 @@ Ti si Claude Code agent koji radi u Ralph petlji. Svaka iteracija dobija čist k
 
 ## Repo u 4 rečenice
 
-Python 3.11+ FastAPI app + voice/RAG agent za webshop.bitlab.rs. Trenutno na grani `claude/tdd-zero-base`: minimum `app/` (`main.py`, `agent.py` sa praznim system prompt-om i bez tools, `config.py`). Stara funkcionalna app u `bck/` — NIKAD ne reuse-uj wholesale; cherry-pick samo na zahtjev failing eval-a. Filozofija: failing eval → minimum dodaj → PASS → sljedeći eval.
+Python 3.11+ FastAPI app + voice/RAG agent za webshop.bitlab.rs. Trenutno na grani `claude/tdd-zero-base` (integraciona) ili feature grani off od nje: minimum `app/` (`main.py`, `agent.py` sa PWR/Anthropic dispatch i bez tools, `config.py`). Stari kod dostupan u git history (`git show <sha>:path`) — NIKAD ne reuse-uj wholesale; cherry-pick samo na zahtjev failing eval-a. Filozofija: failing eval → minimum dodaj → PASS → sljedeći eval.
 
 ## Komande
 
@@ -15,8 +15,12 @@ Python 3.11+ FastAPI app + voice/RAG agent za webshop.bitlab.rs. Trenutno na gra
 | Samo unit | `pytest -m unit -q` |
 | Samo integration | `pytest -m integration -q` |
 | E2E (Playwright, sporo) | `pytest -m e2e -q` |
-| Real-LLM eval suite | `python -m evals.framework.runner --suite categories` |
+| Real-LLM eval (sample 30 + manual — DEFAULT za iter) | `python -m evals.framework.runner --suite categories --mode sample` |
+| Real-LLM eval full (svih 250) | `python -m evals.framework.runner --suite categories --mode full` |
 | Eval dry (no entries, smoke) | `python -m evals.framework.runner --suite categories --limit 0` |
+| Bypass verdict cache | `python -m evals.framework.runner --suite categories --no-cache` |
+| Cache statistika | `python -m evals.framework.runner --suite categories --cache-stats` |
+| Ralph status pregled | `bash ralph/status.sh` |
 | Lint + format | `ruff format . && ruff check .` |
 | Typecheck | `mypy app/ evals/framework/` |
 
@@ -31,13 +35,24 @@ Ako ovo nije green, NE commit-uj. Fix prvo. Ako fix nije moguć u istom task-u, 
 ## Git workflow
 
 - Integraciona grana: `claude/tdd-zero-base`. Nikad ne push-uj na `main` ili `staging`.
-- Feature grane: `feat/<scope>` (npr. `feat/ralph-categories-eval`). Branch off od `claude/tdd-zero-base`.
-- Conventional Commits, BS/SR/CG jezik za poruke: `feat(scope): kratki opis`.
-- PR: `gh pr create --base claude/tdd-zero-base --title "..." --body "..."`.
+- **Jedna feature grana za cijeli eksperiment**: ostani na trenutnoj grani (provjeri `git branch --show-current` — npr. `feat/ralph-categories-eval`). NE pravi nove grane za Faze 2 i 3 — sve task-ove svih faza commit-uješ na istu granu. Korisnik na kraju otvara JEDAN PR ka `claude/tdd-zero-base`.
+- Conventional Commits, BS/SR/CG jezik: `feat(scope): kratki opis`.
+- PR: `gh` CLI nije instaliran u WSL-u — korisnik otvara PR ručno preko GitHub URL-a kad eksperiment kompletira. Ne pokušavaj `gh pr create`.
 
-## Anthropic API budget
+## LLM backend dispatch (IMPERATIV — memorija `llm_backend_pwr_imperative`)
 
-Pytest testovi MORAJU biti mock-ovani — `tests/conftest.py` ima `mock_anthropic` fixture. Real LLM samo u `evals/framework/runner.py` (eksplicitno pokretanje, ne u CI default-u). Nikad ne zovi `anthropic.Anthropic()` direktno iz test fajla.
+Svi LLM pozivi MORAJU kroz `app/agent.py:run_agent` dispatch, koji bira backend po `settings.llm_backend`:
+
+- **`LLM_BACKEND=pwr` + `PWR_API_KEY` set** (default po `.env`): `_run_pwr` koristi `openai` SDK ka lokalnom PlaywrightRouter (`http://127.0.0.1:8765/v1`). Troši kredite Claude pretplate, NE plaćeni Anthropic API.
+- **`LLM_BACKEND=anthropic` ili PWR ne setovan**: `_run_anthropic` direktan Anthropic API. Fallback, ne preporučeno za produkciju.
+
+**NIKAD `anthropic.Anthropic().messages.create(...)` direktno iz drugog koda.** Sve ide kroz `run_agent` ili `_get_anthropic_client()` / `_get_pwr_client()` helper-e.
+
+**Kad dodaješ tools (Faza 1+)**: mora u OBA runnera. Anthropic shape u `_run_anthropic`, OpenAI shape (derivacija) u `_run_pwr`. Pogledaj stari kod referencu: `git show 3d4bc87:app/agent.py` (`ALL_TOOLS` + `ALL_TOOLS_OPENAI_SHAPE`).
+
+## Anthropic API budget (memorija `anthropic_budget`)
+
+Pytest invariant: `tests/conftest.py` `mock_llm` fixture mock-uje OBA klijenta (anthropic + pwr). Nikad ne zovi ni pwr ni anthropic stvarno iz pytest-a — koristi `mock_llm` + `force_backend_pwr` ili `force_backend_anthropic` fixture-e. Real LLM samo u `evals/framework/runner.py` (manuelno pokretanje ili nightly cron, ne u default CI).
 
 ## Pravila u petlji
 
@@ -46,6 +61,7 @@ Pytest testovi MORAJU biti mock-ovani — `tests/conftest.py` ima `mock_anthropi
 3. **Eval set je invariant** — promijeni prompt/tool/dispatch, NE entry. Ako entry treba promjenu, prvo zapiši kao zaseban task.
 4. **Minimum dodaj** — failing eval = jedini razlog za novi kod. Ako eval green, ne dodaj.
 5. **Update plan kao side-effect commit-a** — Done task ide u Done sekciju sa commit SHA.
+6. **Eval optimizacija** — za fail-pattern analizu UVIJEK koristi `--mode sample` (manual 16 + stratificirano 30 = 46 poziva, ~18% troška full). Full 250 SAMO za acceptance verifikaciju kad sample ≥95%. Verdict cache je default-on — drugi pokušaj istog entry-ja sa istim promptom/tools-ima ne troši PWR sesiju. Mijenjaš `SYSTEM_PROMPT_V1` ili tool definiciju → cache se automatski invalidira (hash promijeni).
 
 ## Završetak petlje
 
