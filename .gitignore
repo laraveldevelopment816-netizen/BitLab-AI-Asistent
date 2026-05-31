@@ -76,3 +76,5 @@ evals/runs/*.checkpoint.json
 
 # Pre-reset archive (TDD zero base). Sadržaj dostupan iz git log-a.
 # bck/
+# Claude Code runtime lock — per-session (sessionId/pid), ne ide u repo
+.claude/scheduled_tasks.lock
