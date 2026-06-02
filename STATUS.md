@@ -29,20 +29,20 @@ parent/leaf tagu, ne po težini, pa promaši baš slučajeve koji pucaju. `scrip
 
 ## Todo
 
-- [ ] Stezanje — niska temperatura + category_id enum <!-- id:tght -->
+- [ ] Stezanje — niska temperatura + category_id enum <!-- id:tght effort:2 -->
   `temperature≈0` u oba `create()` (novi config setting); `category_id` enum (validni ID-evi)
   u tool schemi. Svaka pod-izmjena zasebno mjerena. Gate: dev-uzorak (`--suite categories_dev --mode full`).
 
 ## Doing
 
-- [ ] Štelovanje prompta — leaf-priority kategorije + anti-halucinacija <!-- id:lfpr -->
+- [ ] Štelovanje prompta — leaf-priority kategorije + anti-halucinacija <!-- id:lfpr effort:3 -->
   Anti-halucinacija nijansa (`995ea65`): prazan rezultat (`products: []`) → "nema" i za poznate
   kategorije. Leaf-priority lista (`db49e27` + `d16b8ab`): 9 leaf naziva (Mobilni telefoni,
   Kablovi, UPS, Televizori, Fotoaparati, Navigacije, USB uređaji, Kućanski aparati, Konzole) →
   `search_products`, NE parent `category_overview`. Validacija: tune set `categories_leaf_tune`
   (21 case) — **8/8 leaf-kolizija popravljeno**. Otvoreno: dev-uzorak regresija check +
   pun re-confirm (vidi `acpt`).
-- [ ] Acceptance — pun 250 = 94%, sa leaf-priority projektovano ~97% <!-- id:acpt -->
+- [ ] Acceptance — pun 250 = 94%, sa leaf-priority projektovano ~97% <!-- id:acpt effort:2 -->
   Pun eval (250) pušten chunked (proxy-off batch, ne ~15h): lean + forsiranje + leaf-priority +
   anti-halucinacija = **235/250 = 94.0%** routing, čisto (nula rate-locka). Skok sa iter17 79.2% /
   iter8 84.4%. Svih 15 padova `cat-leaf`: 8 leaf-kolizija (tune-validovano popravljeno → projekcija
@@ -53,27 +53,27 @@ parent/leaf tagu, ne po težini, pa promaši baš slučajeve koji pucaju. `scrip
 
 ## Done
 
-- [x] Dev eval suite — hard uzorak (dsmp) <!-- id:dsmp -->
+- [x] Dev eval suite — hard uzorak (dsmp) <!-- id:dsmp effort:2 -->
   `scripts/gen_dev_sample.py` (regenerabilan) → `evals/sets/categories_dev.jsonl`: 29 iter17
   PASS→FAIL + 8 negativaca = 37. Canonical netaknut. Brzi/jeftin gate (~5min) umjesto punog eval-a.
-- [x] Lean prompt u SYSTEM_PROMPT_V1 — rvpr (spojen sa frtl) <!-- id:rvpr -->
+- [x] Lean prompt u SYSTEM_PROMPT_V1 — rvpr (spojen sa frtl) <!-- id:rvpr effort:3 -->
   Lean leaf/parent logika u `SYSTEM_PROMPT_V1`; kraj divergencije (agent/eval/keš jedan prompt).
   Spike `LEAN_KERNEL_PROMPT` uklonjen. Odrađeno u istom potezu sa `frtl` (jedna izmjera, ne duplo).
-- [x] Forsiran tool calling — respond_to_user + tool_choice <!-- id:frtl -->
+- [x] Forsiran tool calling — respond_to_user + tool_choice <!-- id:frtl effort:3 -->
   `RESPOND_TO_USER_TOOL` u `app/tools.py`; `tool_choice` any (Anthropic) / required (PWR) + loop
   intercept (`respond_to_user` → reply, van `captured_tool_calls`). Rezultat na dev-uzorku:
   **91.9% (34/37)** — 27/29 regresija vaskrslo (bilo 0), 7/8 negativaca. Ostalo: 1 timeout (infra),
   1 leaf-miss (`cat-leaf-175`, fali leaf-priority).
-- [x] Smoke eyeball — scripts/smoke.py <!-- id:setp -->
+- [x] Smoke eyeball — scripts/smoke.py <!-- id:setp effort:2 -->
   Pokrenut na 4 upita: 3/3 kataloška → pravi tool + smisleni args; prazan rezultat prijavljen
   pošteno (bez halucinacije); out-of-scope ("vrijeme") → bez toola. Nalaz: PWR `tool_choice=required`
   je mekan (model apstinirao na OOS u 1 iteraciji) — tvrda garancija ide kroz `frtl`. (`search_products`
   je stub `{"products":[]}` do Faze 2 — ne utiče na routing eval.)
-- [x] Eval regresija iter17 — dijagnoza <!-- id:i17r -->
+- [x] Eval regresija iter17 — dijagnoza <!-- id:i17r effort:4 -->
   Pun A/B (iter8 84.4% vs iter17 79.2%, 212 zajedničkih): 29/29 regresija = apstinencija
   toola (model halucinira katalog), nula mis-routinga. Uzrok: proza ("OBAVEZNO") umjesto
   mehaničke garancije. Doc: `EVAL_REGRESIJA_iter17.md`, `docs/PROMPT-BEST-PRACTICES.md`.
-- [x] Faza 0 — Ralph petlja + TDD eval framework infra <!-- id:fz00 -->
+- [x] Faza 0 — Ralph petlja + TDD eval framework infra <!-- id:fz00 effort:5 -->
   2026-05-24. Test piramide sa mock_anthropic, CI/e2e/eval-nightly workflows, pre-commit,
   `ralph/` state files, `evals/framework/` runner sa parser-based judge.
 
