@@ -45,12 +45,14 @@
 
   <div class="top">
     <div>
-      <h1>Asistent: pretraga kataloga → acceptance (≥95%)</h1>
+      <h1>bitlab-ai-asistent</h1>
+    <div class="sub"><b>Asistent: pretraga kataloga → acceptance (≥95%)</b></div>
       <div class="meta">Now inicijativa <code>evfx</code> · od 2026-05-29 · bitlab-ai-asistent @ <code>feat/ralph-categories-eval</code></div>
     </div>
     <div class="links">
       <div class="lh">Linkovi</div>
       <a class="key" href="../../../EVAL_REGRESIJA_iter17.md">⭐ Zašto je palo — dijagnoza</a>
+      <a class="key" href="nalaz-fail-set-enum-temp.md">⭐ Nalaz — zašto preostalih 7 pada</a>
       <a href="../../../STATUS.md">Gdje smo — STATUS</a>
       <a href="../../../docs/plans/akcioni-plan.md">Plan (Now)</a>
       <a href="../../../evals/runs/categories-acpt-full.jsonl">Rezultat punog testa (94%)</a>
@@ -59,24 +61,26 @@
 
   <div class="next-card">
     <h2>★ Sljedeći korak</h2>
-    <p class="quote">Pustiti brzi test na teškim slučajevima da potvrdimo da nova lista kategorija nije ništa pokvarila, pa pun test još jednom za ~97%.</p>
+    <p class="quote">Rezultat ušao — izbor alata je riješen (8/8 leaf-kolizija prešlo); preostali padovi su known-limit/Faza-2 klasa. Sljedeće: ili pun re-confirm 250, ili prvo jeftino izolovati enum vs leaf-priority (je li enum uopšte zaslužan).</p>
   </div>
 
   <h2>Odluke &amp; orijentacija</h2>
 
   <div class="dec"><span class="n">1</span><p><strong>Ovo je odblokiralo projekat.</strong> Umjesto dugačkih uputstava dajemo asistentu kratko uputstvo i tjeramo ga da uvijek pozove pretragu (force tool calling) — da ne izmišlja katalog.</p></div>
 
-  <div class="dec"><span class="n">2</span><p>Podešavamo na malom skupu teških slučajeva; pun test od 250 puštamo samo jednom na kraju jer je spor i skup.</p></div>
+  <div class="dec"><span class="n">2</span><p>Podešavamo na malom skupu teških slučajeva — sad konkretno na 15 padova iz zadnjeg punog testa; pun test od 250 puštamo samo jednom na kraju jer je spor i skup.</p></div>
 
   <div class="dec info"><span class="n">3</span><p>Pao je na 79% jer bi asistent prestao gledati u katalog i počeo izmišljati proizvode — to je problem koji rješavamo.</p></div>
 
   <div class="dec info"><span class="n">4</span><p>Pun test od 250 daje 94%; sa dodatom listom kategorija ide na oko 97%.</p></div>
 
+  <div class="dec info"><span class="n">5</span><p>Fail-set 14/23: svih 8 leaf-kolizija prešlo — izbor alata je riješen. Ostatak nije leaf/parent nego pogrešan-ali-validan leaf i dvosmisleni jednorječni upiti (Faza-2/known-limit); enum ne bira ispravan među validnima, temp ravan kako je predviđeno.</p></div>
+
   <div class="dec warn"><span class="n">⚠</span><p>Za par „poznatih" kategorija (monitori) još izmišlja proizvode jer prava baza proizvoda nije uključena — to je kasnija faza.</p></div>
 
   <div class="dec open"><span class="n">?</span><p>Prag je ≥95% — otvoreno: pustiti na 94% sa fallback-om „nisam siguran, evo opcija", ili gurati na čistih 95%+?</p></div>
 
-  <footer>turn ~35 · Now: eval → acceptance · živi kroz sve sesije ove inicijative</footer>
+  <footer>turn ~39 · Now: eval → acceptance · živi kroz sve sesije ove inicijative</footer>
 
 </div>
 </body>
