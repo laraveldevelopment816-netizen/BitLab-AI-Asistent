@@ -19,6 +19,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from .config import settings
+
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _CATEGORIES_PATH = _DATA_DIR / "categories_new.json"
 
@@ -66,6 +68,28 @@ def _leaf_block() -> str:
     )
 
 
+# Enum validnih ID-eva za tool schemu (kartica tght). Gradi se iz istog
+# `_CATEGORIES`/`_PARENT_IDS` kao i description blokovi iznad — pa enum i
+# ljudski-čitljiv mapping nikad ne diverguju. (Uvid iz bck/app/tools.py: tamo je
+# enum bio string + filtriran po zalihama `min_products>=1`; ovdje je integer i
+# cijela taksonomija jer Faza 1 nema podataka o proizvodima — stock filter Faza 2.)
+_PARENT_ID_ENUM: list[int] = sorted(
+    int(c["id"]) for c in _CATEGORIES if int(c["id"]) in _PARENT_IDS
+)
+_LEAF_ID_ENUM: list[int] = sorted(
+    int(c["id"]) for c in _CATEGORIES if int(c["id"]) not in _PARENT_IDS
+)
+
+
+def _category_id_schema(enum_ids: list[int], description: str) -> dict[str, Any]:
+    """`category_id` property. Uz settings.category_id_enum=True dodaje `enum`
+    (tvrdo ograničenje na validne ID-eve); inače goli integer (A/B baseline)."""
+    schema: dict[str, Any] = {"type": "integer", "description": description}
+    if settings.category_id_enum:
+        schema["enum"] = enum_ids
+    return schema
+
+
 CATEGORY_OVERVIEW_TOOL: dict[str, Any] = {
     "name": "category_overview",
     "description": (
@@ -79,10 +103,9 @@ CATEGORY_OVERVIEW_TOOL: dict[str, Any] = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "category_id": {
-                "type": "integer",
-                "description": "ID parent kategorije iz mapping liste iznad.",
-            },
+            "category_id": _category_id_schema(
+                _PARENT_ID_ENUM, "ID parent kategorije iz mapping liste iznad."
+            ),
         },
         "required": ["category_id"],
     },
@@ -106,10 +129,9 @@ SEARCH_PRODUCTS_TOOL: dict[str, Any] = {
                 "type": "string",
                 "description": "Slobodni tekst pretrage (npr. ime proizvoda ili kategorije).",
             },
-            "category_id": {
-                "type": "integer",
-                "description": "Suzi pretragu na leaf kategoriju iz mapping liste iznad.",
-            },
+            "category_id": _category_id_schema(
+                _LEAF_ID_ENUM, "Suzi pretragu na leaf kategoriju iz mapping liste iznad."
+            ),
             "brand": {
                 "type": "string",
                 "description": "Filter brenda (npr. 'Samsung', 'HP').",

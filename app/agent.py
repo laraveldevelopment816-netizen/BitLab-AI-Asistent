@@ -128,6 +128,7 @@ def _run_anthropic(messages: list[dict[str, Any]]) -> dict[str, Any]:
         response = client.messages.create(
             model=settings.chat_model,
             max_tokens=settings.max_output_tokens,
+            temperature=settings.temperature,
             system=SYSTEM_PROMPT_V1,
             tools=cast(Any, ALL_TOOLS_ANTHROPIC),
             tool_choice=cast(Any, {"type": "any"}),
@@ -196,6 +197,7 @@ def _run_pwr(messages: list[dict[str, Any]]) -> dict[str, Any]:
             model=settings.pwr_chat_model,
             messages=cast(Any, pwr_messages),
             max_tokens=settings.max_output_tokens,
+            temperature=settings.temperature,
             tools=cast(Any, ALL_TOOLS_OPENAI),
             tool_choice=cast(Any, "required"),
             extra_body={"reasoning_effort": settings.pwr_chat_model_effort},

@@ -26,6 +26,15 @@ class Settings(BaseSettings):
     chat_model: str = "claude-sonnet-4-6"
     max_output_tokens: int = 1024
 
+    # Stezanje rutiranja (kartica tght) — svaka poluga se mjeri zasebno preko
+    # env override-a, pa pun re-run od 250 tek na kraju.
+    #   temperature ≈0 = deterministično rutiranje; ide na OBA backenda.
+    #   baseline (stari API default): TEMPERATURE=1.0
+    temperature: float = 0.0
+    #   category_id_enum=True → tool schema dobija `enum` validnih ID-eva
+    #   (tvrdo ograničenje protiv izmišljenog ID-a). baseline: CATEGORY_ID_ENUM=false
+    category_id_enum: bool = True
+
     # LLM backend selector — vidi memoriju llm_backend_pwr_imperative.
     # "pwr": lokalni PlaywrightRouter (OpenAI-kompatibilan), troši pretplatu.
     # "anthropic": direktan Anthropic API (fallback, plaćeno).
