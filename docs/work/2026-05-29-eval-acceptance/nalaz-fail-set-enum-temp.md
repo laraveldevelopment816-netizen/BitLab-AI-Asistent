@@ -1,7 +1,7 @@
 # Nalaz — fail-set run (enum + temperature)
 
 **Datum:** 2026-06-05 · **Run:** `categories_acpt_fails` label `enum-temp`, PWR backend, `--no-cache`
-**Izvor:** `evals/runs/categories_acpt_fails-enum-temp.jsonl` (23 slučaja = 15 padova zadnjeg punog runa + 8 negativaca)
+**Izvor:** `evals/runs/archives/categories_acpt_fails-enum-temp.jsonl` (23 slučaja = 15 padova zadnjeg punog runa + 8 negativaca)
 
 ## Rezultat: 14/23 PASS
 
