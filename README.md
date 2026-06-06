@@ -56,3 +56,17 @@ rm ralph/STOP && bash ralph/ralph.sh                                      # rest
 ```
 
 Detalji: [`docs/eval-infra-changelog.md`](./docs/eval-infra-changelog.md), [`ralph/AGENTS.md`](./ralph/AGENTS.md).
+
+## Pun acceptance eval (categories, 250)
+
+`scripts/run_acceptance.sh` prolazi kroz cijeli set u serijama od ~80 case-ova (≈80% jedne PWR sesije), sačeka 5h da se sesija resetuje i nastavi odakle je stao — dok ne odradi svih 250. Sve ide u jedan fajl `evals/runs/categories-acpt.jsonl`. Pošto traje preko više 5h prozora, pusti ga pod nohup:
+
+```bash
+nohup bash scripts/run_acceptance.sh > evals/runs/acpt-run.log 2>&1 & disown   # pusti i zaboravi
+tail -f evals/runs/categories-acpt.jsonl                                       # napredak: jedan red = jedan case
+tail -f evals/runs/acpt-run.log                                                # log petlje: prolazi i pauze
+```
+
+Server mora biti gore prije pokretanja: `.venv/bin/uvicorn app.main:app --port 7778`.
+
+**Zašto 250 a ne 255:** `data/categories_new.json` ima 255 kategorija, ali generator (`scripts/gen_categories_eval.py`) preskače 5 parenata sa tačno 1 djetetom — spec (`specs/categories.md §2`) taj slučaj ne pokriva: *Satovi, Memorijske kartice, Aktiva, Pročišćivači zraka i filteri, Putni program*. Ostaje 220 leaf (→ `search_products`) + 30 parent s ≥2 djece (→ `category_overview`) = 250.
