@@ -16,7 +16,7 @@ Ažurirano: 2026-05-29
 
 > Strateški plan (Now/Next/Later inicijative). Taktičke taske su u [`../../STATUS.md`](../../STATUS.md).
 > Format: [`bitlab-standards/docs/standards/akcioni-plan-schema.md`]. Temeljna strategija
-> (TDD zero-base reset) u [`../../PLAN.md`](../../PLAN.md).
+> (TDD zero-base reset) u [`baseline-i-restore.md`](baseline-i-restore.md).
 
 ---
 

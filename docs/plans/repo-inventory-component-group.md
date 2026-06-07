@@ -1,8 +1,9 @@
-# Inventar repozitorijuma — bitlab-ai-asistent
+# Repo inventory — po komponentama (component-group)
 
 Inventar fajlova klasifikovan po statusu, grupisan po logičkim komponentama.
+Folder-pogled: [`repo-inventory-folder-group.md`](repo-inventory-folder-group.md).
 
-- **Generisano:** 2026-06-07 · grana `feat/ralph-categories-eval`
+- **Generisano:** 2026-06-07, osvježeno 2026-06-08 (doc reorg — sekcija 9) · grana `feat/ralph-categories-eval`
 - **Obuhvat:** svih 360 git-praćenih fajlova. 254 fajla u `bck/` su sažeti u jedan red (izuzetak za arhivu); ostalih 106 fajlova je klasifikovano pojedinačno.
 - **Metod:** 13 Sonnet scan agenata pročitalo je i klasifikovalo fajlove po komponentama (svaki je grep-ovao repo da potvrdi reference prije bilo kakve DEAD oznake), pa su rezultati provjereni i sintetizovani. Gdje je provjera oborila sirovu ocjenu agenta, koristi se korigovani status, a razlog je naveden na dnu.
 - **Kontekst:** ovaj repo je usred *TDD zero-base reseta* — sav stari full-stack kod je namjerno premješten u `bck/`, a minimalno jezgro se ponovo gradi, vođeno padajućim eval unosima. Trenutna Now inicijativa je popravka regresije categories-routing eval-a (iter17 pao sa 84.4% → 79.2%) nazad do ≥95% acceptance forsiranjem tool poziva.
@@ -166,27 +167,28 @@ Ugovori faza: `categories.md` je ACTIVE specifikacija Faze 1 koja vodi tool shem
 
 ## 9. Dokumentacija, planiranje i status — root `*.md`, `docs/`
 
-Dvonivovski model planiranja plus prateća analiza: `STATUS.md`/`STATUS-HUMAN.md` su taktički Kanban (mašinski + ljudski), `docs/plans/akcioni-plan.md` strateški Now/Next/Later, `PLAN.md` temeljna pravila TDD-reseta, a `RESTORE.md` recept za ponovnu izgradnju cijele aplikacije iz `bck/`. Uz to su post-mortemi i infra logovi (`EVAL_REGRESIJA_iter17.md`, `EVAL_OPTIMIZACIJA.md`, `docs/eval-infra-*`, `docs/PROMPT-BEST-PRACTICES.md`, `docs/work/...` session tabla) koji direktno informišu trenutnu popravku. Skoro svi ACTIVE; dva `repo-map*.md` kataloga su trenutni održavani snapshotovi (regenerisani danas), a `docs/fb-funnel-progress.md` je ARCHIVED pokazivač na nepovezan eksperiment u sibling repou.
+Dvonivovski model + arhiva (root očišćen 2026-06-08). U rootu su samo `CLAUDE.md`, `README.md`, `STATUS.md`. Strateški/operativni dokumenti su u `docs/plans/`, završeni/outdated u `docs/archives/`, a živa brainstorm sesija u `docs/brainstorm/`. `docs/work/...` session tabla + `docs/eval-infra-*` + `docs/PROMPT-BEST-PRACTICES.md` informišu trenutnu popravku.
 
 | Fajl | Status | Šta radi |
 |---|---|---|
-| `STATUS.md` | ACTIVE | Formalni Kanban koji prati aktivne Doing/Todo zadatke za popravku categories routing eval-a, plus poznata ograničenja i pravila eval discipline. |
-| `STATUS-HUMAN.md` | ACTIVE | Pratilac `STATUS.md` na prirodnom jeziku koji objašnjava regresiju i svaku karticu radi brze ljudske orijentacije. |
-| `PLAN.md` | ACTIVE | Plan TDD zero-base reseta (temeljna pravila) na koji `STATUS.md` linkuje. |
-| `README.md` | ACTIVE | Brzi vodič za programere: Ralph komande, pozivi eval runnera, grupisani acceptance runner od 250 slučajeva. |
-| `RESTORE.md` | ACTIVE | Recept za oporavak cijele pre-reset aplikacije iz `bck/`; živa sigurnosna mreža tokom ponovne izgradnje. |
-| `EVAL_REGRESIJA_iter17.md` | ACTIVE | Post-mortem iter17 regresije (84.4% → 79.2%) koji definiše baseline, korijenski uzrok i mapu oporavka koja vodi Now inicijativu. |
-| `EVAL_OPTIMIZACIJA.md` | ACTIVE | Dizajn dokument sa pet strategija smanjenja PWR troška plus code review rate-limit-checkpoint-a sada implementiran u eval infri. |
-| `CLAUDE.md` | ACTIVE | Projektna Claude Code konfiguracija: deployment URL-ovi + import dijeljenih bitlab-standards pravila, učitava se svake sesije. |
-| `repo-map.md` | ACTIVE | Održavan katalog cijelog repoa sa opisima po fajlu (regenerisan 2026-06-07); trenutni snapshot dokumentacije, komplementaran ovom fajlu. |
-| `repo-map-simplified.md` | ACTIVE | Održavan pojednostavljen katalog sa statusnim oznakama; trenutni ljudski-čitljiv snapshot dokumentacije. |
-| `docs/plans/akcioni-plan.md` | ACTIVE | Strateški Now/Next/Later plan koji definiše Now inicijativu (categories eval do ≥95%) i okvirno postavlja Fazu 2/3. |
-| `docs/PROMPT-BEST-PRACTICES.md` | ACTIVE | Istraživanje/preporuke o `tool_choice` + arhitekturi prompta koje informišu trenutnu popravku; referencirano u `STATUS.md`. |
-| `docs/eval-infra-changelog.md` | ACTIVE | Hronološki after-action log eval-infra sesija (keš, sampler, resume, budget, PAUSE); referencirano u `README.md`. |
-| `docs/eval-infra-review.md` | ACTIVE | Punch-list pregled eval infre iz Sesije 2 koji prati koje su popravke ušle i koje polish stavke ostaju. |
-| `docs/work/2026-05-29-eval-acceptance/board.html` | ACTIVE | Živa session tabla za Now inicijativu koja prikazuje odluke, orijentaciju i sljedeće korake. |
-| `docs/work/2026-05-29-eval-acceptance/nalaz-fail-set-enum-temp.md` | ACTIVE | Analiza enum+temperatura fail-set runa od 2026-06-05 koja identifikuje 7 preostalih padova i sljedeći korak. |
-| `docs/fb-funnel-progress.md` | ARCHIVED | Navigacioni dnevnik zasebnog B2B akvizicijskog eksperimenta u sibling repoima (`ralph-fb-funnel`/`-prospector`); uspavan i van scope-a za categories-eval rad ovog repoa. |
+| `STATUS.md` | ACTIVE | Formalni Kanban — aktivni Doing/Todo/Done za categories eval + poznata ograničenja. |
+| `README.md` | ACTIVE | Brzi vodič: Ralph komande, eval runner, grupisani acceptance runner od 250. |
+| `CLAUDE.md` | ACTIVE | Projektna Claude Code konfiguracija (deployment URL-ovi + bitlab-standards import). |
+| `docs/plans/akcioni-plan.md` | ACTIVE | Strateški Now/Next/Later plan. |
+| `docs/plans/backlog.md` | ACTIVE | Memorija/inbox; prioriteti prate board (P1 akcioni plan … P5 Ralph, P6 bck tool-ovi). |
+| `docs/plans/baseline-i-restore.md` | ACTIVE | Spoj bivših `PLAN.md` + `RESTORE.md`: zero-base reset + recept za izvlačenje iz `bck/` → produkcija. |
+| `docs/plans/lessons-learned.md` | ACTIVE | Destilovane lekcije (L1 Ralph regresija, L2 verdict cache). |
+| `docs/plans/notes.md` | ACTIVE | Sirovi inbox zapažanja. |
+| `docs/plans/repo-inventory-component-group.md` | ACTIVE | Ovaj fajl — inventar po komponentama. |
+| `docs/plans/repo-inventory-folder-group.md` | ACTIVE | Inventar po folderima (sa statusnim oznakama). |
+| `docs/PROMPT-BEST-PRACTICES.md` | ACTIVE | Istraživanje `tool_choice` + arhitekture prompta; referencirano u `STATUS.md`. |
+| `docs/eval-infra-changelog.md` | ACTIVE | After-action log eval-infra sesija. |
+| `docs/eval-infra-review.md` | ACTIVE | Punch-list pregled eval infre. |
+| `docs/fb-funnel-progress.md` | ARCHIVED | Pokazivač na sibling-repo eksperiment, van scope-a. |
+| `docs/work/2026-05-29-eval-acceptance/board.html` | ACTIVE | Session board Now inicijative. |
+| `docs/work/2026-05-29-eval-acceptance/nalaz-fail-set-enum-temp.md` | ACTIVE | Analiza preostalih 7 padova (enum+temp, 2026-06-05). |
+| `docs/brainstorm/2026-06-07-plan-effort-burndown/` | ACTIVE | Živa brainstorm sesija (`log.md` + `board.html`): plan/effort/burndown + doc reorg. |
+| `docs/archives/` | ARCHIVED | Outdated/završeni: `STATUS-HUMAN.md`, `PLAN.md`, `RESTORE.md`, `EVAL_REGRESIJA_iter17.md`, `EVAL_OPTIMIZACIJA.md`, `repo-inventory-en.md`, `repo-map.md`. |
 
 ## 10. Build konfiguracija i CI — `.github/`, root config
 

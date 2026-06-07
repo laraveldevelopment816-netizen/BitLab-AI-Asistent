@@ -1,6 +1,7 @@
-# Repo map — simplified
+# Repo inventory — po folderima (folder-group)
 
-Statusi: `done` = završeno | `partial` = u toku | `reusable` = gotov alat koji se koristi | `dead` = arhiva/backup
+Komponentni pogled: [`repo-inventory-component-group.md`](repo-inventory-component-group.md). Osvježeno 2026-06-08 (doc reorg).
+Statusi: `done` = završeno | `partial` = u toku | `reusable` = gotov alat | `dead` = arhiva/backup
 
 ---
 
@@ -9,16 +10,13 @@ Statusi: `done` = završeno | `partial` = u toku | `reusable` = gotov alat koji 
 | Fajl | Šta je | Status |
 |------|--------|--------|
 | `CLAUDE.md` | Claude Code pravila za ovaj repo | `reusable` |
-| `EVAL_OPTIMIZACIJA.md` | Plan kako smanjiti broj skupih PWR poziva u evalima | `done` |
-| `EVAL_REGRESIJA_iter17.md` | Post-mortem zašto je iter17 prompt pogoršao accuracy sa 84% na 79% | `done` |
-| `PLAN.md` | Plan TDD reseta — sve u bck/, gradi se iznova kroz evalue | `partial` |
 | `README.md` | Kako pokrenuti projekat i Ralph loop | `reusable` |
-| `RESTORE.md` | Kako vratiti stari kod iz bck/ ako zatreba | `reusable` |
-| `STATUS-HUMAN.md` | STATUS.md prepisan prirodnim jezikom za brzu orijentaciju | `partial` |
 | `STATUS.md` | Kanban tabla sa aktivnim taskovima (eval regresija fix) | `partial` |
 | `pyproject.toml` | Python dependencies i pytest/ruff konfiguracija | `reusable` |
 | `repo-scan.md` | Auto-generisani dump cijelog repoa za dijeljenje s agentima | `reusable` |
 | `scan.sh` | Skripta koja pravi taj dump | `reusable` |
+
+> Doc reorg 2026-06-08: `PLAN`, `RESTORE`, `STATUS-HUMAN`, `EVAL_OPTIMIZACIJA`, `EVAL_REGRESIJA_iter17` premješteni u `docs/archives/`; `PLAN`+`RESTORE` spojeni u `docs/plans/baseline-i-restore.md`.
 
 ---
 
@@ -48,13 +46,21 @@ Statusi: `done` = završeno | `partial` = u toku | `reusable` = gotov alat koji 
 
 | Fajl | Šta je | Status |
 |------|--------|--------|
+| `plans/akcioni-plan.md` | Strateški plan: Now (eval fix ≥95%), Next (RAG), Later (multi-tool) | `partial` |
+| `plans/backlog.md` | Memorija/inbox; prioriteti prate board (P1 akcioni plan … P5 Ralph, P6 bck tool-ovi) | `partial` |
+| `plans/baseline-i-restore.md` | Spoj PLAN+RESTORE: zero-base reset + izvlačenje iz bck/ → produkcija | `reusable` |
+| `plans/lessons-learned.md` | Destilovane lekcije (L1 Ralph regresija, L2 verdict cache) | `done` |
+| `plans/notes.md` | Sirovi inbox zapažanja | `partial` |
+| `plans/repo-inventory-component-group.md` | Inventar po komponentama | `reusable` |
+| `plans/repo-inventory-folder-group.md` | Ovaj fajl — inventar po folderima | `reusable` |
 | `PROMPT-BEST-PRACTICES.md` | Analiza zašto model preskače tool callove i kako to arhitekturno riješiti | `done` |
 | `eval-infra-changelog.md` | Dnevnik svih izmjena eval frameworka kroz dvije sesije | `done` |
 | `eval-infra-review.md` | Šta je popravljeno, šta još čeka u eval infrastrukturi | `done` |
 | `fb-funnel-progress.md` | Praćenje FB/LinkedIn B2B akvizicijskog eksperimenta | `partial` |
-| `plans/akcioni-plan.md` | Strateški plan: Now (eval fix ≥95%), Next (RAG), Later (multi-tool) | `partial` |
-| `work/.../board.html` | Živi board za tekuću Now inicijativu (94% acceptance, cilj 95%) | `partial` |
-| `work/.../nalaz-fail-set-enum-temp.md` | Analiza zašto 7 od 15 fail case-ova ostaje — su dvosmisleni, ne bug | `done` |
+| `work/.../board.html` | Živi board za tekuću Now inicijativu | `partial` |
+| `work/.../nalaz-fail-set-enum-temp.md` | Analiza zašto 7 od 15 fail case-ova ostaje — dvosmisleni, ne bug | `done` |
+| `brainstorm/2026-06-07-plan-effort-burndown/` | Živa brainstorm sesija (log.md + board.html) | `partial` |
+| `archives/` | Outdated/završeni (STATUS-HUMAN, PLAN, RESTORE, EVAL_*, repo-inventory-en, repo-map) | `dead` |
 
 ---
 

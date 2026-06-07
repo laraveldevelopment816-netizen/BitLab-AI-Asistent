@@ -15,7 +15,7 @@ updated: 2026-06-07
 
 Taktički Kanban (kartice = konkretne taske). Strateške inicijative i horizonti su u
 [`docs/plans/akcioni-plan.md`](docs/plans/akcioni-plan.md). Temeljna pravila (TDD zero-base,
-eval invariant) u [`PLAN.md`](PLAN.md). Ralph autonomni-loop plan: `ralph/IMPLEMENTATION_PLAN.md`
+eval invariant) u [`docs/plans/baseline-i-restore.md`](docs/plans/baseline-i-restore.md). Ralph autonomni-loop plan: `ralph/IMPLEMENTATION_PLAN.md`
 (zaseban; vidi `evfx` open pitanje da li ga nastavljamo).
 
 **Princip za eval-fix kartice (`rvpr`/`frtl`/`tght`): razvoj na HARD dev-uzorku, pun eval tek na kraju.**
