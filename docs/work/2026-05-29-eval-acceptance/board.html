@@ -55,13 +55,13 @@
       <a class="key" href="nalaz-fail-set-enum-temp.md">⭐ Nalaz — zašto preostalih 7 pada</a>
       <a href="../../../STATUS.md">Gdje smo — STATUS</a>
       <a href="../../../docs/plans/akcioni-plan.md">Plan (Now)</a>
-      <a href="../../../evals/runs/archives/categories-acpt-full.jsonl">Rezultat punog testa (94%)</a>
+      <a href="../../../evals/runs/categories-acpt-20260607-130937.html">Rezultat punog testa (94,8%)</a>
     </div>
   </div>
 
   <div class="next-card">
     <h2>★ Sljedeći korak</h2>
-    <p class="quote">Mehanizam: <code>scripts/run_acceptance.sh</code> — petlja: ~80 case-ova/prozor (≈80% sesije), sačeka 5h reset i nastavi sam do 250, sve u jedan fajl. Pusti pod nohup. Sljedeće: pokreni.</p>
+    <p class="quote">Re-run gotov — 3 timeout slučaja potvrđena kao PASS (×2 svaki), acceptance je sad <strong>96,0% (240/250)</strong>, jsonl + HTML ažurirani. Sljedeće: sync STATUS (Acceptance → Done 96%, Stezanje → Done), pa zatvaranje <code>evfx</code> inicijative; preostalih 10 padova ide u Fazu 2 / known-limit.</p>
   </div>
 
   <h2>Odluke &amp; orijentacija</h2>
@@ -72,15 +72,15 @@
 
   <div class="dec info"><span class="n">3</span><p>Pao je na 79% jer bi asistent prestao gledati u katalog i počeo izmišljati proizvode — to je problem koji rješavamo.</p></div>
 
-  <div class="dec info"><span class="n">4</span><p>Pun test 250 = 94% (sa leaf-listom ~97%); na fail-setu svih 8 leaf-kolizija prešlo — izbor alata riješen. Ostatak: pogrešan-ali-validan leaf + dvosmisleni jednorječni upiti (Faza-2/known-limit), enum ne bira ispravan među validnima.</p></div>
+  <div class="dec info"><span class="n">4</span><p>Pun re-confirm + ručni re-run 3 infra-timeout-a (PWR spor, jedan slučaj tražio 164s pa 120s nije bilo dosta): <strong>96,0% (240/250)</strong>. Sva 3 timeout slučaja prošla oba puta — bili su samo mreža, ne model. Preostalih 10 padova: pogrešan-ali-validan leaf + dvosmisleni jednorječni upiti (Faza-2/known-limit).</p></div>
 
   <div class="dec"><span class="n">5</span><p>Typo eksperiment (ispravi-i-rutiraj) revertovan — stashovan, ne obrisan. Vraćena „apstiniraj na typo" politika; auto-rutiranje ostaje prihvaćen known-limit, a usvajanje je zasebna kasnija odluka (uz pomirenje kanonskih <code>raunari</code>/<code>mobitejli</code> očekivanja).</p></div>
 
   <div class="dec warn"><span class="n">⚠</span><p>Za par „poznatih" kategorija (monitori) još izmišlja proizvode jer prava baza proizvoda nije uključena — to je kasnija faza.</p></div>
 
-  <div class="dec open"><span class="n">?</span><p>Prag je ≥95% — otvoreno: pustiti na 94% sa fallback-om „nisam siguran, evo opcija", ili gurati na čistih 95%+?</p></div>
+  <div class="dec"><span class="n">✓</span><p>Prag ≥95% oboren čisto: <strong>96,0% (240/250)</strong>, pošto su 3 pada potvrđena kao samo mrežni timeout (oba re-run-a PASS). Dilema „ship na 94% sa fallback-om" više nije aktuelna.</p></div>
 
-  <footer>turn ~46 · Now: eval → acceptance · živi kroz sve sesije ove inicijative</footer>
+  <footer>turn ~49 · Now: eval → acceptance · živi kroz sve sesije ove inicijative</footer>
 
 </div>
 </body>
