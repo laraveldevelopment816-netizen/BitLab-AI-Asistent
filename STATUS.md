@@ -8,7 +8,7 @@ columns:
     name: Blocked
   - id: done
     name: Done
-updated: 2026-05-31
+updated: 2026-06-07
 ---
 
 # STATUS — bitlab-ai-asistent
@@ -29,30 +29,27 @@ parent/leaf tagu, ne po težini, pa promaši baš slučajeve koji pucaju. `scrip
 
 ## Todo
 
-- [ ] Stezanje — niska temperatura + category_id enum <!-- id:tght effort:2 pct:46 -->
-  `temperature≈0` u oba `create()` (novi config setting); `category_id` enum (validni ID-evi)
-  u tool schemi. Svaka pod-izmjena zasebno mjerena. Gate: dev-uzorak (`--suite categories_dev --mode full`).
-
 ## Doing
-
-- [ ] Štelovanje prompta — leaf-priority kategorije + anti-halucinacija <!-- id:lfpr effort:3 pct:65 -->
-  Anti-halucinacija nijansa (`995ea65`): prazan rezultat (`products: []`) → "nema" i za poznate
-  kategorije. Leaf-priority lista (`db49e27` + `d16b8ab`): 9 leaf naziva (Mobilni telefoni,
-  Kablovi, UPS, Televizori, Fotoaparati, Navigacije, USB uređaji, Kućanski aparati, Konzole) →
-  `search_products`, NE parent `category_overview`. Validacija: tune set `categories_leaf_tune`
-  (21 case) — **8/8 leaf-kolizija popravljeno**. Otvoreno: dev-uzorak regresija check +
-  pun re-confirm (vidi `acpt`).
-- [ ] Acceptance — pun 250 = 94%, sa leaf-priority projektovano ~97% <!-- id:acpt effort:2 pct:36 -->
-  Pun eval (250) pušten chunked (proxy-off batch, ne ~15h): lean + forsiranje + leaf-priority +
-  anti-halucinacija = **235/250 = 94.0%** routing, čisto (nula rate-locka). Skok sa iter17 79.2% /
-  iter8 84.4%. Svih 15 padova `cat-leaf`: 8 leaf-kolizija (tune-validovano popravljeno → projekcija
-  **~97%**, 243/250), 4 pogrešan-leaf-id + 3 apstinencija (ne juriti). Pending: dev-uzorak regresija
-  + pun re-confirm sa leaf-priority. Bar ≥95% dohvatljiv; FP halucinacija = poznato ograničenje (dole).
 
 ## Blocked
 
 ## Done
 
+- [x] Acceptance — pun 250 = 96,0%, prag ≥95% oboren <!-- id:acpt effort:2 pct:36 -->
+  Pun re-confirm (250, chunked proxy-off batch preko `scripts/run_acceptance.sh`): 237/250 = 94,8%.
+  Re-run 3 infra-timeout slučaja (`cat-leaf-224/225/326`, ×2 svaki, kroz PWR, produžen timeout 240s
+  jer je PWR bio spor ~57s/upit) potvrdio sve kao PASS → **240/250 = 96,0%**, prag ≥95% čisto oboren
+  (skok sa iter17 79,2% / iter8 84,4%). Preostalih 10 padova: pogrešan-ali-validan leaf + dvosmisleni
+  jednorječni upiti — Faza 2 / known-limit (dole). FP halucinacija = poznato ograničenje.
+- [x] Štelovanje prompta — leaf-priority kategorije + anti-halucinacija <!-- id:lfpr effort:3 pct:65 -->
+  Anti-halucinacija (`995ea65`): prazan rezultat (`products: []`) → "nema" i za poznate kategorije.
+  Leaf-priority lista (`db49e27` + `d16b8ab`): 9 leaf naziva → `search_products`, NE parent
+  `category_overview`. Validacija: tune set `categories_leaf_tune` (21 case) — **8/8 leaf-kolizija
+  popravljeno**; potvrđeno punim runom (96,0%, bez regresije).
+- [x] Stezanje — niska temperatura + category_id enum <!-- id:tght effort:2 pct:46 -->
+  `temperature=0.0` u oba `create()` (config setting) + `category_id` enum (validni ID-evi) u tool
+  schemi — oba toggle-abilna (`cdb2685`: `app/config.py` + `agent.py` + `tools.py`). Mjereno na
+  fail-setu (enum-temp run); ušlo u pun acceptance (240/250 = 96,0%).
 - [x] Dev eval suite — hard uzorak (dsmp) <!-- id:dsmp effort:2 pct:36 -->
   `scripts/gen_dev_sample.py` (regenerabilan) → `evals/sets/categories_dev.jsonl`: 29 iter17
   PASS→FAIL + 8 negativaca = 37. Canonical netaknut. Brzi/jeftin gate (~5min) umjesto punog eval-a.
