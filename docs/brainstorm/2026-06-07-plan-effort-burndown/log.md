@@ -411,3 +411,19 @@ debug/poboljšanja; search-more proizvoda (cijeli katalog kroz agenta); + prompt
 ### Turn 23 — Claude
 - ✓ P1 kartice preuređene (7 spoj edge+eval za sve toolove, 8 novi set testova, 9 UI-JSON, 10 klikabilne).
 - Slijedi: `git add -A` + commit + push (grana `feat/ralph-categories-eval`).
+- ✓ **Commit `2817146`** (17 fajlova, 777+/32−), **push OK** na `feat/ralph-categories-eval`. Git rename istorija
+  sačuvana za sve premještene fajlove. **Sesija zaključena.**
+
+---
+
+## Zaključak sesije (2026-06-07/08)
+
+Sesija je počela kao "napravi akcioni plan + effort + burndown", a prerasla u **temeljno čišćenje i restrukturiranje dokumentacije**. Tri pouke:
+
+1. **Periodično čišćenje repoa je neophodno — svakih 2-3 dana, najviše sedmicu.** Radi-pa-spoji divergencije zamrse repo brže nego što se očekuje; root je bio nepregledan (12 `.md`), sad je 3. Bez redovnog čišćenja postaje nemoguće pratiti.
+
+2. **Tight coupling → loose coupling za reuse.** Eval Framework i Ralph petlja razvijani su ZAJEDNO (feature: auto-nastavljanje preko checkpoint/resume) pa su sad tight-coupled — trebaju oba. Sljedeći cilj: dekaplovati ih u **loose-coupled, reusable komponente** koje se mogu koristiti na drugom projektu (novi prompt + Now/Next/Later, model već u `bitlab-standards`). Procjena: ~90% je već reusable, fali dekaplovanje.
+
+3. **Prvi siguran signal štedi od ponavljanja svega.** 96% acceptance je bio taj signal — dokaz da smo na pravom putu i da ne moramo ispočetka. Akcioni plan + rani pouzdan signal = ne radiš dvaput (a ovo je već drugi put da se nešto pravi iznova).
+
+**Fun fact:** sesija o *sređivanju* plana sama je prošla kroz ~10 reorganizacija backloga — caching gore↔dole, "faze"↔"prioriteti", spajanje pa razdvajanje plana i backloga. Živi dokaz pouke #1: dok smo čistili, čišćenje je pokazalo koliko se brzo zamrsi.
