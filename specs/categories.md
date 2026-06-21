@@ -55,6 +55,15 @@ Skripta mora biti deterministička: isti `categories_new.json` → byte-identica
 }
 ```
 
+## §3.1 — LLM backend imperative
+
+Tool dispatch mora biti dostupan u OBA LLM runnera u `app/agent.py`:
+
+- `_run_anthropic` — Anthropic `tools=[...]` parameter (Anthropic shape sa `input_schema`).
+- `_run_pwr` — OpenAI `tools=[{"type":"function","function":{...}}]` parameter (derivacija iz Anthropic format-a). Stari kod referenca: `git show 3d4bc87:app/agent.py` (`ALL_TOOLS_OPENAI_SHAPE`).
+
+Default backend (`LLM_BACKEND=pwr` u `.env`) ide kroz PWR jer štedi Anthropic API budžet. Vidi `ralph/AGENTS.md` § LLM backend dispatch i memoriju `llm_backend_pwr_imperative`.
+
 ## §4 — Negativni primjeri
 
 Ručno održavani u `evals/sets/categories_manual.jsonl`:
@@ -66,4 +75,8 @@ Ručno održavani u `evals/sets/categories_manual.jsonl`:
 
 ## §5 — Acceptance Faze 1
 
-`python -m evals.framework.runner --suite categories` → PASS rate ≥ 95% (toleriše par WARN scenarij entry-ja). Integration testovi sa mock_anthropic prolaze. CI green.
+**Iter loop**: `python -m evals.framework.runner --suite categories --mode sample` (manual 16 + stratificirano 30 = ~46 poziva, ~18% troška full). Sample PASS rate ≥ 95% prije nego što se pokrene full.
+
+**Acceptance verifikacija**: `python -m evals.framework.runner --suite categories --mode full` → PASS rate ≥ 95% (toleriše par WARN scenarij entry-ja). Integration testovi sa `mock_llm` prolaze. CI green.
+
+Verdict cache je default-on (`evals/cache/<hash>.json`); promjena `SYSTEM_PROMPT_V1` ili tool definicije automatski invalidira cache. Bypass: `--no-cache`. Statistika: `--cache-stats`.

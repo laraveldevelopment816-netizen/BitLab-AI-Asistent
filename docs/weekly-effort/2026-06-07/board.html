@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projects — Weekly Effort 31.05–07.06.2026</title>
+<style>
+  :root {
+    --e1:#22c55e; --e2:#3b82f6; --e3:#eab308; --e4:#f97316; --e5:#ef4444;
+  }
+  body { font-family: system-ui, sans-serif; background:#0f1117; color:#e2e8f0; margin:0; padding:24px 28px 40px; }
+  h1 { font-size:2rem; color:#7dd3fc; margin:0 0 2px; }
+  .sub { font-size:1.05rem; color:#94a3b8; margin:0 0 22px; }
+  .wrap { max-width:1040px; }
+  .btn { position:fixed; top:16px; right:20px; background:#7dd3fc; color:#0f1117; font-weight:700;
+         font-size:0.82rem; padding:8px 14px; border-radius:8px; text-decoration:none; box-shadow:0 2px 10px #0006; cursor:pointer; }
+  .links { position:fixed; top:54px; right:20px; font-size:0.78rem; text-align:right; }
+  .links a { color:#7dd3fc; text-decoration:none; display:block; margin-top:4px; }
+  .concl { background:#14271a; border:1px solid #22c55e55; border-left:4px solid var(--e1);
+           border-radius:10px; padding:14px 18px; margin-bottom:22px; }
+  .concl .big { font-size:1.18rem; font-weight:700; color:#4ade80; margin:0 0 4px; }
+  .concl p { margin:4px 0; font-size:0.92rem; line-height:1.5; color:#cbd5e1; }
+  .concl b { color:#e2e8f0; }
+  h2 { font-size:0.82rem; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;
+       margin:24px 0 10px; border-bottom:1px solid #2d3748; padding-bottom:6px; }
+  /* effort bars */
+  .bar { display:grid; grid-template-columns:300px 1fr 96px; align-items:center; gap:12px; margin:7px 0; }
+  .bar .lbl { font-size:0.9rem; line-height:1.25; }
+  .bar .lbl .repo { display:block; font-size:0.72rem; color:#64748b; }
+  .track { background:#1e2330; border-radius:6px; height:22px; overflow:hidden; }
+  .fill { height:100%; border-radius:6px 0 0 6px; }
+  .pct { font-size:0.86rem; text-align:right; font-variant-numeric:tabular-nums; color:#cbd5e1; }
+  .pct b { font-size:0.95rem; }
+  /* timeline */
+  .tl { width:100%; border-collapse:collapse; font-size:0.86rem; }
+  .tl td, .tl th { padding:6px 10px; border-bottom:1px solid #232a38; text-align:left; vertical-align:top; }
+  .tl th { color:#94a3b8; font-weight:600; }
+  .tl .day { font-weight:700; white-space:nowrap; color:#e2e8f0; }
+  .tl .c { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .dots { letter-spacing:1px; }
+  .empty td { color:#64748b; background:#16110f; }
+  .light td { color:#94a3b8; }
+  /* findings */
+  .find { font-size:0.9rem; line-height:1.55; }
+  .find li { margin:6px 0; }
+  .find b { color:#7dd3fc; }
+  .warnword { color:#fb923c; }
+  .okword { color:#4ade80; }
+  .legend { font-size:0.74rem; color:#64748b; margin-top:6px; }
+  .legend span { margin-right:12px; }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:middle; }
+  .foot { font-size:0.78rem; color:#64748b; margin-top:26px; }
+  code { background:#0f1117; border:1px solid #2d3748; padding:1px 5px; border-radius:4px; font-size:0.82rem; color:#7dd3fc; }
+</style>
+</head>
+<body>
+
+<a class="btn" href="#" title="Pokreni /weekly-effort u Claude Code">↻ weekly-effort</a>
+<div class="links">
+  <a href="log.md">→ log.md (činjenice)</a>
+  <a href="../../../../people-first/docs/brainstorm/2026-06-02-review-rad-srijeda-danas/kako-mjeriti-tezinu-zadatka.md">→ studija težine</a>
+</div>
+
+<div class="wrap">
+
+<h1>Projects</h1>
+<p class="sub">Weekly Effort · <b>ned 31.05 → ned 07.06.2026</b> (7 dana) · 5 repoa · 49 commit-a · sve iz gita</p>
+
+<div class="concl">
+  <p class="big">Tooling-and-measurement sedmica: acceptance zatvoren na 96,0% + effort-mjerni standard izgrađen.</p>
+  <p>Dvije velike niti: (1) categories routing agent prebačen preko praga <b>≥95% → 96,0% (240/250)</b>, i (2) <b>effort-mjerni sistem</b> (4-dim model + formula + skille) — najteži zadatak (L5), cross-repo. Stvarna promjena proizvoda je <b>mali diff</b> (<code>app/tools.py</code> ~38 lin.); ~13k churn-a u bitlab-ai su generisani eval-artefakti, ne kod.</p>
+</div>
+
+<h2>Effort po workstream-u — dužina &amp; boja = težina zadatka (ne LOC)</h2>
+
+<div class="bar">
+  <div class="lbl">Effort-level mjerni sistem<span class="repo">bitlab-standards</span></div>
+  <div class="track"><div class="fill" style="width:91%; background:var(--e5)"></div></div>
+  <div class="pct"><b>91%</b> · L5</div>
+</div>
+<div class="bar">
+  <div class="lbl">Categories eval → 96% acceptance<span class="repo">bitlab-ai-asistent</span></div>
+  <div class="track"><div class="fill" style="width:61%; background:var(--e3)"></div></div>
+  <div class="pct"><b>61%</b> · L3</div>
+</div>
+<div class="bar">
+  <div class="lbl"><code>/work</code> skill + živi board + renames<span class="repo">bitlab-standards</span></div>
+  <div class="track"><div class="fill" style="width:56%; background:var(--e3)"></div></div>
+  <div class="pct"><b>56%</b> · L3</div>
+</div>
+<div class="bar">
+  <div class="lbl">Brainstorm / strategija (FDE CV, agent-sdk)<span class="repo">people-first</span></div>
+  <div class="track"><div class="fill" style="width:56%; background:var(--e3)"></div></div>
+  <div class="pct"><b>56%</b> · L3</div>
+</div>
+<div class="bar">
+  <div class="lbl">STATUS Kanban + effort meter bar<span class="repo">cm-viewer</span></div>
+  <div class="track"><div class="fill" style="width:50%; background:var(--e2)"></div></div>
+  <div class="pct"><b>50%</b> · L2</div>
+</div>
+<div class="bar">
+  <div class="lbl">STATUS bootstrap<span class="repo">cm-scraper</span></div>
+  <div class="track"><div class="fill" style="width:30%; background:var(--e1)"></div></div>
+  <div class="pct"><b>30%</b> · L1</div>
+</div>
+<div class="legend">
+  <span><i class="sw" style="background:var(--e1)"></i>1 trivijalno</span>
+  <span><i class="sw" style="background:var(--e2)"></i>2 lako</span>
+  <span><i class="sw" style="background:var(--e3)"></i>3 srednje</span>
+  <span><i class="sw" style="background:var(--e4)"></i>4 teško</span>
+  <span><i class="sw" style="background:var(--e5)"></i>5 arhitekta</span>
+  · pct iz 4 dim. (A·J·B·V), ne N×20
+</div>
+
+<h2>Timeline po danima — commit-i kroz sve repoe</h2>
+<table class="tl">
+  <tr><th>Dan</th><th class="c">c</th><th>Šta (spojeno kroz repoe)</th></tr>
+  <tr><td class="day">ned 31.05</td><td class="c">19</td><td><span class="dots" style="color:var(--e3)">▰▰▰▰▰</span> acceptance 94%, leaf-priority (8 kolizija), <code>/work</code> skill + renames, Kanban kartice — 3 repoa</td></tr>
+  <tr class="light"><td class="day">pon 01.06</td><td class="c">1</td><td><span class="dots" style="color:var(--e1)">▰</span> cm-scraper STATUS bootstrap — jedini mirniji dan</td></tr>
+  <tr><td class="day">uto 02.06</td><td class="c">6</td><td><span class="dots" style="color:var(--e3)">▰▰</span> <code>/work</code> board + auto-open, review + studija težine, voice cross-platform lang — 2 repoa</td></tr>
+  <tr><td class="day">sri 03.06</td><td class="c">4</td><td><span class="dots" style="color:var(--e5)">▰▰▰▰</span> <b>EFFORT-LEVEL sistem sleće u 4 repoa @01:29</b> (standard, migracija, parser, kartice)</td></tr>
+  <tr class="empty"><td class="day">čet 04.06</td><td class="c">0</td><td>git prazan — <span class="warnword">ali nije neradni dan:</span> enum/temp rad sletio pet 00:52, stord-04.06 sesija commit-ovana 07.06</td></tr>
+  <tr><td class="day">pet 05.06</td><td class="c">2</td><td><span class="dots" style="color:var(--e3)">▰</span> @00:52 <code>category_id</code> enum + temperature stezanje (toggle) — efektivno čet. noć</td></tr>
+  <tr><td class="day">sub 06.06</td><td class="c">3</td><td><span class="dots" style="color:var(--e3)">▰▰</span> <code>run_acceptance.sh</code> batch runner, enum guardrail, typo eksperiment <span class="warnword">(stashed/revertovan)</span></td></tr>
+  <tr><td class="day">ned 07.06</td><td class="c">14</td><td><span class="dots" style="color:var(--e5)">▰▰▰▰▰</span> <span class="okword">eval 250 → 96,0% (240/250) ZATVOREN</span>, 4 assess sub-skille + orkestrator, repo-inventory ×2 jezika — 3 repoa</td></tr>
+</table>
+
+<h2>Nalazi (iskreno — detalji u log.md)</h2>
+<ul class="find">
+  <li><b>Sati 50/50:</b> isporuka (acceptance 96%) ↔ meta/mjerenje (effort sistem). Bila je <b>tooling sedmica, ne feature sedmica.</b></li>
+  <li><b>LOC vara:</b> bitlab-ai +3961/−10630, ali ~13k je generisani eval-churn (−10630 = arhiviranje); stvarni autorski rad ~1.3k lin., pola docs.</li>
+  <li><b>„Prazan četvrtak" = iluzija:</b> rad sletio 00:52 i 07.06. Jedini stvarno mirniji dan = pon 01.06.</li>
+  <li><b>Kontekst-switch sa niti:</b> 03.06 četiri repoa u istom minutu — effort-tema drži switch-eve smislenim.</li>
+  <li><b class="okword">Fokus = prioritet:</b> Now inicijativa (<code>feat/ralph-categories-eval</code>) <b>zatvorena</b> ove sedmice (96,0% ≥ 95%).</li>
+  <li><span class="warnword">Ustajalo:</span> cm-viewer 5 fajlova necommit-ovano od 03.06 (~4 dana, +48/−28) + untracked <code>docs/work/</code> — finiširaj ili stash.</li>
+</ul>
+
+<p class="foot">Generisano iz <code>git log --all</code> + <code>git status</code>/mtime · prozor 31.05–07.06.2026 · standard: <code>bitlab-standards/docs/standards/effort-measurement.md</code> · NIJE commit-ovano.</p>
+
+</div>
+</body>
+</html>

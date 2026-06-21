@@ -1,0 +1,40 @@
+// Auto-generisano iz scripts/gen_dev_sample.py — ne edituj rukom.
+// HARD dev-uzorak: 29 regresija (iter8 PASS -> iter17 FAIL) + 8 negativaca.
+// Regeneriši: .venv/bin/python -m scripts.gen_dev_sample
+{"expect":{"args_subset":{"category_id":101},"tool":"search_products"},"history":[],"id":"cat-leaf-101","query":"Produženje garancije","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":108},"tool":"search_products"},"history":[],"id":"cat-leaf-108","query":"Matične ploče","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":128},"tool":"search_products"},"history":[],"id":"cat-leaf-128","query":"Kopir aparati","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":167},"tool":"search_products"},"history":[],"id":"cat-leaf-167","query":"Rezervni dijelovi elektronika","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":168},"tool":"search_products"},"history":[],"id":"cat-leaf-168","query":"Projektori - uređaji","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":175},"tool":"search_products"},"history":[],"id":"cat-leaf-175","query":"Mobilni telefoni","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":176},"tool":"search_products"},"history":[],"id":"cat-leaf-176","query":"Dodaci za mobitele","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":200},"tool":"search_products"},"history":[],"id":"cat-leaf-200","query":"LED sijalice","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":205},"tool":"search_products"},"history":[],"id":"cat-leaf-205","query":"Nintendo","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":207},"tool":"search_products"},"history":[],"id":"cat-leaf-207","query":"Igrice","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":210},"tool":"search_products"},"history":[],"id":"cat-leaf-210","query":"Dronovi","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":222},"tool":"search_products"},"history":[],"id":"cat-leaf-222","query":"Miševi i grafički tableti","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":224},"tool":"search_products"},"history":[],"id":"cat-leaf-224","query":"Monitori","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":239},"tool":"search_products"},"history":[],"id":"cat-leaf-239","query":"Zamrzivači","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":249},"tool":"search_products"},"history":[],"id":"cat-leaf-249","query":"Kuhinjski aparati","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":252},"tool":"search_products"},"history":[],"id":"cat-leaf-252","query":"Pekači za hljeb","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":256},"tool":"search_products"},"history":[],"id":"cat-leaf-256","query":"Web kamere","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":262},"tool":"search_products"},"history":[],"id":"cat-leaf-262","query":"Razvodnici napajanja","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":276},"tool":"search_products"},"history":[],"id":"cat-leaf-276","query":"Softver - Serveri","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":282},"tool":"search_products"},"history":[],"id":"cat-leaf-282","query":"Hosting paketi","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":283},"tool":"search_products"},"history":[],"id":"cat-leaf-283","query":"Domeni","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":284},"tool":"search_products"},"history":[],"id":"cat-leaf-284","query":"SSL","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":287},"tool":"search_products"},"history":[],"id":"cat-leaf-287","query":"Audio kablovi","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":306},"tool":"search_products"},"history":[],"id":"cat-leaf-306","query":"Prezenteri","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":332},"tool":"search_products"},"history":[],"id":"cat-leaf-332","query":"Eksterni FDD tuneri","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":344},"tool":"search_products"},"history":[],"id":"cat-leaf-344","query":"Antivirus","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":149},"tool":"category_overview"},"history":[],"id":"cat-parent-149","query":"Projektori","tags":["auto-gen","parent"]}
+{"expect":{"args_subset":{"category_id":157},"tool":"category_overview"},"history":[],"id":"cat-parent-157","query":"Navigacioni uredaji","tags":["auto-gen","parent"]}
+{"expect":{"args_subset":{"category_id":158},"tool":"category_overview"},"history":[],"id":"cat-parent-158","query":"Klima uređaji","tags":["auto-gen","parent"]}
+{"expect": {"tool": null}, "history": [], "id": "cat-manual-amb-kabl", "query": "Trebam jedan kabl", "tags": ["manual", "negative", "ambiguous_name"]}
+{"expect": {"tool": null}, "history": [], "id": "cat-manual-amb-adapter", "query": "Imate li adapter?", "tags": ["manual", "negative", "ambiguous_name"]}
+{"expect": {"tool": null}, "history": [], "id": "cat-manual-not-knjige", "query": "Imate li knjige o programiranju?", "tags": ["manual", "negative", "not_in_catalog"]}
+{"expect": {"tool": null}, "history": [], "id": "cat-manual-not-cipele", "query": "Tražim cipele za trčanje", "tags": ["manual", "negative", "not_in_catalog"]}
+{"expect": {"tool": null}, "history": [], "id": "cat-manual-oos-vrijeme", "query": "Kakvo je vrijeme danas?", "tags": ["manual", "negative", "out_of_scope"]}
+{"expect": {"tool": null}, "history": [], "id": "cat-manual-oos-radno", "query": "Koje je vaše radno vrijeme?", "tags": ["manual", "negative", "out_of_scope"]}
+{"expect": {"tool": null}, "history": [], "id": "cat-manual-typo-mobitejli", "query": "mobitejli", "tags": ["manual", "negative", "typo_likely"]}
+{"expect": {"tool": null}, "history": [], "id": "cat-manual-typo-raunari", "query": "raunari", "tags": ["manual", "negative", "typo_likely"]}

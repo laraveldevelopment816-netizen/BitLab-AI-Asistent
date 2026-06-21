@@ -1,0 +1,43 @@
+[Unit]
+Description=BitLab AI Asistent — FastAPI (chat + voice + email + dashboard)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bitlab
+Group=bitlab
+WorkingDirectory=/opt/bitlab-ai
+EnvironmentFile=/opt/bitlab-ai/.env
+
+# venv binary; ne polagati na PATH
+ExecStart=/opt/bitlab-ai/.venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 2 \
+    --log-level info \
+    --proxy-headers \
+    --forwarded-allow-ips=127.0.0.1
+
+Restart=on-failure
+RestartSec=5
+
+# Resource limits — embedding model + faster-whisper drže ~600MB RAM-a;
+# pretpostavi 1GB RAM VPS, ostavi headroom za nginx + n8n.
+MemoryMax=900M
+TasksMax=200
+
+# Hardening (ublaženo — torch i sentence-transformers ne vole sve restrikcije)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/bitlab-ai/var /opt/bitlab-ai/data
+PrivateTmp=true
+
+# Log u journal sa custom prefiksom
+SyslogIdentifier=bitlab-ai
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

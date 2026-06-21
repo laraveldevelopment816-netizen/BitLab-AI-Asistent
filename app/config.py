@@ -1,7 +1,8 @@
-"""Minimalni config — Anthropic API key + chat model.
+"""Minimalni config — API keys + chat model + LLM backend dispatch.
 
-TDD zero base: postojeća poslovna logika je u bck/. Dodavati polja
-SAMO kad failing eval to traži."""
+TDD zero base + memorija llm_backend_pwr_imperative: default backend je PWR
+(lokalni PlaywrightRouter, troši kredite od Claude pretplate); Anthropic
+direktan API je fallback samo ako PWR nije konfigurisan."""
 
 from __future__ import annotations
 
@@ -20,9 +21,28 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    # Anthropic (fallback put — ne preporučeno za produkciju)
     anthropic_api_key: str = ""
     chat_model: str = "claude-sonnet-4-6"
     max_output_tokens: int = 1024
+
+    # Stezanje rutiranja (kartica tght) — svaka poluga se mjeri zasebno preko
+    # env override-a, pa pun re-run od 250 tek na kraju.
+    #   temperature ≈0 = deterministično rutiranje; ide na OBA backenda.
+    #   baseline (stari API default): TEMPERATURE=1.0
+    temperature: float = 0.0
+    #   category_id_enum=True → tool schema dobija `enum` validnih ID-eva
+    #   (tvrdo ograničenje protiv izmišljenog ID-a). baseline: CATEGORY_ID_ENUM=false
+    category_id_enum: bool = True
+
+    # LLM backend selector — vidi memoriju llm_backend_pwr_imperative.
+    # "pwr": lokalni PlaywrightRouter (OpenAI-kompatibilan), troši pretplatu.
+    # "anthropic": direktan Anthropic API (fallback, plaćeno).
+    llm_backend: str = "anthropic"
+    pwr_api_key: str = ""
+    pwr_base_url: str = "http://127.0.0.1:8765/v1"
+    pwr_chat_model: str = "claude-sonnet-4-6"
+    pwr_chat_model_effort: str = "low"  # "low" | "medium" | "high"
 
 
 settings = Settings()

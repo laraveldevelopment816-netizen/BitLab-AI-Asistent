@@ -1,0 +1,219 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --bg:        #0b0d10;
+  --panel:     #101317;
+  --panel-hi:  #14181d;
+  --panel-lo:  #0d1014;
+  --border:    #1f242b;
+  --border-hi: #2a3038;
+  --text:      #e4e7ec;
+  --text-dim:  #8a929c;
+  --text-mute: #5a626c;
+  --accent:    #7dd3fc;
+  --accent-dim:#0c4a6e;
+  --ok:        #4ade80;
+  --warn:      #fbbf24;
+  --err:       #f87171;
+  --rate:      #c084fc;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-mono, code, pre, kbd, samp {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-mute); }
+
+input, select, textarea, button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+input::placeholder { color: var(--text-mute); }
+
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="datetime-local"],
+select,
+textarea {
+  background: var(--panel-lo);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color 0.12s ease;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-dim);
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes row-fresh {
+  0%   { background-color: #7dd3fc08; }
+  60%  { background-color: #7dd3fc08; }
+  100% { background-color: transparent; }
+}
+
+.row-fresh { animation: row-fresh 2.1s ease-out forwards; }
+
+/* Tabela rowovi — hover i selected (last-clicked) state.
+   Hover: blagi background tint + suptilan left border indicator.
+   Selected: postoji `data-selected="true"` kad je red posljednji klik-nut
+   (sessionStorage); border-left koristi BitLab orange za jasnu razliku.
+   Korisnik se vraća iz detail view-a → vidi gdje je bio. */
+tr.dash-row {
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-left-color 0.12s ease;
+  border-left: 3px solid transparent;
+}
+tr.dash-row:hover {
+  background-color: #7dd3fc0a;
+  border-left-color: var(--accent-dim);
+}
+tr.dash-row[data-selected="true"] {
+  background-color: #fb6d3b14;
+  border-left-color: #fb6d3b;
+}
+tr.dash-row[data-selected="true"]:hover {
+  background-color: #fb6d3b1f;
+}
+
+/* ───── Mobile responsive ───── */
+.dash-shell { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
+.dash-sidebar {
+  width: 232px; flex-shrink: 0;
+  background: var(--panel-lo);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(.2,.8,.3,1);
+}
+.dash-main {
+  flex: 1; overflow: auto;
+  display: flex; flex-direction: column;
+  min-width: 0;  /* sprečava flex blow-out kad table je šira */
+}
+
+/* Hamburger button — vidljiv samo na mobilnom */
+.dash-hamburger {
+  display: none;
+  position: fixed; top: 14px; left: 14px;
+  z-index: 100;
+  width: 40px; height: 40px; border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  align-items: center; justify-content: center;
+  font-size: 18px;
+  transition: background 0.12s ease;
+}
+.dash-hamburger:hover { background: var(--panel-hi); }
+.dash-hamburger:focus { outline: 1px solid var(--accent-dim); }
+
+/* Sidebar overlay (mobile only) */
+.dash-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 40;
+  animation: fade-in 0.2s ease;
+}
+@keyframes fade-in {
+  from { opacity: 0; } to { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .dash-hamburger { display: inline-flex; }
+
+  .dash-sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+  }
+  .dash-sidebar.open {
+    transform: translateX(0);
+  }
+  .dash-overlay.open { display: block; }
+
+  .dash-main {
+    width: 100%;
+    padding-top: 56px;  /* prostor za hamburger button */
+  }
+
+  /* TopBar kompaktan na mobilnom */
+  .dash-topbar { padding: 16px 16px 14px !important; }
+  .dash-topbar h1 { font-size: 18px !important; }
+  .dash-topbar [data-subtitle] { font-size: 12px !important; }
+
+  /* Kartice 4-col grid → 2-col */
+  .dash-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  .dash-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .dash-metric-value { font-size: 18px !important; }
+
+  /* Tabele — horizontal scroll wrapper */
+  .dash-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -16px;  /* edge-to-edge */
+    padding: 0 16px;
+  }
+  .dash-table-wrap table {
+    min-width: 720px;  /* sprečava cell collapse — treba scroll */
+  }
+
+  /* Padding strana glavnog kontenta */
+  .dash-content {
+    padding: 16px !important;
+    gap: 14px !important;
+  }
+  .dash-content > div[style] {
+    /* Override inline padding na velikih komponenti */
+  }
+}
+
+@media (max-width: 480px) {
+  .dash-grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .dash-metric-value { font-size: 17px !important; }
+  .dash-content { padding: 12px !important; }
+}

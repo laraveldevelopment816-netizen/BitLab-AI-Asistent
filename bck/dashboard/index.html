@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BitLab AI · Pregled</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Server-injected: scripts/deploy.sh zameni placeholder pri release-u sa pravim ključem
+         iz shared/.env. Ako placeholder ostane (lokalni dev), api.ts pada na localStorage. -->
+    <script>window.__BITLAB_KEY = "__BITLAB_DASHBOARD_KEY_PLACEHOLDER__";</script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

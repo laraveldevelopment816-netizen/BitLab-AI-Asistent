@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<title>Parent kategorije — runtime ponašanje</title>
+<style>
+  :root {
+    --bg:#0f1419; --panel:#161c24; --border:#232b36; --text:#d7dbe0;
+    --muted:#8a94a3; --accent:#4cc2ff;
+    --ok:#6ee7a0; --fail:#ff6b8a; --na:#8a94a3; --warn:#ffd34a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
+    font-size:13px;line-height:1.45}
+  header{padding:16px 24px;border-bottom:1px solid var(--border);position:relative}
+  header .model-badge{position:absolute;top:14px;right:24px;background:rgba(76,194,255,0.10);
+    border:1px solid rgba(76,194,255,0.35);color:var(--accent);padding:6px 12px;
+    border-radius:14px;font-size:12px;font-weight:500;font-family:ui-monospace,monospace}
+  header .model-badge .lab{color:var(--muted);font-size:10px;text-transform:uppercase;
+    letter-spacing:0.06em;margin-right:6px;font-weight:600;font-family:inherit}
+  h1{margin:0 0 4px;font-size:18px;font-weight:600}
+  .sub{color:var(--muted);font-size:12px}
+  main{padding:14px 24px 60px;max-width:1400px}
+  h2{font-size:13px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:0.07em;margin:18px 0 8px;font-weight:600}
+  .verdict-banner{padding:14px 18px;border-radius:8px;font-size:15px;
+    font-weight:600;margin:12px 0 18px}
+  .verdict-banner.fail{background:rgba(255,107,138,0.10);
+    border:1px solid rgba(255,107,138,0.4);color:var(--fail)}
+  .verdict-banner.pass{background:rgba(110,231,160,0.10);
+    border:1px solid rgba(110,231,160,0.4);color:var(--ok)}
+  .verdict-banner.warn{background:rgba(255,211,74,0.10);
+    border:1px solid rgba(255,211,74,0.4);color:var(--warn)}
+  .verdict-banner small{display:block;font-size:12px;color:var(--muted);
+    font-weight:400;margin-top:3px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:8px;margin:8px 0 18px}
+  .stat{background:var(--panel);border:1px solid var(--border);
+    border-radius:6px;padding:9px 12px}
+  .stat .v{font-size:22px;font-weight:600;color:var(--accent)}
+  .stat .l{color:var(--muted);font-size:11px;text-transform:uppercase;
+    letter-spacing:0.05em}
+  .stat.fail .v{color:var(--fail)}
+  .stat.pass .v{color:var(--ok)}
+  .stat.warn .v{color:var(--warn)}
+  table.leaderboard{width:100%;border-collapse:collapse;
+    background:var(--panel);border:1px solid var(--border);border-radius:6px;
+    overflow:hidden;margin-bottom:18px}
+  table.leaderboard th,table.leaderboard td{padding:7px 10px;
+    border-bottom:1px solid var(--border);text-align:left;font-size:12px;vertical-align:top}
+  table.leaderboard th{background:rgba(255,255,255,0.02);color:var(--muted);
+    text-transform:uppercase;letter-spacing:0.05em;font-weight:600;font-size:11px}
+  table.leaderboard tr:last-child td{border-bottom:none}
+  table.leaderboard td.id{color:var(--muted);font-family:ui-monospace,monospace}
+  table.leaderboard td.num,table.leaderboard th.num{text-align:left;font-family:ui-monospace,monospace}
+  table.leaderboard td.q{font-weight:500}
+  .badge{display:inline-block;padding:1px 7px;border-radius:8px;
+    font-size:10px;font-weight:600;letter-spacing:0.04em;font-family:ui-monospace,monospace}
+  .badge.pass{background:rgba(110,231,160,0.18);color:var(--ok)}
+  .badge.warn{background:rgba(255,211,74,0.18);color:var(--warn)}
+  .badge.fail{background:rgba(255,107,138,0.18);color:var(--fail)}
+  .badge.na{background:rgba(255,255,255,0.04);color:var(--na)}
+  .badge.exact_parent{background:rgba(255,107,138,0.18);color:var(--fail)}
+  .badge.descendant{background:rgba(110,231,160,0.18);color:var(--ok)}
+  .badge.null{background:rgba(76,194,255,0.18);color:var(--accent)}
+  .badge.out{background:rgba(255,211,74,0.18);color:var(--warn)}
+  details.qdetail{background:var(--panel);border:1px solid var(--border);
+    border-radius:6px;padding:8px 14px;margin-bottom:8px}
+  details.qdetail summary{cursor:pointer;font-weight:500;list-style:none;outline:none}
+  details.qdetail summary::-webkit-details-marker{display:none}
+  details.qdetail summary::before{content:"▶ ";color:var(--muted);font-size:9px}
+  details.qdetail[open] summary::before{content:"▼ "}
+  details.qdetail .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+  details.qdetail .section{background:rgba(0,0,0,0.15);border-radius:4px;padding:8px 10px;font-size:12px}
+  details.qdetail .section h3{margin:0 0 6px;font-size:11px;color:var(--muted);
+    text-transform:uppercase;letter-spacing:0.05em;font-weight:600}
+  details.qdetail .toolcall{font-family:ui-monospace,monospace;font-size:11px;color:var(--text);
+    background:rgba(0,0,0,0.25);padding:4px 6px;border-radius:3px;margin:2px 0}
+  details.qdetail ul.products{margin:4px 0;padding-left:18px}
+  details.qdetail ul.products li{margin:2px 0}
+  details.qdetail ul.products li.in-subtree{color:var(--ok)}
+  details.qdetail ul.products li.out-subtree{color:var(--warn)}
+  details.qdetail .reply{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);
+    white-space:pre-wrap;max-height:200px;overflow:auto;background:rgba(0,0,0,0.25);
+    padding:6px 8px;border-radius:3px}
+  details.qdetail .err{color:var(--fail);font-family:ui-monospace,monospace;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Parent kategorije — runtime ponašanje (/api/chat)</h1>
+  <div class="sub" id="meta"></div>
+  <div class="model-badge" id="model-badge"><span class="lab">model</span><span id="model-name">—</span></div>
+</header>
+<main>
+
+<div id="verdict"></div>
+
+<h2>Summary</h2>
+<div class="stats" id="stats"></div>
+
+<h2>Per-query leaderboard</h2>
+<table class="leaderboard">
+  <thead><tr>
+    <th>Upit (ime parent kategorije)</th>
+    <th>Rutovano na (kategorija)</th>
+    <th>Kako je rutovao</th>
+    <th class="num">Vraćeno</th>
+    <th class="num">Pogodaka</th>
+    <th class="num">Porodica ima</th>
+    <th>Rezultat</th>
+    <th class="num">Iter</th>
+    <th class="num">Trajanje</th>
+  </tr></thead>
+  <tbody id="leaderboard"></tbody>
+</table>
+
+<h2>Detalji po upitu (klikni red za otvoriti)</h2>
+<div id="details"></div>
+
+</main>
+<script>
+const DATA = {"meta": {"run_at": "2026-05-22 04:17:06", "url": "http://127.0.0.1:7778", "label": "smoke", "n_queries": 1, "wall_s": 30.9040393589994, "chat_model": "claude-sonnet-4-6", "chat_model_effort": "?", "llm_backend": "?"}, "cat_names": {"17": "Računari", "93": "Desktop Brand Name", "94": "UPS, stabilizatori, ...", "97": "Printeri i skeneri", "98": "Notebook", "99": "Tablet", "101": "Produženje garancije", "104": "Poslovne torbe / rančevi", "107": "PC komponente", "108": "Matične ploče", "111": "CPU cooler-i i paste", "112": "Ventilatori", "113": "RAM memorija", "114": "HDD storage", "115": "SSD storage", "116": "Optika interna", "117": "Graficke kartice", "118": "Kućišta", "120": "Napojne jedinice", "121": "Zvucne kartice", "123": "Kablovi", "124": "Laserski printeri", "126": "Inkjet printeri", "127": "Multifunkcijski printeri", "128": "Kopir aparati", "129": "Foto printeri", "130": "Matricni printeri", "131": "Skeneri", "132": "UPS", "133": "Stabilizatori, regulatori", "134": "Uticnice i sigurnosne uticnice", "135": "Baterije za UPS", "136": "Inverteri", "137": "USB kablovi", "142": "Audio adapteri", "147": "Ostali kablovi i adapteri", "148": "Televizori i prateća oprema", "149": "Projektori", "150": "Fotoaparati i camcorderi", "151": "Mobiteli", "152": "Satovi", "154": "Fiksna telefonija", "155": "Audio video", "158": "Klima uređaji", "160": "Baterije i punjači", "161": "Konzole za igranje", "163": "Televizori", "164": "Kucna kina, player-i", "165": "Nosaci i stalci za TV", "166": "Ostala oprema za TV", "167": "Rezervni dijelovi elektronika", "168": "Projektori - uređaji", "169": "Platna za projektor", "170": "Nosaci za projektore", "171": "Torbe za projektore", "172": "Fotoaparati", "173": "Sportske kamere i dodaci", "174": "Dodaci za fotoaparate", "175": "Mobilni telefoni", "176": "Dodaci za mobitele", "177": "Pametni satovi", "183": "Stoni telefoni", "184": "Bezični telefoni", "185": "Telefax uredaji", "186": "Dodaci za telefone", "187": "Diktafoni", "188": "Digitalni okviri za sliku", "189": "Audio player-i, transmiteri", "190": "Radio, CD za auto", "194": "Navigacije", "195": "Tracker-i", "196": "Dodaci za navigacije", "197": "Klime standardne", "198": "Klima inverter", "199": "Dodaci za klime", "200": "LED sijalice", "201": "Baterije", "202": "Punjive baterije", "203": "Punjaci za baterije", "204": "Sony", "205": "Nintendo", "206": "Arctic", "207": "Igrice", "208": "Šah", "209": "Dodaci za konzole", "210": "Dronovi", "212": "POS printeri", "214": "Kancelarijski materijal", "215": "Stolovi", "216": "Stolice", "217": "Ladicari", "218": "Procesori", "219": "PC periferija", "220": "Tastature", "221": "Slušalice", "222": "Miševi i grafički tableti", "225": "Eksterni HDD", "226": "Toneri", "227": "Mediji", "228": "CD Mediji", "229": "Tinta", "230": "Oprema za igrice", "231": "Prenosne memorije", "232": "Memorijske kartice", "233": "Desktop PC", "234": "Računari All-In-One", "235": "Produžni kablovi i razvodnici", "236": "Mikseri", "237": "Frižideri", "238": "Usisivači", "239": "Zamrzivači", "240": "Rerne", "241": "Mikrovalne pećnice", "242": "Pegle", "243": "Aparati za kafu", "244": "Grijalice", "245": "Ventilatori", "246": "Kuhala", "247": "Tosteri", "248": "Električni grilovi", "249": "Kuhinjski aparati", "250": "Lične vage", "251": "Fenovi", "252": "Pekači za hljeb", "253": "Dodaci", "254": "DVD mediji", "256": "Web kamere", "257": "USB stickovi", "258": "POS Monitori", "259": "Barkod čitači", "260": "POS dodaci", "262": "Razvodnici napajanja", "263": "Ormari", "264": "Dodaci za ormare", "265": "Prenaponska zaštita", "266": "Patch kablovi", "267": "Pasiva ostalo", "269": "Mrežne karitice", "270": "Switch-evi", "271": "Bežični AP", "272": "Software", "273": "Softver Sigurnost", "274": "Softver Aplikacije", "275": "Monitori - dodaci", "276": "Softver - Serveri", "278": "Platno", "279": "Zvučnici", "280": "Server dodaci", "281": "Kucišta za HDD", "282": "Hosting paketi", "283": "Domeni", "284": "SSL", "285": "Dodaci za kućišta", "287": "Audio kablovi", "289": "Dodaci za tablet", "291": "Eksterna optika", "294": "Kalkulatori", "295": "Konektori i utičnice", "296": "Kućanski aparati i bijela tehnika", "297": "Microsoft", "298": "Mrežni alat", "299": "Napojni kablovi", "301": "Opticki kablovi", "302": "Ostala mrežna oprema", "303": "Ostala PC periferija", "304": "Ostali kancelarijski materijal", "305": "Papir", "306": "Prezenteri", "307": "Podloge za miševe", "309": "Router-i", "310": "Sredstva za održavanje", "311": "Telefonski kablovi", "312": "USB adapter", "313": "USB hub-ovi", "314": "USB punjači", "315": "Video adapter", "316": "Video kablovi", "317": "Wireles", "318": "Ormari RACK", "319": "Mikrofoni", "320": "Dodatne kartice", "322": "REFURBISHED DESKTOP", "323": "Server", "324": "Dodaci za notebook", "325": "Rezervni dijelovi informatika", "327": "Eksterni HDD", "328": "Dodaci za eksterni HDD", "329": "Kućišta za HDD", "331": "Eksterni FDD", "332": "Eksterni FDD tuneri", "334": "Card reader-i", "335": "Barcode skeneri", "336": "Ladice za novac", "338": "BR mediji", "339": "Futrole i omoti", "341": "Potrošni materijal", "342": "Riboni", "343": "Filmovi", "344": "Antivirus", "345": "Aplikativni software", "346": "USB stickovi i memorijske kartice", "347": "USB uređaji", "348": "USB ventilatori", "349": "USB usisivač", "350": "USB lampe", "351": "USB uređaji", "352": "Mrežna oprema", "353": "3G oprema", "354": "Mrežni kablovi", "355": "Kanalice", "356": "Kablovi i adapteri", "358": "Rezervni dijelovi web", "359": "Pročišćivači zraka i filteri, uređaji", "360": "Kućanski aparati", "361": "Aparati za njegu", "362": "Bijela tehnika", "363": "Ostali kućanski aparati i dodaci", "364": "IP kamere", "365": "Router-i za video nadzor", "366": "Serveri, recorderi", "368": "Konzole", "369": "Kase i printeri", "370": "Fiksalne kase i printeri", "371": "Potro[ni materijal fiskalni", "372": "Namještaj", "377": "Registratori", "378": "Ostale kategorije", "379": "Hoverboard", "380": "Skuteri", "383": "Putni program", "385": "Ruksaci za djecu", "386": "Anatomski rančevi za prvake", "387": "Rančevi za školu - torbe za školu", "389": "Rančevi 2 u 1", "391": "Koferi", "392": "Ranac na točkiće", "393": "Digitalni kodovi", "394": "Maske za mobitele i dodaci"}, "summary": {"total": 1, "pass_count": 1, "warn_count": 0, "fail_count": 0, "exact_parent_count": 0, "descendant_count": 1, "null_count": 0, "total_returned": 10, "avg_in_subtree": 4.0}, "rows": [{"query": "Mobiteli", "expected_cat_id": "151", "category_label": "Mobiteli (parent) — leaderboard #1, delta +1570", "routed_cat_id": "175", "routing_verdict": "DESCENDANT", "n_returned": 10, "n_in_subtree": 4, "subtree_total": 1575, "result_verdict": "PASS", "iterations": 2, "latency_ms": 30851, "products": [{"name": "XIAOMI Redmi Note 14 4G 8/256GB Midnight Black", "cat_id": null, "in_subtree": false, "match_via": "miss"}, {"name": "XIAOMI Redmi Note 14 Pro 5G 8/256GB Midnight Black", "cat_id": null, "in_subtree": false, "match_via": "miss"}, {"name": "SAMSUNG Galaxy A36 5G 8/256GB Awesome White", "cat_id": null, "in_subtree": false, "match_via": "miss"}, {"name": "SAMSUNG Galaxy A36 5G 8/256GB Awesome Blue", "cat_id": null, "in_subtree": false, "match_via": "miss"}, {"name": "SAMSUNG Galaxy A56 5G 8/256GB Awesome Lilac", "cat_id": null, "in_subtree": false, "match_via": "miss"}, {"name": "SAMSUNG Galaxy A56 5G 8/256GB Awesome Iceblue", "cat_id": null, "in_subtree": false, "match_via": "miss"}, {"name": "Apple iPhone 17 256GB White eSim", "cat_id": "175", "in_subtree": true, "match_via": "urlhash"}, {"name": "Apple iPhone 17 256GB Lavander eSim", "cat_id": "175", "in_subtree": true, "match_via": "urlhash"}, {"name": "Apple iPhone 17 256GB Lavander", "cat_id": "175", "in_subtree": true, "match_via": "urlhash"}, {"name": "Apple iPhone 17 Pro 256GB Deep Blue", "cat_id": "175", "in_subtree": true, "match_via": "urlhash"}], "search_calls": [{"iteration": 1, "query": "mobilni telefoni", "category_id": "175", "brand_id": null, "top_k": 6, "max_price_km": null, "latency_ms": 1376}], "reply": "Trenutno dostupni mobiteli:\n\n1. ![](https://webshop.bitlab.rs/compressed_images/G63200.webp) **XIAOMI Redmi Note 14 4G 8/256GB Midnight Black** — 489 KM — Na lageru — [Pogledaj](https://webshop.bitlab.rs/G63200.html)\n2. ![](https://webshop.bitlab.rs/compressed_images/G64282.webp) **XIAOMI Redmi Note 14 Pro 5G 8/256GB Midnight Black** — 699 KM — Na lageru — [Pogledaj](https://webshop.bitlab.rs/G64282.html)\n3. ![](https://webshop.bitlab.rs/compressed_images/G63878.webp) **SAMSUNG Galaxy A36 5G 8/256GB Awesome White** — 769 KM — Na lageru — [Pogledaj](https://webshop.bitlab.rs/G63878.html)\n4. ![](https://webshop.bitlab.rs/compressed_images/G63877.webp) **SAMSUNG Galaxy A36 5G 8/256GB Awesome Blue** — 769 KM — Na lageru — [Pogledaj](https://webshop.bitlab.rs/G63877.html)\n5. ![](https://webshop.bitlab.rs/compressed_images/G64702.webp) **SAMSUNG Galaxy A56 5G 8/256GB Awesome Lilac** — 979 KM — Na lageru — [Pogledaj](https://webshop.bitlab.rs/G64702.html)\n6. ![](https://webshop.bitlab.rs/compressed_images/G64701.webp) **SAMSUNG Galaxy A56 5G 8/256GB Awesome Iceblue** — 979 KM — Na lageru — [Pogledaj](https://webshop.bitlab.rs/G64701.html)\n7. ![](https://webshop.bitlab.rs/files/products/img/0142153_apple-iphone-17-256gb-white-esim.png) **Apple iPhone 17 256GB White eSim** — 1.899 KM — Na lageru — [Pogledaj](https://webshop.bitlab.rs/G61925-apple-iphone-17-256gb-white.html)\n8. ![](https://webshop.bitlab.rs/files/products/img/0142150_apple-iphone-17-256gb-lavander-esim.png) **Apple iPhone 17 256GB Lavander eSim** — 1.899 KM — Na lageru — [Pogledaj](https://webshop.bitlab.rs/G61924-apple-iphone-17-256gb-lavander.html)\n9. ![](https://webshop.bitlab.rs/files/products/img/0139842_apple-iphone-17-256gb-lavander.png) **Apple iPhone 17 256GB Lavander** — 1.979 KM — Na lageru — [Pogledaj](https://webshop.bitlab.rs/G61151-apple-iphone-17-256gb-lavander.html)\n10. ![](https://webshop.bitlab.rs/files/products/img/0140218_apple-iphone-17-pro-256-blue.png) **Apple iPhone 17 Pro 256GB Deep Blue** — 2.849 KM — Na lageru — [Pogledaj](https://webshop.bitlab.rs/G61325-apple-iphone-17-pro-256.html)\n\nImate li na umu određeni budžet ili brend?", "error": null}]};
+
+document.getElementById("meta").textContent =
+  `Pokrenuto ${DATA.meta.run_at}  ·  Server: ${DATA.meta.url}  ·  Tag: ${DATA.meta.label || "—"}  ` +
+  `·  Upita: ${DATA.meta.n_queries}  ·  Ukupno trajalo: ${DATA.meta.wall_s.toFixed(1)}s`;
+
+// Model badge gore desno — skrati puno ime modela za prijatniji prikaz
+// (npr. "claude-sonnet-4-6" → "Sonnet 4.6", "claude-haiku-4-5-20251001" → "Haiku 4.5")
+function shortModelName(m) {
+  if (!m || m === "?") return "—";
+  const mat = /claude-([a-z]+)-(\d+)-(\d+)/i.exec(m);
+  if (mat) {
+    const family = mat[1].charAt(0).toUpperCase() + mat[1].slice(1);
+    return `${family} ${mat[2]}.${mat[3]}`;
+  }
+  return m;
+}
+const modelTxt = shortModelName(DATA.meta.chat_model);
+const effortTxt = (DATA.meta.chat_model_effort && DATA.meta.chat_model_effort !== "?")
+  ? DATA.meta.chat_model_effort : "";
+const backendTxt = (DATA.meta.llm_backend && DATA.meta.llm_backend !== "?")
+  ? DATA.meta.llm_backend : "";
+const badgeParts = [modelTxt];
+if (effortTxt) badgeParts.push(effortTxt);
+if (backendTxt) badgeParts.push("via " + backendTxt);
+document.getElementById("model-name").textContent = badgeParts.join(" · ");
+
+// Prevod tehničkih enum-a u prirodan jezik (za badge tekst)
+const ROUTING_LABEL = {
+  "EXACT_PARENT": "baš parent",
+  "DESCENDANT": "podkategorija",
+  "NULL": "bez filtera",
+  "OUT": "promašena",
+  "NA": "—",
+};
+const RESULT_LABEL = {
+  "PASS": "dobar",
+  "WARN": "upozorenje",
+  "FAIL": "promaši",
+  "NA": "—",
+};
+function routingLabel(v) { return ROUTING_LABEL[v] || v; }
+function resultLabel(v) { return RESULT_LABEL[v] || v; }
+
+// Verdict banner
+const v = DATA.summary;
+let vClass, vTitle, vBody;
+if (v.fail_count === 0 && v.warn_count === 0) {
+  vClass = "pass";
+  vTitle = "✓ Sve dobro — Claude vraća relevantne proizvode za sve parent kategorije";
+  vBody = `${v.pass_count} od ${v.total} upita ima dobre rezultate. Prosjek ${v.avg_in_subtree.toFixed(1)} relevantnih proizvoda po upitu.`;
+} else if (v.fail_count > 0) {
+  vClass = "fail";
+  vTitle = `✗ ${v.fail_count} upita promašeno — Claude ne vraća relevantne proizvode`;
+  vBody = `${v.pass_count} dobro, ${v.warn_count} upozorenje, ${v.fail_count} promaši od ${v.total} upita. ` +
+    `${v.exact_parent_count} upita gdje je Claude poslao baš parent kao filter (najopasnije bez fix-a).`;
+} else {
+  vClass = "warn";
+  vTitle = `⚠ ${v.warn_count} upita sa upozorenjem — slabi rezultati`;
+  vBody = `${v.pass_count} dobro, ${v.warn_count} upozorenje. Pogledaj detalje po upitu.`;
+}
+document.getElementById("verdict").innerHTML =
+  `<div class="verdict-banner ${vClass}">${vTitle}<small>${vBody}</small></div>`;
+
+// Stats cards
+document.getElementById("stats").innerHTML = [
+  ["", `${v.total}`, "Ukupno upita"],
+  ["pass", `${v.pass_count}`, "Dobri rezultati"],
+  ["warn", `${v.warn_count}`, "Upozorenje (slabi)"],
+  ["fail", `${v.fail_count}`, "Promašeni"],
+  ["", `${v.exact_parent_count}`, "Poslao baš parent (rizik)"],
+  ["", `${v.descendant_count}`, "Poslao podkategoriju (smart)"],
+  ["", `${v.null_count}`, "Bez filtera"],
+  ["", `${v.total_returned}`, "Σ vraćenih proizvoda"],
+].map(([cls, val, lab]) =>
+  `<div class="stat ${cls}"><div class="v">${val}</div><div class="l">${lab}</div></div>`
+).join("");
+
+// Helper — ime kategorije za dati cat_id (iz DATA.cat_names)
+function catName(cid) {
+  if (cid === null || cid === undefined || cid === "") return null;
+  return (DATA.cat_names || {})[String(cid)] || null;
+}
+function routedDisplay(cid) {
+  if (cid === null || cid === undefined || cid === "") return "—";
+  const nm = catName(cid);
+  return nm ? `${cid} <span style="color:var(--muted)">(${escapeHtml(nm)})</span>` : `${cid}`;
+}
+
+// Leaderboard
+document.getElementById("leaderboard").innerHTML = DATA.rows.map(r => {
+  const rt = r.routing_verdict.toLowerCase();
+  const res = r.result_verdict.toLowerCase();
+  const parentName = catName(r.expected_cat_id);
+  const parentTxt = parentName ? `parent kat. ${r.expected_cat_id} — ${parentName}` : `parent kat. ${r.expected_cat_id}`;
+  return `<tr>
+    <td class="q">${escapeHtml(r.query)}<br><span style="color:var(--muted);font-size:10px">${escapeHtml(parentTxt)}</span></td>
+    <td class="id">${routedDisplay(r.routed_cat_id)}</td>
+    <td><span class="badge ${rt}">${routingLabel(r.routing_verdict)}</span></td>
+    <td class="num">${r.n_returned} <span style="color:var(--muted);font-size:10px">(proizvoda)</span></td>
+    <td class="num">${r.n_in_subtree} <span style="color:var(--muted);font-size:10px">(proizvoda)</span></td>
+    <td class="num">${r.subtree_total} <span style="color:var(--muted);font-size:10px">(proizvoda)</span></td>
+    <td><span class="badge ${res}">${resultLabel(r.result_verdict)}</span></td>
+    <td class="num">${r.iterations}</td>
+    <td class="num">${r.latency_ms}ms</td>
+  </tr>`;
+}).join("");
+
+// Per-query details
+document.getElementById("details").innerHTML = DATA.rows.map(r => {
+  if (r.error) {
+    return `<details class="qdetail"><summary>${escapeHtml(r.query)} — <span class="err">${escapeHtml(r.error)}</span></summary></details>`;
+  }
+  const callsHtml = r.search_calls.length
+    ? r.search_calls.map(c =>
+        `<div class="toolcall">iter ${c.iteration} · pretraga "${escapeHtml(c.query)}" · ` +
+        `kategorija=${c.category_id ?? "—"} · brend=${c.brand_id ?? "—"} · ` +
+        `top_k=${c.top_k ?? "default"} · max_cijena=${c.max_price_km ?? "—"} · ` +
+        `(${c.latency_ms ?? "?"}ms)</div>`
+      ).join("")
+    : `<div class="toolcall" style="color:var(--muted)">— Claude nije pozvao search_products —</div>`;
+  // Prevod debug-flag-a (kako smo mapirali proizvod iz Claude-ovog odgovora
+  // na red u bazi) u ljudski jezik.
+  const VIA_LABEL = {
+    "urlhash": "prepoznat preko URL adrese",
+    "urlhash_prefix": "prepoznat preko G-koda iz URL-a",
+    "name": "prepoznat po imenu (egzaktno)",
+    "name_lower": "prepoznat po imenu",
+    "name_prefix": "prepoznat po dijelu imena",
+  };
+  const productsHtml = r.products.length
+    ? `<ul class="products">${r.products.map(p => {
+        const viaTxt = p.match_via && VIA_LABEL[p.match_via] ? ` · ${VIA_LABEL[p.match_via]}` : "";
+        const inTxt = p.in_subtree
+          ? " ✓ pogodak"
+          : (p.cat_id ? ` ✗ promaši (kategorija ${p.cat_id})` : " ✗ nije pronađen u bazi proizvoda");
+        return `<li class="${p.in_subtree ? "in-subtree" : "out-subtree"}">` +
+        `${escapeHtml(p.name)} <span style="color:var(--muted);font-size:10px">` +
+        `${inTxt}${viaTxt}</span></li>`;
+      }).join("")}</ul>`
+    : `<div style="color:var(--muted);font-size:11px">— Nijedan proizvod nije izvučen iz odgovora —</div>`;
+  const parentNm = catName(r.expected_cat_id);
+  const famTxt = parentNm ? `porodica ${parentNm}` : "porodica";
+  return `<details class="qdetail">
+    <summary>${escapeHtml(r.query)} — <span class="badge ${r.result_verdict.toLowerCase()}">${resultLabel(r.result_verdict)}</span> ${r.n_in_subtree} pogodaka od ${r.n_returned} vraćenih proizvoda (${famTxt} ima ${r.subtree_total} proizvoda)</summary>
+    <div class="grid">
+      <div class="section">
+        <h3>Šta je Claude pozvao</h3>
+        ${callsHtml}
+      </div>
+      <div class="section">
+        <h3>Vraćeni proizvodi (mapiranje na kategoriju)</h3>
+        ${productsHtml}
+      </div>
+    </div>
+    <div class="section" style="margin-top:10px">
+      <h3>Sirov odgovor od Claude-a</h3>
+      <div class="reply">${escapeHtml(r.reply)}</div>
+    </div>
+  </details>`;
+}).join("");
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+</script>
+</body>
+</html>

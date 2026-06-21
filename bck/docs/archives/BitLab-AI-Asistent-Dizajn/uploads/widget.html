@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BitLab — Računari i Elektronika</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial, sans-serif; color: #1F2937; }
+
+nav {
+  background: #fff; padding: 14px 40px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  display: flex; justify-content: space-between; align-items: center;
+  position: sticky; top: 0; z-index: 100;
+}
+.logo { font-size: 22px; font-weight: 800; color: #fb6d3b; letter-spacing: -0.5px; }
+.logo span { color: #1a1a2e; }
+nav ul { display: flex; gap: 28px; list-style: none; }
+nav a { color: #1F2937; text-decoration: none; font-weight: 500; font-size: 14px; }
+nav a:hover { color: #fb6d3b; }
+
+.hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #2a2a3e 100%);
+  color: #fff; padding: 72px 40px; text-align: center;
+}
+.hero h1 { font-size: 42px; margin-bottom: 12px; }
+.hero p { font-size: 18px; opacity: .85; margin-bottom: 24px; }
+.hero .cta {
+  display: inline-block; background: #fb6d3b; color: #fff;
+  padding: 12px 28px; border-radius: 8px; text-decoration: none;
+  font-weight: 700; font-size: 16px;
+}
+
+.section { padding: 56px 40px; max-width: 1200px; margin: 0 auto; }
+.section h2 { font-size: 28px; color: #1a1a2e; margin-bottom: 28px; text-align: center; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+.card {
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 12px;
+  overflow: hidden; transition: transform .2s, box-shadow .2s;
+}
+.card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+.card-img {
+  background: linear-gradient(135deg, #FED7AA, #fed1bb);
+  height: 160px; display: flex; align-items: center;
+  justify-content: center; font-size: 56px;
+}
+.card-body { padding: 18px; }
+.card h3 { color: #1a1a2e; margin-bottom: 6px; font-size: 16px; }
+.card .brand { font-size: 12px; color: #6B7280; margin-bottom: 8px; }
+.card .price { color: #fb6d3b; font-size: 20px; font-weight: 700; }
+.card .avail { font-size: 12px; color: #10B981; margin-top: 4px; }
+
+.trust-bar {
+  background: #F9FAFB; border-top: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB;
+  padding: 20px 40px;
+  display: flex; justify-content: center; gap: 60px; flex-wrap: wrap;
+}
+.trust-bar .item { text-align: center; font-size: 13px; color: #374151; }
+.trust-bar .item strong { display: block; font-size: 20px; color: #1a1a2e; margin-bottom: 4px; }
+
+footer {
+  background: #1a1a2e; color: #CBD5E1;
+  padding: 36px 40px; text-align: center; font-size: 13px; line-height: 1.8;
+  margin-top: 40px;
+}
+footer strong { color: #fb6d3b; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Bit<span>Lab</span></div>
+  <ul>
+    <li><a href="#">Početna</a></li>
+    <li><a href="#">Računari</a></li>
+    <li><a href="#">Komponente</a></li>
+    <li><a href="#">Periferija</a></li>
+    <li><a href="#">Kontakt</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <h1>Tvoj partner za IT opremu</h1>
+  <p>5.287 proizvoda &middot; Banja Luka &middot; Dostava širom BiH</p>
+  <a href="#proizvodi" class="cta">Istraži katalog</a>
+</section>
+
+<div class="trust-bar">
+  <div class="item"><strong>5.287</strong>proizvoda</div>
+  <div class="item"><strong>2 god.</strong>garancija</div>
+  <div class="item"><strong>7 KM</strong>dostava</div>
+  <div class="item"><strong>B2B</strong>fakture / JIB</div>
+  <div class="item"><strong>MKD</strong>rate</div>
+</div>
+
+<section class="section" id="proizvodi">
+  <h2>Popularno ove sedmice</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="card-img">💾</div>
+      <div class="card-body">
+        <div class="brand">Crucial</div>
+        <h3>SSD BX500 1TB 2.5" SATA3</h3>
+        <div class="price">389 KM</div>
+        <div class="avail">&#10003; Na lageru</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-img">🖥️</div>
+      <div class="card-body">
+        <div class="brand">Samsung</div>
+        <h3>Monitor 27" IPS FullHD 100Hz</h3>
+        <div class="price">449 KM</div>
+        <div class="avail">&#10003; Na lageru</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-img">🧠</div>
+      <div class="card-body">
+        <div class="brand">Kingston</div>
+        <h3>DDR4 16GB 3200MHz CL16</h3>
+        <div class="price">89 KM</div>
+        <div class="avail">&#10003; Na lageru</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-img">🎮</div>
+      <div class="card-body">
+        <div class="brand">Logitech</div>
+        <h3>G502 X Gaming Miš</h3>
+        <div class="price">119 KM</div>
+        <div class="avail">&#10003; Na lageru</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <strong>BitLab d.o.o.</strong> &middot; Jevrejska 37, 78000 Banja Luka<br>
+  prodaja@bitlab.rs &middot; 066 516 174 &middot; webshop.bitlab.rs
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     BitLab AI Widget — jednolinijska integracija
+     Na pravom sajtu zamijeni localhost URL sa ngrok/domendom
+     ═══════════════════════════════════════════════════════════════ -->
+<script src="/public/widget.js"></script>
+
+</body>
+</html>

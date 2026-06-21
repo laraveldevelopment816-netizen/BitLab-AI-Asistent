@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Patterns — bitLab-ai-asistent</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; padding: 24px; }
+  h1 { font-size: 2rem; font-weight: 700; color: #fff; }
+  .sub { font-size: 1rem; color: #64748b; margin-top: 4px; margin-bottom: 32px; }
+  .links { position: fixed; top: 16px; right: 24px; display: flex; gap: 12px; }
+  .links a { color: #60a5fa; text-decoration: none; font-size: 0.85rem; background: #1e293b; padding: 6px 12px; border-radius: 6px; }
+  .links a:hover { background: #334155; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .card { background: #1e293b; border-radius: 12px; padding: 20px; border-left: 4px solid #334155; }
+  .card.red { border-left-color: #ef4444; }
+  .card.green { border-left-color: #22c55e; }
+  .card.blue { border-left-color: #3b82f6; }
+  .card.amber { border-left-color: #f59e0b; }
+  .card.purple { border-left-color: #a855f7; }
+  .card h2 { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 12px; }
+  .card h3 { font-size: 1rem; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 4px; margin-bottom: 4px; }
+  .badge.bad { background: #7f1d1d; color: #fca5a5; }
+  .badge.good { background: #14532d; color: #86efac; }
+  .badge.neutral { background: #1e3a5f; color: #93c5fd; }
+  .item { font-size: 0.85rem; color: #cbd5e1; margin-bottom: 8px; line-height: 1.5; }
+  .item strong { color: #fff; }
+  .item code { background: #0f172a; color: #7dd3fc; padding: 1px 5px; border-radius: 3px; font-size: 0.8rem; }
+  .section-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin: 28px 0 16px 0; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+  .arrow { color: #22c55e; font-weight: 700; }
+  .highlight { background: #1a2744; border: 1px solid #3b82f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
+  .highlight .label { font-size: 0.75rem; color: #60a5fa; font-weight: 600; margin-bottom: 4px; }
+  .highlight .text { font-size: 0.88rem; color: #e2e8f0; line-height: 1.5; }
+  .full { grid-column: 1 / -1; }
+  pre { background: #0f172a; border-radius: 8px; padding: 12px; font-size: 0.78rem; color: #a5f3fc; overflow-x: auto; line-height: 1.6; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="links">
+  <a href="log.md">log.md</a>
+  <a href="design-patterns-primjena.md">dokument</a>
+</div>
+
+<h1>bitLab-ai-asistent</h1>
+<div class="sub">Brainstorm: Analiza dizajn paterna iz CMSKP → primjena na Asistenta &nbsp;·&nbsp; 2026-06-21</div>
+
+<div class="section-title">Lekcija: CMSKP — staro vs novo</div>
+<div class="grid">
+
+  <div class="card red">
+    <h2>Stari kod (cm-scraper-v0) — problemi</h2>
+    <div class="item"><span class="badge bad">God Object</span> <code>HaikuBrowserClient</code> — 438 linija, rukuje Playwright-om, login-om, model selekcijom, PDF upload-om i trofaznim čekanjem na response</div>
+    <div class="item"><span class="badge bad">160-linejni method</span> <code>wait_for_response()</code> — tri while petlje, magic <code>_MIN_WAIT=90</code>, DOM polling svakih 3s</div>
+    <div class="item"><span class="badge bad">Fundamentalni problem</span> Cijeli <code>haiku/</code> modul scrape-uje <strong>claude.ai browser UI</strong> umjesto da koristi Anthropic SDK — krhko, zavisi od DOM selektora</div>
+    <div class="item"><span class="badge bad">Copy-paste</span> <code>_split_into_acts()</code> i <code>_is_act_start()</code> postoje identično u <code>GazettePdfParser</code> i <code>PropisiPdfParser</code></div>
+    <div class="item"><span class="badge bad">Type bypass</span> <code>haiku/db_writer.py</code> vraća <code>act_type='haiku_parsed'</code> koji nije u <code>ActType</code> enumu</div>
+  </div>
+
+  <div class="card green">
+    <h2>Novi kod (cm-scraper) — pipeline rješenje</h2>
+    <div class="item"><span class="badge good">Pipeline</span> 7 Stage klasa od ~30 linija svaka, umjesto jedne monolitne funkcije</div>
+    <div class="item"><span class="badge good">Factory</span> <code>build_pipeline()</code> — jedino mjesto gdje se Stage-ovi instanciraju</div>
+    <div class="item"><span class="badge good">Chain of Resp.</span> Unutar <code>RunModelsStage</code> — modeli se probaju redom dok jedan ne prođe prag</div>
+    <div class="item"><span class="badge good">PipelineContext</span> Jedini objekt koji putuje kroz sve faze — svaka piše svoje, čita prethodnikove</div>
+    <div class="item"><span class="badge good">Stop after</span> <code>Pipeline.run(ctx, stop_after="BuildPromptStage")</code> za debug bez mijenjanja logike</div>
+    <pre>Pipeline([
+  PrepareTextStage(),   # PDF → tekst
+  BuildPromptStage(),   # tekst → prompt
+  RunModelsStage(),     # chain: model1 → model2
+  ArbiterStage(),       # eskalacija
+  FinalizeStage(),      # pobjednik po score-u
+  SaveStage(),          # disk write
+  ReportStage(),        # izvještaj
+])</pre>
+  </div>
+
+</div>
+
+<div class="section-title">Analiza: BitLab AI Asistent — trenutno stanje</div>
+<div class="grid">
+
+  <div class="card amber">
+    <h2>Najveći problem — duplikat tool petlje</h2>
+    <h3>~130 LOC duplikata u agent.py</h3>
+    <div class="item"><code>_run_anthropic()</code> i <code>_run_pwr()</code> implementiraju identičnu logiku:</div>
+    <div class="item">poziv LLM → parsing tool_use blokova → routing (catalog vs respond_to_user) → dispatch → gradi poruke za sljedeću iteraciju</div>
+    <div class="item"><strong>Rješenje:</strong> <code>AgentLoop</code> klasa sa protokolom — Anthropic i PWR samo implementiraju <code>parse_tool_calls()</code>, <code>build_tool_result_message()</code> i <code>call_llm()</code></div>
+  </div>
+
+  <div class="card red">
+    <h2>God Functions</h2>
+    <div class="item"><code>run_suite()</code> u <code>runner.py</code> — 160 LOC, miješa: I/O checkpoint, business logic (budget), HTTP client, reporter</div>
+    <div class="item"><code>tools.py</code> module init — 5 globalnih varijabli se pune pri importu čitanjem fajla; testovi ne mogu mock-ovati bez monkeypatching</div>
+    <div class="item"><span class="badge bad">Magic strings</span> <code>'respond_to_user'</code>, <code>'category_overview'</code> hardcoded na više mjesta bez centralne konstante</div>
+  </div>
+
+  <div class="card blue full">
+    <h2>Prilike za refaktoring — prioritet</h2>
+    <div class="grid" style="margin-top:8px;">
+      <div>
+        <div class="highlight">
+          <div class="label">1. HITNO — AgentLoop (eliminira ~130 LOC duplikata)</div>
+          <div class="text">Definiši <code>LLMBackend</code> protokol. <code>AnthropicBackend</code> i <code>PWRBackend</code> implementiraju ga. <code>AgentLoop.run(messages, backend)</code> drži jednu while petlju. Preduslov za sve ostale refaktoringe.</div>
+        </div>
+        <div class="highlight">
+          <div class="label">2. Tool Registry (eliminira magic strings)</div>
+          <div class="text"><code>@tool_handler('category_overview')</code> dekorator. <code>dispatch()</code> postaje lookup u registry. Novi tool = jedna funkcija, nema dodirivanja dispatch-a.</div>
+        </div>
+      </div>
+      <div>
+        <div class="highlight">
+          <div class="label">3. Budget/Cache Pipeline u run_suite()</div>
+          <div class="text">Svaki entry prolazi kroz: <code>BudgetGate → CacheGate → LLMCall → CachePut → BudgetRecord</code>. Svaki stage je izolovan i testabilan.</div>
+        </div>
+        <div class="highlight">
+          <div class="label">4. Lazy tool data (eliminira module-level side effects)</div>
+          <div class="text"><code>CategoryRepository</code> klasa sa <code>load_on_first_access</code>. Testovi mogu injectovati mock repozitorij bez monkeypatching.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section-title">Request flow — kako sada radi</div>
+<div class="grid">
+  <div class="card full">
+    <pre>HTTP POST /api/chat (main.py)
+  → Pydantic validacija ChatRequest
+  → asyncio.to_thread(run_agent, messages)
+  → run_agent() bira backend (PWR ili Anthropic)    ← DUPLIKAT POČINJE OVDJE
+    → _run_pwr() ili _run_anthropic()
+      → while petlja (max 5 iter):
+          poziv LLM API
+          → parsing tool_use blokova
+          → ako kataloški tool: dispatch(name, args)
+              → _handle_category_overview() ili _handle_search_products()
+              → JSON string rezultat nazad u petlju
+          → ako respond_to_user: break
+  → return {reply, tool_calls, iterations}
+  → JSON response
+
+CILJ (poslije refaktoringa):
+  → run_agent() kreira backend (factory)
+  → AgentLoop(backend).run(messages)   ← jedna implementacija za oba SDK-a</pre>
+  </div>
+</div>
+
+<div class="section-title">Vice versa: BitLab dijamanti → CM Scraper RAJ</div>
+<div class="grid">
+
+  <div class="card green">
+    <h2>Šta CM Scraper IMA (iz BitLab)</h2>
+    <div class="item"><span class="badge good">stop_after</span> <code>Pipeline.run(ctx, stop_after="BuildPromptStage")</code> — implementirano</div>
+    <div class="item"><span class="badge good">Checkpoint</span> <code>Pipeline._checkpoint()</code> snima <code>context.json</code> u run_dir — ali samo snapshot, ne resume</div>
+    <div class="item"><span class="badge good">run_dir</span> Postoji u SaveStage — ali bug: run_dir je None u ranim fazama pa se checkpoint ne snima kad treba</div>
+  </div>
+
+  <div class="card red">
+    <h2>Šta CM Scraper NEMA — prioritetni gaps</h2>
+    <div class="item"><span class="badge bad">Tool Calling</span> Nema structured tool_use. Modeli vraćaju slobodni JSON, post-hoc validacija — fragilno</div>
+    <div class="item"><span class="badge bad">Budget Gate</span> Nema svjesnosti o trošku. Može neograničeno pozivati Opus bez kontrole</div>
+    <div class="item"><span class="badge bad">Eval Cache</span> Svaki run zove API iznova. Nema SHA-256 keša za ponovljene upite</div>
+    <div class="item"><span class="badge bad">Resume</span> Checkpoint = snapshot za inspekciju, NE za nastavak od pane faze</div>
+    <div class="item"><span class="badge bad">Vector Search</span> PDF tekst ide direktno u prompt. Nema embeddinga ni retrieval-a</div>
+    <div class="item"><span class="badge bad">Mock seam</span> <code>call_model()</code> se poziva direktno — nema seam-a za test mock</div>
+  </div>
+
+  <div class="card blue full">
+    <h2>Plan implementacije</h2>
+    <div class="grid" style="margin-top:8px;">
+      <div>
+        <div class="highlight">
+          <div class="label">1. HITNO — ToolCallStage (structured output)</div>
+          <div class="text">Novi stage između <code>BuildPromptStage</code> i <code>FinalizeStage</code>. Koristi Anthropic tool_use API umjesto slobodnog JSON-a. <code>ctx.tool_results</code> + <code>ctx.tool_calls_log</code>. Opcionalan via <code>ctx.config.enable_tool_calling</code>.</div>
+        </div>
+        <div class="highlight">
+          <div class="label">2. Context Object pattern — fix run_dir bug</div>
+          <div class="text">Nije Memento, nije Strategy. <strong>Context Object</strong> (RunContext/EvalSession) nosi runtime stanje: start_index, completed_stages[], label, run_dir. Zna se serijalizovati i deserijalizovati. run_dir se seli iz SaveStage u PipelineContext constructor — dostupan svim fazama od starta.</div>
+        </div>
+      </div>
+      <div>
+        <div class="highlight">
+          <div class="label">3. Budget Gate (sliding window)</div>
+          <div class="text">Port BitLab <code>budget.py</code>: 5h sliding window, per-provider tracker. Ide kao wrapper oko RunModelsStage ili kao middleware u Pipeline.run() — ne novi stage, nego pipeline-level concern.</div>
+        </div>
+        <div class="highlight">
+          <div class="label">4. Hibridna pretraga (low priority — future)</div>
+          <div class="text">BM25 + cosine, MiniLM L6 v2 (384-dim), file-based (.npz + .json). Za pravne akte: embedovati odredbe umjesto cijelog dokumenta. Prirodna primjena: pronađi slične odredbe iz prethodnih zakona za kontekst.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card purple full">
+    <h2>BitLab hibridna pretraga — formula</h2>
+    <pre>fused = 0.6 * norm01(cosine_scores) + 0.4 * norm01(bm25_scores)
+# Soft boost ako AI nije dao hard filter:
+fused += 0.25 per matching category
+fused += 0.25 per matching brand
+# Max boost: +0.5 kumulativno
+# Sort: (in_stock, -score_bucket, brand_priority, -score)</pre>
+    <div class="item" style="margin-top:8px;">Embeddingsi se pre-normiraju pri upisivanju (<code>normalize_embeddings=True</code>) pa dot product direktno daje cosine — nema extra dijeljenja. Lazy model load (50s na WSL2, samo na prvom upitu).</div>
+  </div>
+
+</div>
+
+<div class="section-title">Fajlovi sesije</div>
+<div class="grid">
+  <div class="card">
+    <h2>Dokumenti</h2>
+    <div class="item"><a href="design-patterns-primjena.md" style="color:#60a5fa;">design-patterns-primjena.md</a> — 34KB · CMSKP patereni → BitLab Asistent</div>
+    <div class="item"><a href="bitlab-dijamanti-cm-scraper.md" style="color:#60a5fa;">bitlab-dijamanti-cm-scraper.md</a> — 42KB · BitLab dijamanti → CM Scraper RAJ</div>
+    <div class="item"><a href="log.md" style="color:#60a5fa;">log.md</a> — transkript sesije</div>
+  </div>
+  <div class="card">
+    <h2>Workflow statistika</h2>
+    <div class="item">Workflow 1 (CMSKP→BitLab): 4 agenta, 182K tokena, ~9 min</div>
+    <div class="item">Workflow 2 (BitLab→CMSKP): 5 agenta, 179K tokena, ~6 min</div>
+    <div class="item">Ukupno: 9 subagentnih, 361K tokena analize</div>
+  </div>
+</div>
+
+<div style="margin-top:32px; font-size:0.75rem; color:#475569; text-align:center;">
+  Generisano automatski · 2026-06-21 · bitLab brainstorm sesija
+</div>
+
+</body>
+</html>

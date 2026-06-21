@@ -57,8 +57,24 @@ build/
 # scan.sh output
 repo-scan.md
 
-# Eval visualizer outputs (parent-expansion / parent-runtime HTML dumps)
-evals/runs/
+# Eval run outputs — JSONL i HTML idu u git (korisnik želi HTML za pregled u PR-u
+# bez lokalnog re-renderovanja). HTML generator: reporter.py:write_html.
+# Ako se kasnije pokaže da zauzima previše prostora — uncomment liniju dolje.
+# evals/runs/*.html
+evals/runs/archives/
+
+# Verdict cache (sadržaj re-generabilan, zauzima prostor)
+evals/cache/
+
+# Ralph marker fajlovi — per-run state, ne ide u repo
+ralph/PAUSE
+ralph/STOP
+ralph/PAUSED_UNTIL_*
+
+# Eval resume checkpoint — per-run state, sljedeća iteracija obriše/regeneriše
+evals/runs/*.checkpoint.json
 
 # Pre-reset archive (TDD zero base). Sadržaj dostupan iz git log-a.
-bck/
+# bck/
+# Claude Code runtime lock — per-session (sessionId/pid), ne ide u repo
+.claude/scheduled_tasks.lock

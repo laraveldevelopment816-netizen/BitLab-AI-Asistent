@@ -1,0 +1,18 @@
+[
+  {"query": "Mobiteli", "expected_category_id": "151", "category_label": "Mobiteli (parent) — leaderboard #1, delta +1570"},
+  {"query": "Mobilni telefoni", "expected_category_id": "175", "category_label": "Mobilni telefoni (leaf) — parent=151 Mobiteli, 165 proizvoda"},
+  {"query": "PC periferija", "expected_category_id": "219", "category_label": "PC periferija (parent) — leaderboard #2, delta +638"},
+  {"query": "Potrošni materijal", "expected_category_id": "341", "category_label": "Potrošni materijal (parent) — leaderboard #3, delta +300"},
+  {"query": "Kablovi i adapteri", "expected_category_id": "356", "category_label": "Kablovi i adapteri (parent) — leaderboard #4, delta +280"},
+  {"query": "PC komponente", "expected_category_id": "107", "category_label": "PC komponente (parent) — leaderboard #5, delta +255"},
+  {"query": "Mrežna oprema", "expected_category_id": "352", "category_label": "Mrežna oprema (parent) — leaderboard #6, delta +203"},
+  {"query": "Računari", "expected_category_id": "17", "category_label": "Računari (parent) — leaderboard #7, delta +177"},
+  {"query": "Televizori i prateća oprema", "expected_category_id": "148", "category_label": "Televizori (parent) — leaderboard #8, delta +169"},
+  {"query": "Kancelarijski materijal", "expected_category_id": "214", "category_label": "Kancelarijski materijal (parent) — leaderboard #9, delta +145"},
+  {"query": "USB uređaji", "expected_category_id": "347", "category_label": "USB uređaji (parent) — leaderboard #10, delta +123"},
+  {"query": "Satovi", "expected_category_id": "152", "category_label": "Satovi (parent) — leaderboard #11, delta +99"},
+  {"query": "Baterije i punjači", "expected_category_id": "160", "category_label": "Baterije i punjači (parent) — leaderboard #12, delta +88"},
+  {"query": "USB stickovi i memorijske kartice", "expected_category_id": "346", "category_label": "USB stickovi (parent) — leaderboard #13, delta +57"},
+  {"query": "Fotoaparati i camcorderi", "expected_category_id": "150", "category_label": "Fotoaparati (parent) — leaderboard #14, delta +40"},
+  {"query": "Mediji", "expected_category_id": "227", "category_label": "Mediji (parent) — leaderboard #15, delta +35"}
+]

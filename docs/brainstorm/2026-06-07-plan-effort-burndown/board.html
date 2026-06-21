@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bitLab-ai-asistent — Action plan · Effort · Burndown</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a2129; --panel2:#212b35; --ink:#e6edf3; --muted:#8b98a5;
+    --line:#2d3742; --accent:#58a6ff; --done:#3fb950; --doing:#d29922; --wait:#6e7681; --warn:#f0883e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;
+    gap:12px;padding:20px 28px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0;font-size:26px;letter-spacing:-.5px}
+  .sub{margin:4px 0 0;color:var(--muted);font-size:14px}
+  .links{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
+  .links a{color:var(--accent);text-decoration:none}
+  .links a:hover{text-decoration:underline}
+  main{padding:24px 28px;max-width:1150px;margin:0 auto}
+  section{margin-bottom:24px}
+  .state{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 20px}
+  h2.lbl{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .state .big{font-size:18px;font-weight:600}
+  .state .big .pct{color:var(--done)}
+  .state .corr{margin-top:8px;font-size:14px;color:var(--warn)}
+  .state ul{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+  .steps{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 22px}
+  .steps .num2{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.05em}
+  .steps h3{margin:2px 0 4px;font-size:18px}
+  .steps .tok{margin:0 0 14px;color:var(--muted);font-size:13px}
+  .steps .tok b{color:var(--done)}
+  ol.flow{margin:0;padding-left:22px}
+  ol.flow li{margin-bottom:11px;font-size:14px}
+  ol.flow li strong{color:var(--ink)}
+  ol.flow li span{color:var(--muted)}
+  .ok{color:var(--done);font-weight:600}
+  code{background:var(--panel2);padding:2px 6px;border-radius:5px;color:var(--ink);font-size:13px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.two{grid-template-columns:1fr}}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 20px}
+  .box ul{margin:6px 0 0;padding-left:18px;font-size:14px;color:var(--muted)}
+  .box li{margin-bottom:6px}
+  .tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;margin-right:6px}
+  .t-ok{background:rgba(63,185,80,.16);color:var(--done)}
+  .t-thin{background:rgba(240,136,62,.16);color:var(--warn)}
+  .t-open{background:rgba(210,153,34,.16);color:var(--doing)}
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px}
+  .card .num{font-size:11px;font-weight:700;color:var(--accent)}
+  .card h4{margin:4px 0 6px;font-size:15px}
+  .card p{margin:0;color:var(--muted);font-size:13px}
+  footer{padding:14px 28px;color:var(--wait);font-size:12px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>bitLab-ai-asistent</h1>
+    <p class="sub">Action plan refactor · Effort · Burndown &nbsp;—&nbsp; brainstorm 2026-06-07</p>
+  </div>
+  <nav class="links">
+    <a href="log.md">log.md</a>
+    <a href="../../plans/akcioni-plan.md">akcioni-plan.md</a>
+    <a href="../../../STATUS.md">STATUS.md</a>
+    <a href="../../../specs/products.md">specs/products.md</a>
+  </nav>
+</header>
+
+<main>
+  <section class="state">
+    <h2 class="lbl">Stanje sada</h2>
+    <div class="big">Eval-fix <em>rad</em> ZAVRŠEN — acceptance <span class="pct">96,0%</span> (sve kartice Done, Todo prazan)</div>
+    <div class="corr">⚠ Završen je <strong>rad</strong> (eval), ali <strong>plan-dokument NIJE finaliziran</strong>. Posebno: <strong>arhiva ≠ plan</strong> — arhiva su outdated projektni dokumenti, plan su Now/Next/Later inicijative.</div>
+  </section>
+
+  <section class="steps">
+    <span class="num2">PRIORITET 1 — u toku</span>
+    <h3>Akcioni plan: refactor (ne deprecate — gubi se trag)</h3>
+    <p class="tok">Tok: <b>1 arhiva (sad)</b> → 2 + 3 zajedno → 4 → 5 → 6</p>
+    <ol class="flow">
+      <li><strong>Arhiva projektne dokumentacije</strong> <span class="ok">✓ započeto</span> — <code>docs/archives/</code> kreiran. Outdated MD iz roota / <code>docs/</code> / <code>specs/</code> (zapažanja, izvještaji, placeholderi, npr. iter17) seli se <strong>dokument-po-dokument</strong>. <span>NIJE vezano za plan/kartice — to su odvojeni projektni dokumenti. Plan i root ostaju vitki. <code>STATUS-HUMAN.md</code> + <code>EVAL_REGRESIJA_iter17.md</code> → arhiva <span class="ok">✓</span>.</span></li>
+      <li><strong>Plan refactor</strong> — <code>evfx</code> Now → Completed + napomena (96%, datum); otvorene tačke se <strong>zapisuju</strong>, ne brišu; <strong>Faza 2 → Now</strong>. <span>(radi se zajedno s 3)</span></li>
+      <li><strong>Backlog inbox</strong> — novi <code>docs/plans/backlog.md</code> za diktirane stavke; ti diktiraš, ja rutiram (Now/Next/Later/backlog). <span>= traženi "action to-do vezan za plan". (radi se zajedno s 2)</span></li>
+      <li><strong>Faza 2 priprema</strong> — proširi <code>specs/products.md</code> (sad 11 lin), pa decompose → taske → effort → burndown.</li>
+      <li><strong>Plan-lifecycle skill</strong> — zaseban, u <code>bitlab-standards</code>; par <code>analyze</code>/<code>synchronize-plan</code> STATUS-paru. Rješava "nemamo skill".</li>
+      <li><strong>Unaprijediti <code>archive-status</code> skill</strong> — da pokrije i <em>projektnu dokumentaciju</em> (root/docs/specs), ne samo STATUS Done kartice. <span>(Vidjeti kako; izdvojeno iz koraka 1.)</span></li>
+    </ol>
+  </section>
+
+  <section class="two">
+    <div class="box">
+      <h2 class="lbl">Nalazi iz repoa (provjereno)</h2>
+      <ul>
+        <li><span class="tag t-ok">✓</span><code>docs/archives/</code> (3): <code>STATUS-HUMAN.md</code>, <code>EVAL_REGRESIJA_iter17.md</code>, <code>EVAL_OPTIMIZACIJA.md</code> (git rename, nije commitano).</li>
+        <li><span class="tag t-ok">✓</span><code>docs/plans/</code>: <code>lessons-learned.md</code> (L1+L2), <code>notes.md</code>, <code>backlog.md</code> (memorija/inbox — NIJE plan), <code>baseline-i-restore.md</code> (spoj PLAN+RESTORE).</li>
+        <li><span class="tag t-ok">✓</span><code>PLAN.md</code>/<code>RESTORE.md</code> arhivirani (linkovi u STATUS/akcioni-plan popravljeni).</li>
+        <li><span class="tag t-ok">✓</span>repo-inventory 4→2 (BS u <code>docs/plans/</code>: component-group + folder-group; EN duplikati u arhivi). Root očišćen na 3 <code>.md</code> (CLAUDE/README/STATUS).</li>
+        <li><span class="tag t-thin">TANAK</span><code>specs/products.md</code> = 11 linija → stub, proširiti prije Faze 2.</li>
+        <li>Preostali kandidati za arhivu: <code>repo-inventory-{en,me}</code>, <code>repo-map{,-simplified}</code>, možda <code>RESTORE</code> — čeka diktat.</li>
+        <li>Živo (ne dirati): <code>PLAN.md</code>, <code>README</code>, <code>STATUS.md</code>, <code>CLAUDE.md</code>.</li>
+        <li><code>ralph/</code> loop živ (<code>ralph.sh</code>, <code>IMPLEMENTATION_PLAN.md</code>).</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h2 class="lbl">Otvorena pitanja</h2>
+      <ul>
+        <li><span class="tag t-open">?</span><strong>Ralph loop</strong>: nije nužan uz forsiran tool — prenamijeniti za druge svrhe? (vuče nova pitanja)</li>
+        <li><span class="tag t-open">?</span><strong>Backlog</strong>: zaseban <code>backlog.md</code> vs proširena Later sekcija?</li>
+        <li><span class="tag t-open">?</span><strong>Deprecate vs refactor</strong> postojećeg plana (predlažem refactor).</li>
+        <li><span class="tag t-open">?</span>Koji dokumenti još idu u arhivu (diktira se jedan-po-jedan).</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="lbl">Prioriteti 2–5</h2>
+    <div class="grid3">
+      <div class="card">
+        <span class="num">PRIORITET 2</span>
+        <h4>Procjena efforta</h4>
+        <p>Svakoj Faza-2 taski 4-dim model (A/B/J/V) → <code>effort:N pct:PP</code>, kao postojeće Done kartice. Skill: <code>estimate-effort-level</code>.</p>
+      </div>
+      <div class="card">
+        <span class="num">PRIORITET 3</span>
+        <h4>Burndown chart</h4>
+        <p>Agregiraj <code>pct</code> kroz vrijeme: Done = spaljeno, Todo = preostalo, do kraja. "Treći repozitorijum" = TBD. Srodno: <code>weekly-effort</code>.</p>
+      </div>
+      <div class="card">
+        <span class="num">PRIORITET 4</span>
+        <h4>Evaluation Framework</h4>
+        <p>Paralelni eval pozivi, self-aware session limit, error handling (429→FAIL false-positive), multi-flag bug, merge partial verdikata. Stavke u <code>backlog.md</code>; izvor EVAL_OPTIMIZACIJA.</p>
+      </div>
+      <div class="card">
+        <span class="num">PRIORITET 5</span>
+        <h4>Ralph petlja — naziv za CV</h4>
+        <p>Self-correcting / self-building software. Klasifikacija (prijedlog): <strong>autonomous, eval-gated self-improving LLM agent loop</strong> ("Ralph" tehnika) — piše/testira/commita uz automated eval harness, verdict cache, checkpoint-resume.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="state" style="border-color:#3fb95055">
+    <h2 class="lbl">Zaključak sesije</h2>
+    <ul style="margin:6px 0 0;padding-left:18px;font-size:14px;color:var(--ink)">
+      <li><strong>Čisti repo svakih 2-3 dana (max sedmica).</strong> Radi-pa-spoji divergencije zamrse repo brzo — root pao s 12 na 3 <code>.md</code>.</li>
+      <li><strong>Tight → loose coupling.</strong> Eval Framework + Ralph razvijani zajedno (auto-nastavljanje) = tight-coupled; cilj: dekaplovati u reusable komponente za druge projekte (~90% već reusable).</li>
+      <li><strong>Prvi siguran signal štedi rad.</strong> 96% acceptance = dokaz "na pravom putu, ne ispočetka". Plan + rani signal = ne radiš dvaput.</li>
+    </ul>
+    <p style="margin:10px 0 0;font-size:13px;color:var(--warn)">🧹 <em>Fun fact:</em> sesija o sređivanju plana prošla kroz ~10 reorganizacija backloga (caching gore↔dole, faze↔prioriteti, spoj↔razdvajanje) — živi dokaz pouke #1.</p>
+  </section>
+</main>
+
+<footer>Sesija: 2026-06-07-plan-effort-burndown · grana feat/ralph-categories-eval · ✓ commit 2817146 (push OK) — doc reorg zaključen</footer>
+</body>
+</html>

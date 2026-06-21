@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BitLab Voice Asistent</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #2a2a3e 100%);
+  min-height: 100vh; color: #1E293B; padding: 20px;
+}
+.container {
+  max-width: 620px; margin: 0 auto;
+  background: white; border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3); overflow: hidden;
+}
+header {
+  background: linear-gradient(135deg, #fb6d3b 0%, #eA5c2a 100%);
+  color: white; padding: 18px 22px; text-align: center;
+}
+header h1 { font-size: 20px; margin-bottom: 3px; }
+header p  { font-size: 12px; opacity: .9; }
+.badge {
+  display: inline-block; background: rgba(255,255,255,.2);
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; margin-top: 6px; font-weight: bold;
+}
+
+/* ── Mic strip ── */
+.mic-strip {
+  padding: 20px 24px 14px; text-align: center;
+  border-bottom: 1px solid #E2E8F0;
+}
+.mic-btn {
+  width: 90px; height: 90px; border-radius: 50%;
+  border: none; color: white; font-size: 36px;
+  cursor: pointer; display: inline-block;
+  transition: transform .15s;
+  background: linear-gradient(135deg, #fb6d3b, #eA5c2a);
+  box-shadow: 0 6px 20px rgba(251,109,59,.45);
+  margin-bottom: 10px;
+}
+.mic-btn:hover  { transform: scale(1.05); }
+.mic-btn:active { transform: scale(.95); }
+.mic-btn:disabled { opacity:.35; cursor:default; transform:none!important; }
+
+.mic-btn.state-listening  { background:linear-gradient(135deg,#16a34a,#15803d); box-shadow:0 6px 20px rgba(22,163,74,.4); animation:pulseG 1.8s infinite; }
+.mic-btn.state-recording  { background:linear-gradient(135deg,#dc2626,#991b1b); box-shadow:0 6px 20px rgba(220,38,38,.5); animation:pulseR .6s infinite; }
+.mic-btn.state-processing { background:linear-gradient(135deg,#7c3aed,#6d28d9); animation:spin 1s linear infinite; }
+.mic-btn.state-speaking   { background:linear-gradient(135deg,#2563eb,#1d4ed8); box-shadow:0 6px 20px rgba(37,99,235,.4); animation:pulseB .9s infinite; }
+
+@keyframes pulseG { 0%,100%{box-shadow:0 6px 20px rgba(22,163,74,.4)}  50%{box-shadow:0 6px 28px rgba(22,163,74,.8),0 0 0 14px rgba(22,163,74,.1)} }
+@keyframes pulseR { 0%,100%{transform:scale(1)}  50%{transform:scale(1.04);box-shadow:0 6px 28px rgba(220,38,38,.8),0 0 0 10px rgba(220,38,38,.12)} }
+@keyframes pulseB { 0%,100%{box-shadow:0 6px 20px rgba(37,99,235,.4)} 50%{box-shadow:0 6px 28px rgba(37,99,235,.7),0 0 0 10px rgba(37,99,235,.1)} }
+@keyframes spin   { to{transform:rotate(360deg)} }
+
+.level-wrap { height:5px; background:#E2E8F0; border-radius:3px; margin:0 auto 8px; width:140px; overflow:hidden; }
+.level-bar  { height:100%; width:0%; border-radius:3px; background:linear-gradient(90deg,#22c55e,#fb6d3b); transition:width .05s; }
+.status { color:#475569; font-size:13px; font-style:italic; min-height:20px; }
+.status.active   { color:#16a34a; font-style:normal; font-weight:600; }
+.status.speaking { color:#2563eb; font-style:normal; font-weight:600; }
+.hint { font-size:11px; color:#94a3b8; margin-top:4px; }
+
+/* ── Conversation ── */
+.conversation {
+  padding: 14px 18px; max-height: 440px; overflow-y: auto;
+  background: #F8FAFC;
+}
+.message {
+  margin-bottom: 12px; padding: 10px 14px;
+  border-radius: 12px; font-size: 14px; line-height: 1.55;
+}
+.message.user { background:#DBEAFE; border-left:4px solid #3B82F6; }
+.message.ai   { background:#fff; border:1px solid #E5E7EB; border-left:4px solid #fb6d3b; }
+.message .label { font-weight:700; font-size:11px; text-transform:uppercase; margin-bottom:5px; color:#475569; }
+
+/* Markdown inside .ai */
+.message.ai strong { font-weight:700; }
+.message.ai a      { color:#fb6d3b; text-decoration:none; }
+.message.ai a:hover{ text-decoration:underline; }
+.message.ai ul, .message.ai ol { padding-left:18px; margin:4px 0; }
+.message.ai li { margin-bottom:3px; }
+.message.ai img {
+  width:52px; height:52px; object-fit:contain;
+  border-radius:6px; border:1px solid #E5E7EB;
+  background:#F9FAFB; vertical-align:middle;
+  margin-right:7px; flex-shrink:0;
+}
+.product-line { display:flex; align-items:center; margin-bottom:5px; }
+
+/* ── Error ── */
+.error {
+  background:#FEE2E2; border-left:4px solid #DC2626;
+  color:#7F1D1D; padding:8px 16px; margin:6px 18px;
+  border-radius:8px; font-size:13px; display:none;
+}
+.error.show { display:block; }
+
+footer {
+  background:#F1F5F9; padding:10px 18px;
+  font-size:11px; color:#64748B; text-align:center;
+  line-height:1.6; border-top:1px solid #E2E8F0;
+}
+footer strong { color:#fb6d3b; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>&#127908; BitLab Voice Asistent</h1>
+    <p>Pritisni &rarr; govori &rarr; pauziraj &rarr; AI odgovara glasom i tekstom</p>
+    <div class="badge">Whisper (Groq) &middot; Claude Haiku &middot; Vesna bs-BA</div>
+  </header>
+
+  <div class="error" id="error"></div>
+
+  <div class="mic-strip">
+    <button class="mic-btn" id="micBtn">&#127908;</button>
+    <div class="level-wrap"><div class="level-bar" id="levelBar"></div></div>
+    <div class="status" id="status">Pritisni mikrofon da počneš razgovor</div>
+    <div class="hint" id="hint">Govori dok AI govori da ga prekinete</div>
+  </div>
+
+  <div class="conversation" id="conversation"></div>
+
+  <footer>
+    <strong>STT:</strong> Groq whisper-large-v3 &middot;
+    <strong>LLM:</strong> Claude Haiku &middot;
+    <strong>TTS:</strong> Microsoft Vesna bs-BA
+  </footer>
+</div>
+
+<script>
+const API_BASE = window.BITLAB_API || '';
+const CHAT_URL = API_BASE + '/api/chat';
+const TTS_URL  = API_BASE + '/api/tts';
+const STT_URL  = API_BASE + '/api/stt';
+
+const SPEECH_THRESHOLD   = 0.013;
+const SILENCE_MS         = 1100;
+const MIN_SPEECH_MS      = 350;
+const INTERRUPT_THRESHOLD = 0.022;  // viši prag za interrupt tokom govora
+
+const S = { IDLE:'idle', LISTENING:'listening', RECORDING:'recording', PROCESSING:'processing', SPEAKING:'speaking' };
+
+let state = S.IDLE;
+let audioCtx=null, analyser=null, micStream=null;
+let recorder=null, chunks=[], silenceTimer=null, speechStart=0;
+let vadRafId=null, currentAudio=null;
+let history = [];
+
+const els = {
+  micBtn: document.getElementById('micBtn'),
+  status: document.getElementById('status'),
+  hint:   document.getElementById('hint'),
+  conv:   document.getElementById('conversation'),
+  error:  document.getElementById('error'),
+  level:  document.getElementById('levelBar'),
+};
+
+// ── UI ─────────────────────────────────────────────────────────
+function setState(s) {
+  state = s;
+  els.micBtn.className = 'mic-btn state-' + s;
+  const map = {
+    [S.IDLE]:       ['🎤', 'Pritisni mikrofon da počneš razgovor', ''],
+    [S.LISTENING]:  ['👂', 'Slušam...', 'Govori, pauza će automatski poslati', 'active'],
+    [S.RECORDING]:  ['⏺',  'Snimam govor...', '', 'active'],
+    [S.PROCESSING]: ['⏳', 'Razmišljam...', '', ''],
+    [S.SPEAKING]:   ['🔊', 'Gabriela govori...', 'Počni govoriti da je prekinete', 'speaking'],
+  };
+  const [icon, status, hint, cls=''] = map[s];
+  els.micBtn.textContent = icon;
+  els.status.textContent = status;
+  els.status.className   = 'status ' + cls;
+  els.hint.textContent   = hint;
+  if (s !== S.RECORDING && s !== S.LISTENING) els.level.style.width = '0%';
+}
+
+function showError(msg) {
+  els.error.textContent = '⚠ ' + msg;
+  els.error.classList.add('show');
+  setTimeout(() => els.error.classList.remove('show'), 7000);
+}
+
+// ── Markdown renderer ──────────────────────────────────────────
+function renderMarkdown(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    // Slike — inline, bez wrappera
+    .replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g,
+      '<img src="$2" alt="$1" loading="lazy" onerror="this.style.display=\'none\'">')
+    // Linkovi — http/https i mailto:
+    .replace(/\[([^\]]+)\]\(((?:https?|mailto):[^)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    // Liste
+    .replace(/^[ \t]*[-*]\s+(.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*<\/li>)/g, '<ul>$1</ul>')
+    .replace(/\n/g,'<br>');
+}
+
+function addMsg(role, content) {
+  const div = document.createElement('div');
+  div.className = 'message ' + role;
+  const lbl = document.createElement('div');
+  lbl.className = 'label';
+  lbl.textContent = role === 'user' ? 'Vi' : 'BitLab AI';
+  const cnt = document.createElement('div');
+  if (role === 'ai') {
+    cnt.innerHTML = renderMarkdown(content);
+  } else {
+    cnt.textContent = content;
+  }
+  div.appendChild(lbl); div.appendChild(cnt);
+  els.conv.appendChild(div);
+  els.conv.scrollTop = els.conv.scrollHeight;
+}
+
+// ── Audio ──────────────────────────────────────────────────────
+async function openMic() {
+  micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+  analyser  = audioCtx.createAnalyser();
+  analyser.fftSize = 512;
+  audioCtx.createMediaStreamSource(micStream).connect(analyser);
+}
+
+function closeMic() {
+  cancelAnimationFrame(vadRafId);
+  micStream?.getTracks().forEach(t => t.stop()); micStream = null;
+  audioCtx?.close(); audioCtx = null; analyser = null;
+}
+
+function getRms() {
+  if (!analyser) return 0;
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  let sum = 0; for (const v of buf) sum += v * v;
+  return Math.sqrt(sum / buf.length);
+}
+
+// ── VAD ────────────────────────────────────────────────────────
+function startVad() {
+  function tick() {
+    const rms = getRms();
+
+    // Level bar — prikaži samo kad slušamo/snimamo
+    if (state === S.LISTENING || state === S.RECORDING)
+      els.level.style.width = Math.min(rms / 0.08 * 100, 100) + '%';
+
+    if (state === S.LISTENING && rms > SPEECH_THRESHOLD) {
+      startCapture();
+    } else if (state === S.RECORDING) {
+      if (rms > SPEECH_THRESHOLD) {
+        clearTimeout(silenceTimer); silenceTimer = null;
+      } else if (!silenceTimer) {
+        silenceTimer = setTimeout(() => { if (state === S.RECORDING) finishCapture(); }, SILENCE_MS);
+      }
+    } else if (state === S.SPEAKING && rms > INTERRUPT_THRESHOLD) {
+      // Interrupt — korisnik počeo govoriti dok AI govori
+      interruptAndListen();
+    }
+
+    vadRafId = requestAnimationFrame(tick);
+  }
+  vadRafId = requestAnimationFrame(tick);
+}
+
+function interruptAndListen() {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  window.speechSynthesis?.cancel();
+  clearTimeout(silenceTimer); silenceTimer = null;
+  startCapture();
+}
+
+// ── Recording ──────────────────────────────────────────────────
+function startCapture() {
+  const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus' : 'audio/ogg;codecs=opus';
+  recorder = new MediaRecorder(micStream, { mimeType: mime });
+  chunks = []; speechStart = Date.now();
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.start(100);
+  setState(S.RECORDING);
+}
+
+async function finishCapture() {
+  clearTimeout(silenceTimer); silenceTimer = null;
+  if (!recorder || recorder.state === 'inactive') return;
+  const elapsed = Date.now() - speechStart;
+
+  if (elapsed < MIN_SPEECH_MS) {
+    recorder.stop(); chunks = [];
+    setState(S.LISTENING);
+    return;
+  }
+
+  setState(S.PROCESSING);
+
+  await new Promise(resolve => { recorder.onstop = resolve; recorder.stop(); });
+  const blob = new Blob(chunks, { type: recorder.mimeType });
+  chunks = [];
+
+  try {
+    const transcript = await transcribe(blob);
+    if (!transcript.trim()) { rearm(); return; }
+
+    addMsg('user', transcript);
+    history.push({ role: 'user', content: transcript });
+
+    const { replyText, replyVoice } = await chatVoice(transcript);
+    addMsg('ai', replyText);
+    history.push({ role: 'assistant', content: replyText });
+
+    setState(S.SPEAKING);
+    await speak(replyVoice || replyText);
+  } catch (err) {
+    showError(err.message);
+  }
+  rearm();
+}
+
+function rearm() {
+  if (state === S.IDLE) return;
+  setState(S.LISTENING);
+}
+
+// ── API ────────────────────────────────────────────────────────
+async function transcribe(blob) {
+  const form = new FormData();
+  form.append('audio', blob, 'rec.webm');
+  const resp = await fetch(STT_URL, { method: 'POST', body: form });
+  if (!resp.ok) throw new Error('STT greška ' + resp.status);
+  return (await resp.json()).text || '';
+}
+
+async function chatVoice(message) {
+  const resp = await fetch(CHAT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, history: history.slice(0, -1), channel: 'voice' }),
+  });
+  if (!resp.ok) throw new Error('Chat greška ' + resp.status);
+  const data = await resp.json();
+  return { replyText: data.reply || '', replyVoice: data.reply_voice || '' };
+}
+
+async function speak(text) {
+  try {
+    const resp = await fetch(TTS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!resp.ok) throw new Error();
+    const url = URL.createObjectURL(await resp.blob());
+    currentAudio = new Audio(url);
+    await new Promise((res, rej) => {
+      currentAudio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; res(); };
+      currentAudio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; rej(); };
+      currentAudio.play().catch(rej);
+    });
+  } catch {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const v = window.speechSynthesis.getVoices().find(v => /hr|bs|sr/i.test(v.lang));
+    if (v) u.voice = v; u.lang = 'hr-HR'; u.rate = 0.95;
+    await new Promise(r => { u.onend = r; u.onerror = r; window.speechSynthesis.speak(u); });
+  }
+}
+
+// ── Mic button ─────────────────────────────────────────────────
+els.micBtn.addEventListener('click', async () => {
+  if (state === S.IDLE) {
+    try {
+      await openMic();
+      setState(S.LISTENING);
+      startVad();
+    } catch (err) {
+      showError('Mikrofon nedostupan: ' + err.message);
+    }
+    return;
+  }
+  // Stop sve
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  window.speechSynthesis?.cancel();
+  clearTimeout(silenceTimer);
+  cancelAnimationFrame(vadRafId);
+  if (recorder?.state !== 'inactive') recorder?.stop();
+  closeMic();
+  setState(S.IDLE);
+});
+</script>
+</body>
+</html>

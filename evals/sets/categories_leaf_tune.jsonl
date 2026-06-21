@@ -1,0 +1,24 @@
+// Tune set: leaf rutiranje + halucinacija (NE auto-gen, NE commitovano). Iz acceptance run-a 94.0%.
+// 15 routing FAIL (leaf-vs-parent / pogresan-leaf-id / apstinencija) + 6 hallucination FALSE-POSITIVE.
+// PAZNJA: FP-ovi (cat-leaf-224,230,278,300,326,327) PROLAZE routing eval — provjeri REPLY rucno (treba 'trenutno nemamo').
+{"expect":{"args_subset":{"category_id":112},"tool":"search_products"},"history":[],"id":"cat-leaf-112","query":"Ventilatori","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":123},"tool":"search_products"},"history":[],"id":"cat-leaf-123","query":"Kablovi","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":132},"tool":"search_products"},"history":[],"id":"cat-leaf-132","query":"UPS","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":163},"tool":"search_products"},"history":[],"id":"cat-leaf-163","query":"Televizori","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":172},"tool":"search_products"},"history":[],"id":"cat-leaf-172","query":"Fotoaparati","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":186},"tool":"search_products"},"history":[],"id":"cat-leaf-186","query":"Dodaci za telefone","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":194},"tool":"search_products"},"history":[],"id":"cat-leaf-194","query":"Navigacije","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":204},"tool":"search_products"},"history":[],"id":"cat-leaf-204","query":"Sony","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":245},"tool":"search_products"},"history":[],"id":"cat-leaf-245","query":"Ventilatori","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":253},"tool":"search_products"},"history":[],"id":"cat-leaf-253","query":"Dodaci","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":274},"tool":"search_products"},"history":[],"id":"cat-leaf-274","query":"Softver Aplikacije","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":329},"tool":"search_products"},"history":[],"id":"cat-leaf-329","query":"Kućišta za HDD","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":351},"tool":"search_products"},"history":[],"id":"cat-leaf-351","query":"USB uređaji","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":360},"tool":"search_products"},"history":[],"id":"cat-leaf-360","query":"Kućanski aparati","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":368},"tool":"search_products"},"history":[],"id":"cat-leaf-368","query":"Konzole","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":224},"tool":"search_products"},"history":[],"id":"cat-leaf-224","query":"Monitori","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":230},"tool":"search_products"},"history":[],"id":"cat-leaf-230","query":"Oprema za igrice","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":278},"tool":"search_products"},"history":[],"id":"cat-leaf-278","query":"Platno","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":300},"tool":"search_products"},"history":[],"id":"cat-leaf-300","query":"Oprema za igre","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":326},"tool":"search_products"},"history":[],"id":"cat-leaf-326","query":"Monitori","tags":["auto-gen","leaf"]}
+{"expect":{"args_subset":{"category_id":327},"tool":"search_products"},"history":[],"id":"cat-leaf-327","query":"Eksterni HDD","tags":["auto-gen","leaf"]}

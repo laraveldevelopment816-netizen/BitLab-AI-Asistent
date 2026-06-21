@@ -1,0 +1,7 @@
+"""Centralni kontakt podaci BitLab d.o.o. — jedino mjesto za ažuriranje."""
+TEL = "066 516 174"
+EMAIL = "prodaja@bitlab.rs"
+WEB = "webshop.bitlab.rs"
+ADDRESS = "Jevrejska 37, 78000 Banja Luka"
+JIB = "4403711250001"
+PIB = "403711250001"
