@@ -139,3 +139,48 @@ kao arhitekturna odluka. Dodat novi sadržaj u `bitlab-dijamanti-cm-scraper.md`:
 5. **Sekcija 10 — Extended/Adaptive Thinking**: proširena Chain of Responsibility, `thinking: {type: "adaptive"}` bez `budget_tokens`
 
 ---
+
+## Turn 6 — Ivan (reorganizacija + zatvaranje sesije)
+
+"Premjesti dokumente u root repo-a. Design patterns primjena u BitLab root, BitLab dijamanti u
+CM Scraper root. U brainstormu ostaju samo board i log. Komitaj i pusaj na oba repozitorija,
+na CM Scraper prvo pull."
+
+## Turn 6 — Claude
+
+Reorganizacija i push:
+
+- `design-patterns-primjena.md` → `/mnt/c/Users/Kule/Projects/bitLab-ai-asistent/`
+- `bitlab-dijamanti-cm-scraper.md` → `/mnt/c/Users/Kule/Projects/compliance-monitoring/cm-scraper/`
+- Brainstorm folder: ostali samo `board.html` i `log.md`
+
+CM Scraper: `git pull` povukao 282 novih linija (factory, CLI, unit testovi) → commit + push na `staging`.
+BitLab: commit + push na `feat/ralph-categories-eval`.
+
+---
+
+## Zaključak sesije
+
+**Datum:** 2026-06-21  
+**Trajanje:** ~1h 30min  
+**Output:** 2 dokumenta, ukupno ~2 900 linija analize i Python koda
+
+### Šta je urađeno
+
+**Smjer 1 — CMSKP paterne → BitLab Asistent** (`design-patterns-primjena.md`):
+Identifikovane su četiri prioritetne intervencije: AgentLoop protokol koji eliminiše ~130 LOC duplikata između `_run_anthropic()` i `_run_pwr()`, Tool Registry koji zamjenjuje magic strings i if/elif dispatch, Budget/Cache pipeline koji izoluje svaki concern u `run_suite()`, i Lazy tool data koji omogućava mock injection bez monkeypatching-a.
+
+**Smjer 2 — BitLab dijamanti → CM Scraper** (`bitlab-dijamanti-cm-scraper.md`):
+Deset dijamanta preslikana na CM Scraper pipeline sa konkretnim Python kodom i prioritetnim roadmapom. Ključni nalazi: arhitekturni bug `run_dir=None` u ranim fazama (rješava Context Object pattern), fragilni `validiraj_json()` koji nestaje s force tool calling-om, plus četiri nova API feature-a koja CM Scraper uopće ne koristi — Prompt Caching (90% ušteda na statičkim promptovima), Batch API (50% jeftinije za voluminoznu obradu), Force Tool Calling kao arhitekturna garancija (PWR već podržava), i Adaptive Thinking kao posljednji fallback u chain-u.
+
+### Ključni insight sesije
+
+Razlika između starog i novog CM Scraper-a Ivan je opisao kao "iz pakla u raj" — što direktno mapira na poentu sesije: loose coupling i pipeline arhitektura nisu samo estetika, nego preduslov da možeš uopće testirati, mijenjati i nadograđivati sistem. BitLab Asistent je taj raj kojeg CM Scraper tek treba dostići.
+
+### Sljedeći koraci (za implementaciju)
+
+1. Mock seam u `providers.py` — preduslov za sve ostalo
+2. `PipelineRunContext` + `run_dir` fix
+3. `ToolCallStage` sa `tool_choice: {"type": "any"}`
+4. `cache_control: ephemeral` na sistem promptu (`BuildPromptStage`)
+5. Batch API CLI komanda za voluminozne runove
